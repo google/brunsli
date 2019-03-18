@@ -104,7 +104,7 @@ bool AddMetaData(const std::string& metadata, JPEGData* jpg) {
   size_t pos = 0;
   size_t short_marker_count = 0;
   while (pos < metadata.size()) {
-    uint8_t marker = metadata[pos++];
+    const uint8_t marker = metadata[pos++];
     if (marker == 0xd9) {
       jpg->tail_data = metadata.substr(pos);
       break;
@@ -122,7 +122,9 @@ bool AddMetaData(const std::string& metadata, JPEGData* jpg) {
       jpg->app_data.push_back(GenerateAppMarker(marker, code));
     } else {
       if (pos + 1 >= metadata.size()) return false;
-      size_t marker_len = (metadata[pos] << 8) + metadata[pos + 1];
+      const uint8_t hi = metadata[pos];
+      const uint8_t lo = metadata[pos + 1];
+      const size_t marker_len = (hi << 8) + lo;
       if (marker == 0xfe) {
         jpg->com_data.push_back(metadata.substr(pos, marker_len));
       } else if ((marker >> 4) == 0xe) {

@@ -82,11 +82,21 @@ void EncodeBase128Fix(size_t val, size_t len, uint8_t* data) {
 }
 
 bool TransformApp0Marker(const std::string& s, std::string* out) {
-  if (s.size() == 17 && s[0] == 0xe0 && s[1] == 0 && s[2] == 16 &&
-      s.substr(3, 4) == "JFIF" && s[7] == 0 && s[8] == 1 &&
-      (s[9] == 1 || s[9] == 2) && s[10] < 4 && s[15] == 0 && s[16] == 0) {
-    int x_dens = (s[11] << 8) + s[12];
-    int y_dens = (s[13] << 8) + s[14];
+  if (s.size() != 17) {
+    return false;
+  }
+  if (static_cast<uint8_t>(s[0]) == 0xe0 &&  // APP0
+      s[1] == 0 && s[2] == 16 &&  // length
+      s.substr(3, 4) == "JFIF" && s[7] == 0 &&  // null-terminated identifier
+      s[8] == 1 && (s[9] == 1 || s[9] == 2) &&  // version / 1.1 or 1.2
+      static_cast<uint8_t>(s[10]) < 4 &&  // density units
+      s[15] == 0 && s[16] == 0) {  // thumbnail size / no thumbnail
+    const uint8_t x_dens_hi = s[11];
+    const uint8_t x_dens_lo = s[12];
+    int x_dens = (x_dens_hi << 8) + x_dens_lo;
+    const uint8_t y_dens_hi = s[13];
+    const uint8_t y_dens_lo = s[14];
+    int y_dens = (y_dens_hi << 8) + y_dens_lo;
     int density_ix = -1;
     for (int k = 0; k < kMaxApp0Densities; ++k) {
       if (x_dens == kApp0Densities[k] && y_dens == x_dens) {

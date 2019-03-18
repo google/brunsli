@@ -8,7 +8,6 @@ package(
 licenses(["notice"])  # MIT
 
 STRICT_C_OPTIONS = [
-    "-Wno-narrowing",  # for jpeg_data.cc
     "-Wno-sign-compare",  # everywhere
 ]
 
