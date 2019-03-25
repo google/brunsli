@@ -109,9 +109,9 @@ cc_test(
     srcs = ["c/tests/bit_reader_test.cc"],
     copts = ["-Iexternal/gtest/include"],
     deps = [
-        "@gtest//:main",
         ":brunslicommon",
         ":brunslidec",
+        "@gtest//:gtest_main",
     ],
 )
 
@@ -120,8 +120,8 @@ cc_test(
     srcs = ["c/tests/huffman_tree_test.cc"],
     copts = ["-Iexternal/gtest/include"],
     deps = [
-        "@gtest//:main",
         ":brunslidec",
+        "@gtest//:gtest_main",
     ],
 )
 
@@ -130,7 +130,7 @@ cc_test(
     srcs = ["c/tests/lehmer_code_test.cc"],
     copts = ["-Iexternal/gtest/include"],
     deps = [
-        "@gtest//:main",
         ":brunslicommon",
+        "@gtest//:gtest_main",
     ],
 )
