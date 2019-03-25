@@ -103,3 +103,34 @@ cc_binary(
         ":brunslidec",
     ],
 )
+
+cc_test(
+    name = "bit_reader_test",
+    srcs = ["c/tests/bit_reader_test.cc"],
+    copts = ["-Iexternal/gtest/include"],
+    deps = [
+        "@gtest//:main",
+        ":brunslicommon",
+        ":brunslidec",
+    ],
+)
+
+cc_test(
+    name = "huffman_tree_test",
+    srcs = ["c/tests/huffman_tree_test.cc"],
+    copts = ["-Iexternal/gtest/include"],
+    deps = [
+        "@gtest//:main",
+        ":brunslidec",
+    ],
+)
+
+cc_test(
+    name = "lehmer_code_test",
+    srcs = ["c/tests/lehmer_code_test.cc"],
+    copts = ["-Iexternal/gtest/include"],
+    deps = [
+        "@gtest//:main",
+        ":brunslicommon",
+    ],
+)
