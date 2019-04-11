@@ -101,7 +101,7 @@ static BRUNSLI_INLINE void BrunsliBitReaderFillWindow(
     if (br->bit_pos_ >= 8) {
       br->val_ >>= 8;
       br->bit_pos_ ^= 8; /* here same as -= 8 because of the if condition */
-      br->val_ |= ((uint32_t)(*br->src)) << 24;
+      br->val_ |= ((uint32_t)(*br->src_)) << 24;
       --br->available_;
       ++br->src_;
     }
