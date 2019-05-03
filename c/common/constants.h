@@ -34,18 +34,35 @@ static const int kBrunsliMaxDCAbsVal = 2054;
 // markers, but sets the limit: the number of all unique marker variants.
 static const int kBrunsliShortMarkerLimit = 0x40 + 3 * 0x100;
 
-static const uint8_t kBrunsliSignatureMarker = 0x0a;
-static const uint8_t kBrunsliHeaderMarker = 0x12;
-static const uint8_t kBrunsliMetaDataMarker = 0x1a;
-static const uint8_t kBrunsliJPEGInternalsMarker = 0x22;
-static const uint8_t kBrunsliQuantDataMarker = 0x2a;
-static const uint8_t kBrunsliHistogramDataMarker = 0x32;
-static const uint8_t kBrunsliDCDataMarker = 0x3a;
-static const uint8_t kBrunsliACDataMarker = 0x42;
-static const uint8_t kBrunsliOriginalJpgMarker = 0x4a;
+static const uint8_t kBrunsliWiringTypeVarint = 0x0;
+static const uint8_t kBrunsliWiringTypeLengthDelimited = 0x2;
+
+static constexpr uint8_t ValueMarker(uint8_t tag) {
+  return (tag << 3) | kBrunsliWiringTypeVarint;
+}
+
+static constexpr uint8_t SectionMarker(uint8_t tag) {
+  return (tag << 3) | kBrunsliWiringTypeLengthDelimited;
+}
+
+static const uint8_t kBrunsliSignatureTag = 0x1;
+static const uint8_t kBrunsliHeaderTag = 0x2;
+static const uint8_t kBrunsliMetaDataTag = 0x3;
+static const uint8_t kBrunsliJPEGInternalsTag = 0x4;
+static const uint8_t kBrunsliQuantDataTag = 0x5;
+static const uint8_t kBrunsliHistogramDataTag = 0x6;
+static const uint8_t kBrunsliDCDataTag = 0x7;
+static const uint8_t kBrunsliACDataTag = 0x8;
+static const uint8_t kBrunsliOriginalJpgTag = 0x9;
+
+// Header section. All fields are varints.
+static const uint8_t kBrunsliHeaderWidthTag = 0x1;
+static const uint8_t kBrunsliHeaderHeightTag = 0x2;
+static const uint8_t kBrunsliHeaderVersionCompTag = 0x3;
+static const uint8_t kBrunsliHeaderSubsamplingTag = 0x4;
 
 static const uint8_t kBrunsliSignature[] = {
-  kBrunsliSignatureMarker, 0x04, 'B', 0xd2, 0xd5, 'N'
+  SectionMarker(kBrunsliSignatureTag), 0x04, 'B', 0xd2, 0xd5, 'N'
 };
 static const size_t kBrunsliSignatureSize = sizeof(kBrunsliSignature);
 
