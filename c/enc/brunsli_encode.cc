@@ -1173,6 +1173,11 @@ bool EncodeSignature(size_t len, uint8_t* data, size_t* pos) {
   return true;
 }
 
+static void EncodeValue(uint8_t tag, size_t value, uint8_t* data, size_t* pos) {
+  data[(*pos)++] = ValueMarker(tag);
+  EncodeBase128(value, data, pos);
+}
+
 bool EncodeHeader(const JPEGData& jpg,
                   JPEGCodingState* s,
                   uint8_t* data,
@@ -1181,16 +1186,17 @@ bool EncodeHeader(const JPEGData& jpg,
       jpg.components.empty() || jpg.components.size() > kMaxComponents) {
     return false;
   }
-  int version = jpg.version;
+
+  size_t version = jpg.version;
+  size_t version_comp = (jpg.components.size() - 1) | (version << 2);
+  size_t subsampling = FrameTypeCode(jpg);
+
   size_t pos = 0;
-  data[pos++] = 0x08;
-  EncodeBase128(jpg.width, data, &pos);
-  data[pos++] = 0x10;
-  EncodeBase128(jpg.height, data, &pos);
-  data[pos++] = 0x18;
-  EncodeBase128((jpg.components.size() - 1) | (version << 2), data, &pos);
-  data[pos++] = 0x20;
-  EncodeBase128(FrameTypeCode(jpg), data, &pos);
+  EncodeValue(kBrunsliHeaderWidthTag, jpg.width, data, &pos);
+  EncodeValue(kBrunsliHeaderHeightTag, jpg.height, data, &pos);
+  EncodeValue(kBrunsliHeaderVersionCompTag, version_comp, data, &pos);
+  EncodeValue(kBrunsliHeaderSubsamplingTag, subsampling, data, &pos);
+
   *len = pos;
   return true;
 }
@@ -1317,7 +1323,7 @@ typedef bool (*EncodeSectionDataFn)(const JPEGData& jpg,
 
 bool EncodeSection(const JPEGData& jpg,
                    JPEGCodingState* s,
-                   uint8_t marker,
+                   uint8_t tag,
                    EncodeSectionDataFn write_section,
                    size_t section_size_bytes,
                    size_t len,
@@ -1325,6 +1331,7 @@ bool EncodeSection(const JPEGData& jpg,
                    size_t* pos) {
   // Write the marker byte for the section.
   const size_t pos_start = *pos;
+  const uint8_t marker = SectionMarker(tag);
   data[(*pos)++] = marker;
 
   // Skip enough bytes for a valid (though not necessarily optimal) base-128
@@ -1360,37 +1367,37 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg,
   if (!EncodeSignature(*len, data, &pos)) {
     return false;
   }
-  if (!EncodeSection(jpg, NULL, kBrunsliHeaderMarker, EncodeHeader,
+  if (!EncodeSection(jpg, NULL, kBrunsliHeaderTag, EncodeHeader,
                      1, *len, data, &pos)) {
     return false;
   }
   if (preserve_bytes &&
-      !EncodeSection(jpg, NULL, kBrunsliJPEGInternalsMarker,
+      !EncodeSection(jpg, NULL, kBrunsliJPEGInternalsTag,
                      EncodeJPEGInternals,
                      Base128Size(EstimateAuxDataSize(jpg)),
                      *len, data, &pos)) {
     return false;
   }
-  if (!EncodeSection(jpg, NULL, kBrunsliMetaDataMarker, EncodeMetaData,
+  if (!EncodeSection(jpg, NULL, kBrunsliMetaDataTag, EncodeMetaData,
                      Base128Size(*len - pos), *len, data, &pos)) {
     return false;
   }
-  if (!EncodeSection(jpg, NULL, kBrunsliQuantDataMarker, EncodeQuantData,
+  if (!EncodeSection(jpg, NULL, kBrunsliQuantDataTag, EncodeQuantData,
                      2, *len, data, &pos)) {
     return false;
   }
   if (!ProcessCoefficients(jpg, &s)) {
     return false;
   }
-  if (!EncodeSection(jpg, &s, kBrunsliHistogramDataMarker, EncodeHistogramData,
+  if (!EncodeSection(jpg, &s, kBrunsliHistogramDataTag, EncodeHistogramData,
                      Base128Size(*len - pos), *len, data, &pos)) {
     return false;
   }
-  if (!EncodeSection(jpg, &s, kBrunsliDCDataMarker, EncodeDCData,
+  if (!EncodeSection(jpg, &s, kBrunsliDCDataTag, EncodeDCData,
                      Base128Size(*len - pos), *len, data, &pos)) {
     return false;
   }
-  if (!EncodeSection(jpg, &s, kBrunsliACDataMarker, EncodeACData,
+  if (!EncodeSection(jpg, &s, kBrunsliACDataTag, EncodeACData,
                      Base128Size(*len - pos), *len, data, &pos)) {
     return false;
   }
@@ -1435,11 +1442,11 @@ bool BrunsliEncodeJpegBypass(const uint8_t* jpg_data, const size_t jpg_data_len,
   jpg.version = 1;
   jpg.original_jpg = jpg_data;
   jpg.original_jpg_size = jpg_data_len;
-  if (!EncodeSection(jpg, NULL, kBrunsliHeaderMarker, EncodeHeader,
+  if (!EncodeSection(jpg, NULL, kBrunsliHeaderTag, EncodeHeader,
                      1, *len, data, &pos)) {
     return false;
   }
-  if (!EncodeSection(jpg, NULL, kBrunsliOriginalJpgMarker, EncodeOriginalJpg,
+  if (!EncodeSection(jpg, NULL, kBrunsliOriginalJpgTag, EncodeOriginalJpg,
                      Base128Size(jpg_data_len), *len, data, &pos)) {
     return false;
   }

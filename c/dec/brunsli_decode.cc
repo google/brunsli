@@ -194,14 +194,7 @@ bool DecodeQuantTables(BrunsliBitReader* br, JPEGData* jpg) {
   return true;
 }
 
-bool DecodeFrameType(uint32_t frame_code, JPEGData* jpg) {
-  for (size_t i = 0; i < jpg->components.size(); ++i) {
-    JPEGComponent* c = &jpg->components[i];
-    c->v_samp_factor = (frame_code & 0xf) + 1;
-    frame_code >>= 4;
-    c->h_samp_factor = (frame_code & 0xf) + 1;
-    frame_code >>= 4;
-  }
+bool UpdateSubsamplingDerivatives(JPEGData* jpg) {
   for (size_t i = 0; i < jpg->components.size(); ++i) {
     JPEGComponent* c = &jpg->components[i];
     jpg->max_h_samp_factor = std::max(jpg->max_h_samp_factor, c->h_samp_factor);
@@ -354,6 +347,7 @@ bool DecodeScanInfo(BrunsliBitReader* br,
 bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
   bool have_dri = false;
   int num_scans = 0;
+  size_t dht_count = 0;
   uint8_t marker;
   do {
     if (!BrunsliBitReaderReadMoreInput(br)) {
@@ -361,6 +355,7 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
     }
     marker = 0xc0 + BrunsliBitReaderReadBits(br, 6);
     jpg->marker_order.push_back(marker);
+    if (marker == 0xc4) ++dht_count;
     if (marker == 0xdd) have_dri = true;
     if (marker == 0xda) ++num_scans;
   } while (marker != 0xd9);
@@ -368,11 +363,15 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
     jpg->restart_interval = BrunsliBitReaderReadBits(br, 16);
   }
 
+  size_t terminal_huffman_code_count = 0;
   for (int i = 0; ; ++i) {
     const bool is_known_last = BrunsliBitReaderReadBits(br, 1);
     JPEGHuffmanCode huff;
     if (!DecodeHuffmanCode(br, &huff, is_known_last)) {
       return false;
+    }
+    if (huff.is_last) {
+      terminal_huffman_code_count++;
     }
     jpg->huffman_code.push_back(huff);
     if (is_known_last) break;
@@ -382,6 +381,10 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
       // reasonable lower bound instead of open door to likely forged BRN input.
       return false;
     }
+  }
+  if (dht_count != terminal_huffman_code_count) {
+    BRUNSLI_LOG_ERROR() << "Invalid number of DHT markers";
+    return false;
   }
 
   jpg->scan_info.resize(num_scans);
@@ -673,7 +676,6 @@ bool DecodeAC(const int mcu_cols,
             int sign = 1;
             const int k_nat = c->order[k];
             if (!is_zero) {
-              absval = 1;
               int avrg_ctx = 0;
               int sign_ctx = kMaxAverageContext;
               if (k_nat < 8) {
@@ -799,7 +801,7 @@ BrunsliStatus VerifySignature(const uint8_t* data, const size_t len,
 // or is truncated.
 BrunsliStatus DecodeHeader(const uint8_t* data, const size_t len, size_t* pos,
                            JPEGData* jpg) {
-  if (*pos >= len || data[(*pos)++] != kBrunsliHeaderMarker) {
+  if (*pos >= len || data[(*pos)++] != SectionMarker(kBrunsliHeaderTag)) {
     return BRUNSLI_INVALID_BRN;
   }
   size_t marker_len = 0;
@@ -807,66 +809,89 @@ BrunsliStatus DecodeHeader(const uint8_t* data, const size_t len, size_t* pos,
     return BRUNSLI_INVALID_BRN;
   }
   size_t marker_end = *pos + marker_len;
-  size_t height = 0;
-  size_t width = 0;
-  size_t comp_code = 0xff;   // Invalid value.
-  size_t frame_code = 0xff;  // Invalid frame type value.
+  bool tags_met[16] = { false };
+  bool known_varint_tags[16] = {false};
+  for (size_t tag :
+       {kBrunsliHeaderWidthTag, kBrunsliHeaderHeightTag,
+        kBrunsliHeaderVersionCompTag, kBrunsliHeaderSubsamplingTag}) {
+    known_varint_tags[tag] = true;
+  }
+  size_t varint_values[16] = {0};
+
   while (*pos < marker_end) {
-    uint8_t marker = data[(*pos)++];
-    if ((marker & 0x80) != 0 || ((marker & 0x5) != 0) || marker <= 0x02) {
+    const uint8_t marker = data[(*pos)++];
+    const size_t tag = marker >> 3;
+    if (tag == 0 || tag > 15) return BRUNSLI_INVALID_BRN;
+    const size_t wiring_type = marker & 0x7;
+    if (wiring_type != kBrunsliWiringTypeVarint &&
+        wiring_type != kBrunsliWiringTypeLengthDelimited) {
       return BRUNSLI_INVALID_BRN;
     }
-    bool ok = false;
-    switch (marker) {
-      case 0x08:
-        ok = (width == 0) && DecodeBase128(data, len, pos, &width);
-        break;
-      case 0x10:
-        ok = (height == 0) && DecodeBase128(data, len, pos, &height);
-        break;
-      case 0x18:
-        ok = (comp_code == 0xff) && DecodeBase128(data, len, pos, &comp_code);
-        break;
-      case 0x20:
-        ok = (frame_code == 0xff) && DecodeBase128(data, len, pos, &frame_code);
-        break;
-      default:
-        {
-          // Skip the unknown marker.
-          size_t val = 0;
-          ok = DecodeBase128(data, len, pos, &val);
-          if ((marker & 0x7) == 2) {
-            ok = ok && val <= len && *pos <= len - val;
-            *pos += val;
-          }
-        }
-        break;
-    }
-    if (!ok) {
+
+    if (tags_met[tag]) {
       return BRUNSLI_INVALID_BRN;
     }
-  }
-  const int version = (comp_code >> 2);
-  const int ncomp = (comp_code & 3) + 1;
-  if ((version != 1 && (width == 0 || height == 0)) ||
-      version > 1 || frame_code == 0xff) {
-    return BRUNSLI_INVALID_BRN;
-  }
-  if (width > kMaxDimPixels || height > kMaxDimPixels) {
-    return BRUNSLI_INVALID_BRN;
+    tags_met[tag] = true;
+
+    const bool is_varint = (wiring_type == kBrunsliWiringTypeVarint);
+    if (known_varint_tags[tag] && !is_varint) return BRUNSLI_INVALID_BRN;
+
+    size_t value = 0;
+    if (!DecodeBase128(data, len, pos, &value)) return BRUNSLI_INVALID_BRN;
+    if (is_varint) {
+      varint_values[tag] = value;
+    } else {
+      // Skip section; current version of Brunsli does not use any.
+      if (value > len || *pos > len - value) return BRUNSLI_INVALID_BRN;
+      *pos += value;
+    }
   }
   if (*pos != marker_end) {
     return BRUNSLI_INVALID_BRN;
   }
-  jpg->width = width;
-  jpg->height = height;
-  if (version != 1) {
-    jpg->components.resize(ncomp);
-  }
+
+  if (!tags_met[kBrunsliHeaderVersionCompTag]) return BRUNSLI_INVALID_BRN;
+  const size_t version_and_comp_count =
+      varint_values[kBrunsliHeaderVersionCompTag];
+
+  const int version = version_and_comp_count >> 2;
   jpg->version = version;
-  if (!DecodeFrameType(frame_code, jpg)) {
+
+  if (version == 0) {  // regular brunsli
+    if (!tags_met[kBrunsliHeaderWidthTag]) return BRUNSLI_INVALID_BRN;
+    const size_t width = varint_values[kBrunsliHeaderWidthTag];
+    if (!tags_met[kBrunsliHeaderHeightTag]) return BRUNSLI_INVALID_BRN;
+    const size_t height = varint_values[kBrunsliHeaderHeightTag];
+
+    if (width == 0 || height == 0) return BRUNSLI_INVALID_BRN;
+    if (width > kMaxDimPixels || height > kMaxDimPixels) {
+      return BRUNSLI_INVALID_BRN;
+    }
+    jpg->width = width;
+    jpg->height = height;
+
+    const size_t comp_count = (version_and_comp_count & 3) + 1;
+    jpg->components.resize(comp_count);
+
+    if (!tags_met[kBrunsliHeaderSubsamplingTag]) return BRUNSLI_INVALID_BRN;
+    size_t subsampling_code = varint_values[kBrunsliHeaderSubsamplingTag];
+
+    for (size_t i = 0; i < jpg->components.size(); ++i) {
+      JPEGComponent* c = &jpg->components[i];
+      c->v_samp_factor = (subsampling_code & 0xF) + 1;
+      subsampling_code >>= 4;
+      c->h_samp_factor = (subsampling_code & 0xF) + 1;
+      subsampling_code >>= 4;
+    }
+    if (!UpdateSubsamplingDerivatives(jpg)) return BRUNSLI_INVALID_BRN;
+  } else if (version == 1) {  // fallback mode
+    // TODO: do we need this?
+    jpg->width = 0;
+    jpg->height = 0;
+  } else {
     return BRUNSLI_INVALID_BRN;
   }
+
   return BRUNSLI_OK;
 }
 
@@ -1126,6 +1151,27 @@ bool DecodeACDataSection(const uint8_t* data, const size_t len,
   return true;
 }
 
+static BrunsliStatus DecodeOriginalJpg(const uint8_t* data, const size_t len,
+                                       size_t* pos, JPEGData* jpg) {
+  if (*pos >= len) {
+    return BRUNSLI_INVALID_BRN;
+  }
+  if (data[*pos++] != SectionMarker(kBrunsliOriginalJpgTag)) {
+    return BRUNSLI_INVALID_BRN;
+  }
+  size_t jpg_len = 0;
+  if (!DecodeDataLength(data, len, pos, &jpg_len)) {
+    return BRUNSLI_INVALID_BRN;
+  }
+  jpg->original_jpg = data + *pos;
+  jpg->original_jpg_size = jpg_len;
+  *pos += jpg_len;
+  if (*pos != len) {
+    return BRUNSLI_INVALID_BRN;
+  }
+  return BRUNSLI_OK;
+}
+
 BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, const size_t len,
                                 BrunsliReadMode mode,
                                 JPEGData* jpg,
@@ -1138,25 +1184,26 @@ BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, const size_t len,
   status = DecodeHeader(data, len, &pos, jpg);
   if (status != BRUNSLI_OK || mode == BRUNSLI_READ_HEADER) return status;
 
-  if (jpg->version == 1) {
-    if (pos >= len) {
-      return BRUNSLI_INVALID_BRN;
-    }
-    if (data[pos++] != kBrunsliOriginalJpgMarker) {
-      return BRUNSLI_INVALID_BRN;
-    }
-    size_t jpg_len = 0;
-    if (!DecodeDataLength(data, len, &pos, &jpg_len)) {
-      return BRUNSLI_INVALID_BRN;
-    }
-    jpg->original_jpg = data + pos;
-    jpg->original_jpg_size = jpg_len;
-    pos += jpg_len;
-    if (pos != len) {
-      return BRUNSLI_INVALID_BRN;
-    }
-    return BRUNSLI_OK;
+  bool tags_met[16] = { false };
+  // Signature and header can appear only at the start of the data.
+  for (size_t tag : {kBrunsliSignatureTag, kBrunsliHeaderTag}) {
+    tags_met[tag] = true;
   }
+  bool known_section_tags[16] = { false };
+  for (size_t tag :
+       {kBrunsliSignatureTag, kBrunsliHeaderTag, kBrunsliMetaDataTag,
+        kBrunsliJPEGInternalsTag, kBrunsliQuantDataTag,
+        kBrunsliHistogramDataTag, kBrunsliDCDataTag, kBrunsliACDataTag,
+        kBrunsliOriginalJpgTag}) {
+    known_section_tags[tag] = true;
+  }
+
+  if (jpg->version == 1) {
+    return DecodeOriginalJpg(data, len, &pos, jpg);
+  }
+  // Do not allow "original_jpg" for regular Brunsli files.
+  tags_met[kBrunsliOriginalJpgTag] = true;
+
   // Allocate coefficient buffers.
   if (mode == BRUNSLI_READ_ALL) {
     for (size_t i = 0; i < jpg->components.size(); ++i) {
@@ -1164,69 +1211,74 @@ BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, const size_t len,
       c->coeffs.resize(c->num_blocks * kDCTBlockSize);
     }
   }
-  std::set<int> markers_seen;
+
   JPEGDecodingState s;
-  bool have_quant_section = false;
-  bool have_dc_section = false;
   while (pos < len) {
-    uint8_t marker = data[pos++];
-    // There are 15 valid marker bytes for compatibility with the protocol
-    // buffer wire format (field_numbers 1 to 15, wire type 2).
-    if ((marker & 0x80) != 0 || (marker & 0x7) != 2 || marker == 0x02) {
+    const uint8_t marker = data[pos++];
+    const size_t tag = marker >> 3;
+    if (tag == 0 || tag > 15) return BRUNSLI_INVALID_BRN;
+    const size_t wiring_type = marker & 0x7;
+    if (wiring_type != kBrunsliWiringTypeVarint &&
+        wiring_type != kBrunsliWiringTypeLengthDelimited) {
       return BRUNSLI_INVALID_BRN;
     }
-    size_t marker_len = 0;
-    if (!DecodeDataLength(data, len, &pos, &marker_len)) {
-      return BRUNSLI_INVALID_BRN;
-    }
-    if (markers_seen.insert(marker).second == false) {
+
+    if (tags_met[tag]) {
       BRUNSLI_LOG_ERROR() << "Duplicate marker " << std::hex
                           << static_cast<int>(marker);
       return BRUNSLI_INVALID_BRN;
     }
-    if (mode == BRUNSLI_READ_SIZES && marker != kBrunsliHistogramDataMarker) {
+    tags_met[tag] = true;
+
+    size_t value = 0;
+    if (!DecodeDataLength(data, len, &pos, &value)) {
+      return BRUNSLI_INVALID_BRN;
+    }
+
+    const bool is_section = (wiring_type == kBrunsliWiringTypeLengthDelimited);
+    if (known_section_tags[tag] && !is_section) return BRUNSLI_INVALID_BRN;
+
+    // No varint tags on top level.
+    if (!is_section) continue;
+    const size_t marker_len = value;
+
+    if (mode == BRUNSLI_READ_SIZES && tag != kBrunsliHistogramDataTag) {
       pos += marker_len;
       continue;
     }
+
     bool ok = false;
-    switch (marker) {
-      case kBrunsliSignatureMarker:
-      case kBrunsliHeaderMarker:
-        // Signature and header can appear only at the start of the data.
-        ok = false;
-        break;
-      case kBrunsliMetaDataMarker:
+    switch (tag) {
+      case kBrunsliMetaDataTag:
         ok = DecodeMetaDataSection(&data[pos], marker_len, jpg);
         break;
-      case kBrunsliJPEGInternalsMarker:
+      case kBrunsliJPEGInternalsTag:
         ok = DecodeJPEGInternalsSection(&data[pos], marker_len, jpg);
         break;
-      case kBrunsliQuantDataMarker:
+      case kBrunsliQuantDataTag:
         ok = DecodeQuantDataSection(&data[pos], marker_len, jpg);
-        have_quant_section = true;
         break;
-      case kBrunsliHistogramDataMarker:
+      case kBrunsliHistogramDataTag:
         ok = DecodeHistogramDataSection(&data[pos], marker_len, mode, &s, jpg,
                                         aux);
         break;
-      case kBrunsliDCDataMarker:
-        ok = have_quant_section &&
+      case kBrunsliDCDataTag:
+        ok = tags_met[kBrunsliQuantDataTag] &&
              DecodeDCDataSection(&data[pos], marker_len, &s, jpg);
-        have_dc_section = ok;
         break;
-      case kBrunsliACDataMarker:
-        ok = have_dc_section &&
+      case kBrunsliACDataTag:
+        ok = tags_met[kBrunsliDCDataTag] &&
              DecodeACDataSection(&data[pos], marker_len, &s, jpg);
         break;
       default:
-        // We skip unrecognized marker segments.
+        // Skip unrecognized sections.
         ok = true;
         break;
     }
     if (!ok) {
       return BRUNSLI_INVALID_BRN;
     }
-    if (mode == BRUNSLI_READ_SIZES && marker == kBrunsliHistogramDataMarker) {
+    if (mode == BRUNSLI_READ_SIZES && tag == kBrunsliHistogramDataTag) {
       return BRUNSLI_OK;
     }
     pos += marker_len;
