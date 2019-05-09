@@ -18,7 +18,7 @@ static const int kBitMask[] = {
 struct BrunsliInput {
   BrunsliInput(const uint8_t* data, size_t len) :
       data_(reinterpret_cast<const uint16_t*>(data)),
-      len_(len >> 1), pos_(0), val_(0), bit_pos_(0), error_(0) {}
+      len_(len >> 1), pos_(0), val_(0), bit_pos_(0), error_(len & 1) {}
 
   void InitBitReader() {
     val_ = GetNextWord();

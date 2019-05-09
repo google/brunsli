@@ -28,7 +28,9 @@ void ANSBuildInfoTable(const int* counts, int alphabet_size,
       info[s].ifreq_ =
           ((1ull << RECIPROCAL_PRECISION) + info[s].freq_ - 1) / info[s].freq_;
     } else {
-      info[s].ifreq_ = 1;  // shouldn't matter (symbol shoudln't occur), but...
+      // Shouldn't matter for valid streams (symbol shouldn't occur).
+      // Initialization allows to avoid undefined behavior on corrupted streams.
+      info[s].ifreq_ = 1;
     }
 #endif
   }

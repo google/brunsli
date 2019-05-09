@@ -314,7 +314,7 @@ bool EncodeHuffmanCode(const JPEGHuffmanCode& huff,
     if (count > count_limit) {
       BRUNSLI_LOG_DEBUG() << "len = " << i << " count = " << count
                           << " limit = " << count_limit << " space = " << space
-                          << " total = " << total_count;
+                          << " total = " << total_count << BRUNSLI_ENDL();
       return false;
     }
     if (count_limit > 0) {
@@ -328,8 +328,10 @@ bool EncodeHuffmanCode(const JPEGHuffmanCode& huff,
     return false;
   }
 
-  PermutationCoder p(is_dc_table ? 4 : 8,
-                     is_dc_table ? kDefaultDCValues : kDefaultACValues);
+  PermutationCoder p(
+      is_dc_table
+          ? std::vector<uint8_t>(kDefaultDCValues, std::end(kDefaultDCValues))
+          : std::vector<uint8_t>(kDefaultACValues, std::end(kDefaultACValues)));
   for (int i = 0; i < total_count; ++i) {
     const int val = huff.values[i];
     int code, nbits;
@@ -1109,7 +1111,7 @@ bool PredictDCCoeffs(const JPEGData& jpg, JPEGCodingState* s) {
         int err = coeffs[0] - PredictWithAdaptiveMedian(coeffs, x, y, width);
         if (std::abs(err) > kBrunsliMaxDCAbsVal) {
           BRUNSLI_LOG_INFO() << "Invalid DC coefficient: " << coeffs[0]
-                             << " after prediction: " << err;
+                             << " after prediction: " << err << BRUNSLI_ENDL();
           return false;
         }
         coeffs += kDCTBlockSize;
@@ -1214,7 +1216,7 @@ bool EncodeMetaData(const JPEGData& jpg,
   }
   if (transformed_marker_count > kBrunsliShortMarkerLimit) {
     BRUNSLI_LOG_ERROR() << "Too many short markers: "
-                        << transformed_marker_count;
+                        << transformed_marker_count << BRUNSLI_ENDL();
     return false;
   }
   for (const std::string& s : jpg.com_data) {
@@ -1247,7 +1249,8 @@ bool EncodeMetaData(const JPEGData& jpg,
                              &compressed_size, &data[pos])) {
     BRUNSLI_LOG_ERROR() << "Brotli compression failed:"
                         << " input size = " << metadata.size()
-                        << " pos = " << pos << " len = " << *len;
+                        << " pos = " << pos << " len = " << *len
+                        << BRUNSLI_ENDL();
     return false;
   }
   pos += compressed_size;
@@ -1347,7 +1350,8 @@ bool EncodeSection(const JPEGData& jpg,
   if ((section_size >> (7 * section_size_bytes)) > 0) {
     BRUNSLI_LOG_ERROR() << "Section 0x" << std::hex << marker << " size "
                         << std::dec << section_size << " too large for "
-                        << section_size_bytes << " bytes base128 number.";
+                        << section_size_bytes << " bytes base128 number."
+                        << BRUNSLI_ENDL();
     return false;
   }
 

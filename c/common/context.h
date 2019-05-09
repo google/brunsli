@@ -144,15 +144,16 @@ void ComputeACPredictMultipliers(const int* quant,
 // Returns a context value from the AC prediction in the range
 // [-kMaxAverageContext, kMaxAverageContext]
 inline int ACPredictContext(int64_t p_orig) {
-  int64_t p = p_orig << 1;
+  uint64_t p;
   static const int64_t kMaxPred = (1 << (kMaxAverageContext + 1)) - 1;
   if (p_orig >= 0) {
+    p = static_cast<uint64_t>(p_orig) << 1;
     if (p > kMaxPred) {
       return kMaxAverageContext;
     }
     return Log2FloorNonZero(++p);
   }
-  p = -p;
+  p = static_cast<uint64_t>(-p_orig) << 1;
   if (p > kMaxPred) {
     return -kMaxAverageContext;
   } else {

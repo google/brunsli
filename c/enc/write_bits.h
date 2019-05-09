@@ -33,9 +33,9 @@ BRUNSLI_INLINE void WriteBits(size_t n_bits,
                               uint64_t bits,
                               size_t* BRUNSLI_RESTRICT pos,
                               uint8_t* BRUNSLI_RESTRICT array) {
-  BRUNSLI_LOG_DEBUG() << "WriteBits  " << std::setw(2) << n_bits << "  "
-                      << std::hex << std::setw(16) << bits << "  "
-                      << std::dec << std::setw(10) << *pos;
+  BRUNSLI_LOG_DEBUG() << "WriteBits " << std::setw(2) << n_bits << " "
+                      << std::hex << std::setw(16) << bits << " " << std::dec
+                      << std::setw(10) << *pos << BRUNSLI_ENDL();
   BRUNSLI_DCHECK((bits >> n_bits) == 0);
   BRUNSLI_DCHECK(n_bits <= 56);
 #if defined(BRUNSLI_LITTLE_ENDIAN)
@@ -68,8 +68,8 @@ BRUNSLI_INLINE void WriteBits(size_t n_bits,
 
 BRUNSLI_INLINE void WriteBitsPrepareStorage(
     size_t pos, uint8_t* array) {
-  BRUNSLI_LOG_DEBUG() << "WriteBitsPrepareStorage            "
-                      << std::setw(10) << pos;
+  BRUNSLI_LOG_DEBUG() << "WriteBitsPrepareStorage " << std::setw(10) << pos
+                      << BRUNSLI_ENDL();
   BRUNSLI_DCHECK((pos & 7) == 0);
   array[pos >> 3] = 0;
 }

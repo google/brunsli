@@ -255,6 +255,9 @@ bool DecodeHuffmanCode(BrunsliBitReader* br,
     if (count_limit > 0) {
       int nbits = Log2FloorNonZero(count_limit) + 1;
       int count = BrunsliBitReaderReadBits(br, nbits);
+      if (count > count_limit) {
+        return false;
+      }
       huff->counts[i] = count;
       total_count += count;
       space -= count * (1 << (kJpegHuffmanMaxBitLength - i));
@@ -262,9 +265,10 @@ bool DecodeHuffmanCode(BrunsliBitReader* br,
   }
   ++huff->counts[max_len];
 
-  PermutationCoder p(is_dc_table ? 4 : 8,
-                     is_dc_table ? kDefaultDCValues
-                                 : kDefaultACValues);
+  PermutationCoder p(
+      is_dc_table
+          ? std::vector<uint8_t>(kDefaultDCValues, std::end(kDefaultDCValues))
+          : std::vector<uint8_t>(kDefaultACValues, std::end(kDefaultACValues)));
   for (int i = 0; i < total_count; ++i) {
     if (!BrunsliBitReaderReadMoreInput(br)) {
       return false;
@@ -383,7 +387,7 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
     }
   }
   if (dht_count != terminal_huffman_code_count) {
-    BRUNSLI_LOG_ERROR() << "Invalid number of DHT markers";
+    BRUNSLI_LOG_ERROR() << "Invalid number of DHT markers" << BRUNSLI_ENDL();
     return false;
   }
 
@@ -408,7 +412,7 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
   };
   if (jpg->components.size() < kMinRequiredComponents[comp_ids]) {
     BRUNSLI_LOG_ERROR() << "Insufficient number of components for ColorId #"
-                        << comp_ids;
+                        << comp_ids << BRUNSLI_ENDL();
     return false;
   }
   if (comp_ids == kComponentIds123) {
@@ -438,7 +442,8 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
     if (nsize > nsize_limit) {
       // This is to prevent large allocation (up to 4G!) by limiting to the
       // maximum possible padding bits.
-      BRUNSLI_LOG_ERROR() << "Suspicious number of padding bits " << nsize;
+      BRUNSLI_LOG_ERROR() << "Suspicious number of padding bits " << nsize
+                          << BRUNSLI_ENDL();
       return false;
     }
     jpg->padding_bits.resize(nsize);
@@ -997,7 +1002,11 @@ bool DecodeJPEGInternalsSection(const uint8_t* data, const size_t len,
   if (!DecodeAuxData(&br, jpg)) {
     return false;
   }
-  size_t pos = len - BrunsliBitReaderJumpToByteBoundary(&br);
+  int tail_length = BrunsliBitReaderJumpToByteBoundary(&br);
+  // TODO: will become no-op / DCHECK after BitReader modernization.
+  if (tail_length < 0) return false;
+  BRUNSLI_DCHECK(static_cast<size_t>(tail_length) < len);
+  size_t pos = len - tail_length;
   for (size_t i = 0; i < jpg->marker_order.size(); ++i) {
     if (jpg->marker_order[i] != 0xff) {
       continue;
@@ -1010,7 +1019,7 @@ bool DecodeJPEGInternalsSection(const uint8_t* data, const size_t len,
         std::string(reinterpret_cast<const char*>(&data[pos]), data_size));
     pos += data_size;
   }
-  return true;
+  return (pos == len);
 }
 
 bool DecodeQuantDataSection(const uint8_t* data, const size_t len,
@@ -1023,7 +1032,8 @@ bool DecodeQuantDataSection(const uint8_t* data, const size_t len,
   if (!DecodeQuantTables(&br, jpg)) {
     return false;
   }
-  return true;
+
+  return (BrunsliBitReaderJumpToByteBoundary(&br) == 0);
 }
 
 bool DecodeHistogramDataSection(const uint8_t* data, const size_t len,
@@ -1068,7 +1078,7 @@ bool DecodeHistogramDataSection(const uint8_t* data, const size_t len,
     }
   }
 
-  return true;
+  return (BrunsliBitReaderJumpToByteBoundary(&br) == 0);
 }
 
 bool DecodeDCDataSection(const uint8_t* data, const size_t len,
@@ -1102,7 +1112,7 @@ bool DecodeDCDataSection(const uint8_t* data, const size_t len,
                 &s->block_state, &in)) {
     return false;
   }
-  return true;
+  return (in.len_ == in.pos_);
 }
 
 bool DecodeACDataSection(const uint8_t* data, const size_t len,
@@ -1225,7 +1235,7 @@ BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, const size_t len,
 
     if (tags_met[tag]) {
       BRUNSLI_LOG_ERROR() << "Duplicate marker " << std::hex
-                          << static_cast<int>(marker);
+                          << static_cast<int>(marker) << BRUNSLI_ENDL();
       return BRUNSLI_INVALID_BRN;
     }
     tags_met[tag] = true;
