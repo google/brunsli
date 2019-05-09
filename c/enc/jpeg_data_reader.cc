@@ -21,38 +21,38 @@ namespace {
 
 // Macros for commonly used error conditions.
 
-#define VERIFY_LEN(n)                                        \
-  if (*pos + (n) > len) {                                    \
-    BRUNSLI_LOG_INFO() << "Unexpected end of input:"         \
-                       << " pos=" << *pos << " need=" << (n) \
-                       << " len=" << len;                    \
-    jpg->error = JPEGReadError::UNEXPECTED_EOF;              \
-    return false;                                            \
+#define VERIFY_LEN(n)                                                          \
+  if (*pos + (n) > len) {                                                      \
+    BRUNSLI_LOG_INFO() << "Unexpected end of input:"                           \
+                       << " pos=" << *pos << " need=" << (n) << " len=" << len \
+                       << BRUNSLI_ENDL();                                      \
+    jpg->error = JPEGReadError::UNEXPECTED_EOF;                                \
+    return false;                                                              \
   }
 
-#define VERIFY_INPUT(var, low, high, code)                   \
-  if (var < low || var > high) {                             \
-    BRUNSLI_LOG_INFO() << "Invalid " << #var << ": " << var; \
-    jpg->error = JPEGReadError::INVALID_ ## code;            \
-    return false;                                            \
+#define VERIFY_INPUT(var, low, high, code)                                     \
+  if (var < low || var > high) {                                               \
+    BRUNSLI_LOG_INFO() << "Invalid " << #var << ": " << var << BRUNSLI_ENDL(); \
+    jpg->error = JPEGReadError::INVALID_##code;                                \
+    return false;                                                              \
   }
 
-#define VERIFY_MARKER_END()                                 \
-  if (start_pos + marker_len != *pos) {                     \
-    BRUNSLI_LOG_INFO() << "Invalid marker length:"          \
-                       << " declared=" << marker_len        \
-                       << " actual=" << (*pos - start_pos); \
-    jpg->error = JPEGReadError::WRONG_MARKER_SIZE;          \
-    return false;                                           \
+#define VERIFY_MARKER_END()                                                   \
+  if (start_pos + marker_len != *pos) {                                       \
+    BRUNSLI_LOG_INFO() << "Invalid marker length:"                            \
+                       << " declared=" << marker_len                          \
+                       << " actual=" << (*pos - start_pos) << BRUNSLI_ENDL(); \
+    jpg->error = JPEGReadError::WRONG_MARKER_SIZE;                            \
+    return false;                                                             \
   }
 
-#define EXPECT_MARKER() \
-  if (pos + 2 > len || data[pos] != 0xff) {                         \
-    BRUNSLI_LOG_INFO() << "Marker byte (0xff) expected,"            \
-                       << " found: " << (pos < len ? data[pos] : 0) \
-                       << " pos=" << pos << " len=" << len;         \
-    jpg->error = JPEGReadError::MARKER_BYTE_NOT_FOUND;              \
-    return false;                                                   \
+#define EXPECT_MARKER()                                                       \
+  if (pos + 2 > len || data[pos] != 0xff) {                                   \
+    BRUNSLI_LOG_INFO() << "Marker byte (0xff) expected,"                      \
+                       << " found: " << (pos < len ? data[pos] : 0)           \
+                       << " pos=" << pos << " len=" << len << BRUNSLI_ENDL(); \
+    jpg->error = JPEGReadError::MARKER_BYTE_NOT_FOUND;                        \
+    return false;                                                             \
   }
 
 // Returns ceil(a/b).
@@ -75,7 +75,7 @@ inline int ReadUint16(const uint8_t* data, size_t* pos) {
 bool ProcessSOF(const uint8_t* data, const size_t len,
                 JpegReadMode mode, size_t* pos, JPEGData* jpg) {
   if (jpg->width != 0) {
-    BRUNSLI_LOG_INFO() << "Duplicate SOF marker.";
+    BRUNSLI_LOG_INFO() << "Duplicate SOF marker." << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::DUPLICATE_SOF;
     return false;
   }
@@ -100,7 +100,8 @@ bool ProcessSOF(const uint8_t* data, const size_t len,
   for (int i = 0; i < jpg->components.size(); ++i) {
     const int id = ReadUint8(data, pos);
     if (ids_seen[id]) {   // (cf. section B.2.2, syntax of Ci)
-      BRUNSLI_LOG_INFO() << "Duplicate ID " << id << " in SOF.";
+      BRUNSLI_LOG_INFO() << "Duplicate ID " << id << " in SOF."
+                         << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::DUPLICATE_COMPONENT_ID;
       return false;
     }
@@ -127,7 +128,8 @@ bool ProcessSOF(const uint8_t* data, const size_t len,
     JPEGComponent* c = &jpg->components[i];
     if (jpg->max_h_samp_factor % c->h_samp_factor != 0 ||
         jpg->max_v_samp_factor % c->v_samp_factor != 0) {
-      BRUNSLI_LOG_INFO() << "Non-integral subsampling ratios.";
+      BRUNSLI_LOG_INFO() << "Non-integral subsampling ratios."
+                         << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::INVALID_SAMPLING_FACTORS;
       return false;
     }
@@ -136,7 +138,7 @@ bool ProcessSOF(const uint8_t* data, const size_t len,
     const uint64_t num_blocks =
         static_cast<uint64_t>(c->width_in_blocks) * c->height_in_blocks;
     if (num_blocks > kBrunsliMaxNumBlocks) {
-      BRUNSLI_LOG_INFO() << "Image too large.";
+      BRUNSLI_LOG_INFO() << "Image too large." << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::IMAGE_TOO_LARGE;
       return false;
     }
@@ -166,7 +168,8 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
   for (int i = 0; i < comps_in_scan; ++i) {
     int id = ReadUint8(data, pos);
     if (ids_seen[id]) {   // (cf. section B.2.3, regarding CSj)
-      BRUNSLI_LOG_INFO() << "Duplicate ID " << id << " in SOS.";
+      BRUNSLI_LOG_INFO() << "Duplicate ID " << id << " in SOS."
+                         << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::DUPLICATE_COMPONENT_ID;
       return false;
     }
@@ -180,7 +183,7 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
     }
     if (!found_index) {
       BRUNSLI_LOG_INFO() << "SOS marker: Could not find component with id "
-                         << id;
+                         << id << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::COMPONENT_NOT_FOUND;
       return false;
     }
@@ -206,7 +209,7 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
     // a warning.
     BRUNSLI_LOG_WARNING() << "Invalid progressive parameters: "
                           << " Al = " << scan_info.Al
-                          << " Ah = " << scan_info.Ah;
+                          << " Ah = " << scan_info.Ah << BRUNSLI_ENDL();
   }
   // Check that all the Huffman tables needed for this scan are defined.
   for (int i = 0; i < comps_in_scan; ++i) {
@@ -222,13 +225,15 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
     }
     if (scan_info.Ss == 0 && !found_dc_table) {
       BRUNSLI_LOG_INFO() << "SOS marker: Could not find DC Huffman table with"
-                         << " index " << scan_info.components[i].dc_tbl_idx;
+                         << " index " << scan_info.components[i].dc_tbl_idx
+                         << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::HUFFMAN_TABLE_NOT_FOUND;
       return false;
     }
     if (scan_info.Se > 0 && !found_ac_table) {
       BRUNSLI_LOG_INFO() << "SOS marker: Could not find AC Huffman table with"
-                         <<" index " << scan_info.components[i].ac_tbl_idx;
+                         << " index " << scan_info.components[i].ac_tbl_idx
+                         << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::HUFFMAN_TABLE_NOT_FOUND;
       return false;
     }
@@ -251,7 +256,8 @@ bool ProcessDHT(const uint8_t* data, const size_t len,
   VERIFY_LEN(2);
   size_t marker_len = ReadUint16(data, pos);
   if (marker_len == 2) {
-    BRUNSLI_LOG_INFO() << "DHT marker: no Huffman table found";
+    BRUNSLI_LOG_INFO() << "DHT marker: no Huffman table found"
+                       << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::EMPTY_DHT;
     return false;
   }
@@ -296,7 +302,8 @@ bool ProcessDHT(const uint8_t* data, const size_t len,
         VERIFY_INPUT(value, 0, kJpegDCAlphabetSize - 1, HUFFMAN_CODE);
       }
       if (values_seen[value]) {
-        BRUNSLI_LOG_INFO() << "Duplicate Huffman code value " << value;
+        BRUNSLI_LOG_INFO() << "Duplicate Huffman code value " << value
+                           << BRUNSLI_ENDL();
         jpg->error = JPEGReadError::INVALID_HUFFMAN_CODE;
         return false;
       }
@@ -308,7 +315,7 @@ bool ProcessDHT(const uint8_t* data, const size_t len,
     huff.values[total_count] = kJpegHuffmanAlphabetSize;
     space -= (1 << (kJpegHuffmanMaxBitLength - max_depth));
     if (space < 0) {
-      BRUNSLI_LOG_INFO() << "Invalid Huffman code lengths.";
+      BRUNSLI_LOG_INFO() << "Invalid Huffman code lengths." << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::INVALID_HUFFMAN_CODE;
       return false;
     } else if (space > 0 && huff_lut[0].value != 0xffff) {
@@ -337,7 +344,8 @@ bool ProcessDQT(const uint8_t* data, const size_t len, size_t* pos,
   VERIFY_LEN(2);
   size_t marker_len = ReadUint16(data, pos);
   if (marker_len == 2) {
-    BRUNSLI_LOG_INFO() << "DQT marker: no quantization table found";
+    BRUNSLI_LOG_INFO() << "DQT marker: no quantization table found"
+                       << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::EMPTY_DQT;
     return false;
   }
@@ -369,7 +377,7 @@ bool ProcessDQT(const uint8_t* data, const size_t len, size_t* pos,
 bool ProcessDRI(const uint8_t* data, const size_t len, size_t* pos,
                 bool* found_dri, JPEGData* jpg) {
   if (*found_dri) {
-    BRUNSLI_LOG_INFO() << "Duplicate DRI marker.";
+    BRUNSLI_LOG_INFO() << "Duplicate DRI marker." << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::DUPLICATE_DRI;
     return false;
   }
@@ -493,7 +501,7 @@ struct BitReaderState {
     }
     if (pos_ > next_marker_pos_) {
       // Data ran out before the scan was complete.
-      BRUNSLI_LOG_INFO() << "Unexpected end of scan.";
+      BRUNSLI_LOG_INFO() << "Unexpected end of scan." << BRUNSLI_ENDL();
       return false;
     }
     *pos = pos_;
@@ -549,7 +557,7 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
     s = ReadSymbol(dc_huff, br);
     if (s >= kJpegDCAlphabetSize) {
       BRUNSLI_LOG_INFO() << "Invalid Huffman symbol " << s
-                         << " for DC coefficient.";
+                         << " for DC coefficient." << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::INVALID_SYMBOL;
       return false;
     }
@@ -561,7 +569,8 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
     const int dc_coeff = s << Al;
     coeffs[0] = dc_coeff;
     if (dc_coeff != coeffs[0]) {
-      BRUNSLI_LOG_INFO() << "Invalid DC coefficient " << dc_coeff;
+      BRUNSLI_LOG_INFO() << "Invalid DC coefficient " << dc_coeff
+                         << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::NON_REPRESENTABLE_DC_COEFF;
       return false;
     }
@@ -580,7 +589,7 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
     s = ReadSymbol(ac_huff, br);
     if (s >= kJpegHuffmanAlphabetSize) {
       BRUNSLI_LOG_INFO() << "Invalid Huffman symbol " << s
-                         << " for AC coefficient " << k;
+                         << " for AC coefficient " << k << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::INVALID_SYMBOL;
       return false;
     }
@@ -590,13 +599,13 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
       k += r;
       if (k > Se) {
         BRUNSLI_LOG_INFO() << "Out-of-band coefficient " << k << " band was "
-                           << Ss << "-" << Se;
+                           << Ss << "-" << Se << BRUNSLI_ENDL();
         jpg->error = JPEGReadError::OUT_OF_BAND_COEFF;
         return false;
       }
       if (s + Al >= kJpegDCAlphabetSize) {
         BRUNSLI_LOG_INFO() << "Out of range AC coefficient value: s = " << s
-                           << " Al = " << Al << " k = " << k;
+                           << " Al = " << Al << " k = " << k << BRUNSLI_ENDL();
         jpg->error = JPEGReadError::NON_REPRESENTABLE_AC_COEFF;
         return false;
       }
@@ -616,7 +625,8 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
       *eobrun = 1 << r;
       if (r > 0) {
         if (!eobrun_allowed) {
-          BRUNSLI_LOG_INFO() << "End-of-block run crossing DC coeff.";
+          BRUNSLI_LOG_INFO()
+              << "End-of-block run crossing DC coeff." << BRUNSLI_ENDL();
           jpg->error = JPEGReadError::EOB_RUN_TOO_LONG;
           return false;
         }
@@ -658,7 +668,7 @@ bool RefineDCTBlock(const HuffmanTableEntry* ac_huff,
       s = ReadSymbol(ac_huff, br);
       if (s >= kJpegHuffmanAlphabetSize) {
         BRUNSLI_LOG_INFO() << "Invalid Huffman symbol " << s
-                           << " for AC coefficient " << k;
+                           << " for AC coefficient " << k << BRUNSLI_ENDL();
         jpg->error = JPEGReadError::INVALID_SYMBOL;
         return false;
       }
@@ -666,8 +676,8 @@ bool RefineDCTBlock(const HuffmanTableEntry* ac_huff,
       s &= 15;
       if (s) {
         if (s != 1) {
-          BRUNSLI_LOG_INFO()
-              << "Invalid Huffman symbol " << s << " for AC coefficient " << k;
+          BRUNSLI_LOG_INFO() << "Invalid Huffman symbol " << s
+                             << " for AC coefficient " << k << BRUNSLI_ENDL();
           jpg->error = JPEGReadError::INVALID_SYMBOL;
           return false;
         }
@@ -683,7 +693,8 @@ bool RefineDCTBlock(const HuffmanTableEntry* ac_huff,
           *eobrun = 1 << r;
           if (r > 0) {
             if (!eobrun_allowed) {
-              BRUNSLI_LOG_INFO() << "End-of-block run crossing DC coeff.";
+              BRUNSLI_LOG_INFO()
+                  << "End-of-block run crossing DC coeff." << BRUNSLI_ENDL();
               jpg->error = JPEGReadError::EOB_RUN_TOO_LONG;
               return false;
             }
@@ -716,7 +727,7 @@ bool RefineDCTBlock(const HuffmanTableEntry* ac_huff,
       if (s) {
         if (k > Se) {
           BRUNSLI_LOG_INFO() << "Out-of-band coefficient " << k << " band was "
-                             << Ss << "-" << Se;
+                             << Ss << "-" << Se << BRUNSLI_ENDL();
           jpg->error = JPEGReadError::OUT_OF_BAND_COEFF;
           return false;
         }
@@ -725,7 +736,8 @@ bool RefineDCTBlock(const HuffmanTableEntry* ac_huff,
     }
   }
   if (in_zero_run) {
-    BRUNSLI_LOG_INFO() << "Extra zero run before end-of-block.";
+    BRUNSLI_LOG_INFO() << "Extra zero run before end-of-block."
+                       << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::EXTRA_ZERO_RUN;
     return false;
   }
@@ -763,7 +775,8 @@ bool ProcessRestart(const uint8_t* data, const size_t len,
   int marker = data[pos + 1];
   if (marker != expected_marker) {
     BRUNSLI_LOG_INFO() << "Did not find expected restart"
-                       << " marker " << expected_marker << " actual=" << marker;
+                       << " marker " << expected_marker << " actual=" << marker
+                       << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::WRONG_RESTART_MARKER;
     return false;
   }
@@ -816,7 +829,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
         BRUNSLI_LOG_INFO() << "Overlapping scans: component = " << comp_idx
                            << " k = " << k
                            << " prev_mask: " << scan_progression[i][k]
-                           << " cur_mask: " << scan_bitmask;
+                           << " cur_mask: " << scan_bitmask << BRUNSLI_ENDL();
         jpg->error = JPEGReadError::OVERLAPPING_SCANS;
         return false;
       }
@@ -825,7 +838,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
                            << " a more refined scan was already done:"
                            << " component = " << comp_idx << " k = " << k
                            << " prev_mask: " << scan_progression[i][k]
-                           << " cur_mask: " << scan_bitmask;
+                           << " cur_mask: " << scan_bitmask << BRUNSLI_ENDL();
         jpg->error = JPEGReadError::INVALID_SCAN_ORDER;
         return false;
       }
@@ -834,7 +847,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
   }
   if (Al > 10) {
     BRUNSLI_LOG_INFO() << "Scan parameter Al = " << Al
-                       << " is not supported in brunsli.";
+                       << " is not supported in brunsli." << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::NON_REPRESENTABLE_AC_COEFF;
     return false;
   }
@@ -848,7 +861,8 @@ bool ProcessScan(const uint8_t* data, const size_t len,
             restarts_to_go = jpg->restart_interval;
             memset(last_dc_coeff, 0, sizeof(last_dc_coeff));
             if (eobrun > 0) {
-              BRUNSLI_LOG_INFO() << "End-of-block run too long.";
+              BRUNSLI_LOG_INFO()
+                  << "End-of-block run too long." << BRUNSLI_ENDL();
               jpg->error = JPEGReadError::EOB_RUN_TOO_LONG;
               return false;
             }
@@ -908,7 +922,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
     }
   }
   if (eobrun > 0) {
-    BRUNSLI_LOG_INFO() << "End-of-block run too long.";
+    BRUNSLI_LOG_INFO() << "End-of-block run too long." << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::EOB_RUN_TOO_LONG;
     return false;
   }
@@ -918,7 +932,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
   }
   if (*pos > len) {
     BRUNSLI_LOG_INFO() << "Unexpected end of file during scan. pos=" << *pos
-                       << " len=" << len;
+                       << " len=" << len << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::UNEXPECTED_EOF;
     return false;
   }
@@ -940,7 +954,7 @@ bool FixupIndexes(JPEGData* jpg) {
     }
     if (!found_index) {
       BRUNSLI_LOG_INFO() << "Quantization table with index " << c->quant_idx
-                         << " not found.";
+                         << " not found." << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::QUANT_TABLE_NOT_FOUND;
       return false;
     }
@@ -976,7 +990,8 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
   int marker = data[pos + 1];
   pos += 2;
   if (marker != 0xd8) {
-    BRUNSLI_LOG_INFO() << "Did not find expected SOI marker, actual=" << marker;
+    BRUNSLI_LOG_INFO() << "Did not find expected SOI marker, actual=" << marker
+                       << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::SOI_NOT_FOUND;
     return false;
   }
@@ -1066,7 +1081,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
         break;
       default:
         BRUNSLI_LOG_INFO() << "Unsupported marker: " << marker << " pos=" << pos
-                           << " len=" << len;
+                           << " len=" << len << BRUNSLI_ENDL();
         jpg->error = JPEGReadError::UNSUPPORTED_MARKER;
         ok = false;
         break;
@@ -1081,7 +1096,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
   } while (marker != 0xd9);
 
   if (!found_sof) {
-    BRUNSLI_LOG_INFO() << "Missing SOF marker.";
+    BRUNSLI_LOG_INFO() << "Missing SOF marker." << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::SOF_NOT_FOUND;
     return false;
   }
@@ -1099,12 +1114,13 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
       // Section B.2.4.2: "If a table has never been defined for a particular
       // destination, then when this destination is specified in a scan header,
       // the results are unpredictable."
-      BRUNSLI_LOG_INFO() << "Need at least one Huffman code table.";
+      BRUNSLI_LOG_INFO() << "Need at least one Huffman code table."
+                         << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::HUFFMAN_TABLE_ERROR;
       return false;
     }
     if (jpg->huffman_code.size() >= kMaxDHTMarkers) {
-      BRUNSLI_LOG_INFO() << "Too many Huffman tables.";
+      BRUNSLI_LOG_INFO() << "Too many Huffman tables." << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::HUFFMAN_TABLE_ERROR;
       return false;
     }

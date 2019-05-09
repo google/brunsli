@@ -919,7 +919,8 @@ bool WriteJpeg(const JPEGData& jpg, bool force_sequential, JPEGOutput out) {
         ok = false; break;
     }
     if (!ok) {
-      BRUNSLI_LOG_DEBUG() << "Failed to encode marker " << std::hex << marker;
+      BRUNSLI_LOG_DEBUG() << "Failed to encode marker " << std::hex << marker
+                          << BRUNSLI_ENDL();
       return false;
     }
   }

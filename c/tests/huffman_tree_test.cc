@@ -185,7 +185,7 @@ TEST(HuffmanTree, WriteHuffmanTreeSparse) {
   for (size_t i = 0; i < tree.size(); ++i) {
     ++huffman_tree_histogram[tree[i]];
     BRUNSLI_LOG_DEBUG() << "huffman_tree: " << i << " "
-                        << static_cast<int>(tree[i]);
+                        << static_cast<int>(tree[i]) << BRUNSLI_ENDL();
   }
   std::vector<uint8_t> code_length_bitdepth(huffman_tree_histogram.size());
   std::vector<uint16_t> code_length_bitdepth_symbols(
@@ -195,7 +195,8 @@ TEST(HuffmanTree, WriteHuffmanTreeSparse) {
                     7, &code_length_bitdepth[0]);
   for (size_t i = 0; i < code_length_bitdepth.size(); ++i) {
     BRUNSLI_LOG_DEBUG() << "code_length_bitdepth " << i << " "
-                        << static_cast<int>(code_length_bitdepth[i]);
+                        << static_cast<int>(code_length_bitdepth[i])
+                        << BRUNSLI_ENDL();
   }
 
   for (size_t i = 0; i < code_length_bitdepth.size(); ++i) {
@@ -206,7 +207,7 @@ TEST(HuffmanTree, WriteHuffmanTreeSparse) {
                             code_length_bitdepth_symbols.data());
   for (size_t i = 0; i < code_length_bitdepth_symbols.size(); ++i) {
     BRUNSLI_LOG_DEBUG() << "code_length_symbols " << i << " "
-                        << code_length_bitdepth_symbols[i];
+                        << code_length_bitdepth_symbols[i] << BRUNSLI_ENDL();
   }
 }
 

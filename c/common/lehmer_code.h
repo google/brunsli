@@ -11,9 +11,9 @@
 #ifndef BRUNSLI_COMMON_LEHMER_CODE_H_
 #define BRUNSLI_COMMON_LEHMER_CODE_H_
 
-#include <cstring> /* for memmove */
 #include <vector>
 
+#include "./platform.h"
 #include "./types.h"
 
 namespace brunsli {
@@ -28,58 +28,46 @@ void DecodeLehmerCode(const int* code, int len, int* sigma);
 
 // This class is an optimized Lehmer-like coder that takes the remaining
 // number of possible values into account to reduce the bit usage.
+// TODO: in worst case (always removing the first element), O(N^2)
+// elements are moved; "Fenwick tree" is simple to implement and could reduce
+// the complexity to O(N * log(N)).
 class PermutationCoder {
  public:
-  explicit PermutationCoder(int num_bits)
-      : nbits_(num_bits), num_values_(1 << nbits_), values_(num_values_) {
-    for (int i = 0; i < num_values_; ++i) values_[i] = i;
-  }
-  PermutationCoder(int num_bits, const uint8_t values[])
-      : nbits_(num_bits), num_values_(1 << nbits_), values_(num_values_) {
-    for (int i = 0; i < num_values_; ++i) values_[i] = values[i];
-  }
+  explicit PermutationCoder(std::vector<uint8_t> values)
+      : values_(std::move(values)) {}
   // number of bits needed to represent the next code.
-  int num_bits() const { return nbits_; }
+  int num_bits() const {
+    size_t num_values = values_.size();
+    BRUNSLI_DCHECK(num_values > 0);
+    return num_values <= 1 ? 0 : (Log2FloorNonZero(num_values - 1) + 1);
+  }
 
   // Removes (and return) the value coded by 'code'. Returns -1 in
   // case of error (invalid slot).
   int Remove(int code) {
-    if (code >= num_values_ || code < 0) {
+    if (code >= values_.size() || code < 0) {
       return -1;
     }
     const int value = values_[code];
-    DoRemove(code);
+    values_.erase(values_.begin() + code);
     return value;
   }
 
   // Removes 'value' from the list and assign a code + number-of-bits
-  // for it. Returns false if value is not codable.
-  bool RemoveValue(int value, int* code, int* nbits) {
-    for (int i = 0; i < num_values_; ++i) {
-      if (values_[i] == value) {
-        *code = i;
-        *nbits = nbits_;
-        DoRemove(i);
-        return true;
-      }
+  // for it. Returns false if value could not be encoded.
+  bool RemoveValue(uint8_t value, int* code, int* nbits) {
+    std::vector<uint8_t>::iterator it =
+        std::find(values_.begin(), values_.end(), value);
+    if (it == values_.end()) {
+      return false;  // invalid/non-existing value was passed.
     }
-    return false;  // invalid/non-existing value was passed.
+    *code = it - values_.begin();
+    *nbits = num_bits();
+    values_.erase(it);
+    return true;
   }
 
  private:
-  void DoRemove(int pos) {
-    --num_values_;
-    if (pos < num_values_) {
-      memmove(&values_[pos], &values_[pos + 1],
-              (num_values_ - pos) * sizeof(values_[0]));
-    }
-    if (((1 << nbits_) >> 1) >= num_values_) {
-      --nbits_;
-    }
-  }
-
-  int nbits_;
-  int num_values_;
   std::vector<uint8_t> values_;
 };
 

@@ -36,7 +36,9 @@ TEST(CommonTest, TestPermutation) {
 
       // Compression.
       {
-        PermutationCoder p(nbits);
+        std::vector<uint8_t> range(max_value);
+        for (size_t i = 0; i < max_value; ++i) range[i] = i;
+        PermutationCoder p(std::move(range));
         ASSERT_EQ(p.num_bits(), nbits);
 
         std::vector<int> value_already_used(max_value, false);
@@ -62,7 +64,9 @@ TEST(CommonTest, TestPermutation) {
       }
       // Decompression.
       {
-        PermutationCoder p(nbits);
+        std::vector<uint8_t> range(max_value);
+        for (size_t i = 0; i < max_value; ++i) range[i] = i;
+        PermutationCoder p(std::move(range));
 
         ASSERT_EQ(p.Remove(-1), -1);
         ASSERT_EQ(p.Remove(10000), -1);

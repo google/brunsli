@@ -117,15 +117,15 @@ BrunsliBitReaderReadBits(BrunsliBitReader* const br, int n_bits) {
   uint32_t val;
   BrunsliBitReaderFillWindow(br, n_bits);
   val = (uint32_t)(br->val_ >> br->bit_pos_) & BrunsliBitMask(n_bits);
-  BRUNSLI_LOG_DEBUG() << "[BrunsliReadBits]  "
-                      << br->bit_pos_ << " " << std::setw(2) << n_bits
-                      << "  val: " << std::setw(6) << std::hex << val;
+  BRUNSLI_LOG_DEBUG() << "[BrunsliReadBits]  " << br->bit_pos_ << " "
+                      << std::setw(2) << n_bits << "  val: " << std::setw(6)
+                      << std::hex << val << BRUNSLI_ENDL();
   br->bit_pos_ += (uint32_t)n_bits;
   return val;
 }
 
 /* Returns the number of bytes available skipping bits. */
-static BRUNSLI_INLINE size_t
+static BRUNSLI_INLINE int
 BrunsliBitReaderJumpToByteBoundary(BrunsliBitReader* br) {
   int nbits = br->bit_pos_ & 7;
   if (nbits > 0) {

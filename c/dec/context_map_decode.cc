@@ -63,7 +63,8 @@ bool DecodeContextMap(int num_htrees,
   for (i = 0; i < context_map_size;) {
     int code;
     if (!BrunsliBitReaderReadMoreInput(br)) {
-      BRUNSLI_LOG_DEBUG() << "[DecodeContextMap] Unexpected end of input.";
+      BRUNSLI_LOG_DEBUG() << "[DecodeContextMap] Unexpected end of input."
+                          << BRUNSLI_ENDL();
       return false;
     }
     code = decoder.ReadSymbol(entropy, br);

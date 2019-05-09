@@ -476,6 +476,7 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 
 // This macro allows easy logging engine replacement.
 #define BRUNSLI_LOG_(LEVEL) std::cerr
+#define BRUNSLI_ENDL() std::endl
 
 #if defined(BRUNSLI_DISABLE_LOG)
 #define BRUNSLI_LOG_DEBUG() BRUNSLI_VOID_LOG()
@@ -484,11 +485,11 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 #define BRUNSLI_LOG_ERROR() BRUNSLI_VOID_LOG()
 #else  // defined(BRUNSLI_DISABLE_LOG)
 // TODO: get rid of base/logging.h dependency
-#if defined(BRUNSLI_DEBUG)
+#if defined(BRUNSLI_ENABLE_LOG)
 #define BRUNSLI_LOG_DEBUG() BRUNSLI_LOG_(INFO)
-#else  //  defined(BRUNSLI_DEBUG)
+#else  //  defined(BRUNSLI_ENABLE_LOG)
 #define BRUNSLI_LOG_DEBUG() BRUNSLI_VOID_LOG()
-#endif  //  defined(BRUNSLI_DEBUG)
+#endif  //  defined(BRUNSLI_ENABLE_LOG)
 #define BRUNSLI_LOG_INFO() BRUNSLI_LOG_(INFO)
 #define BRUNSLI_LOG_WARNING() BRUNSLI_LOG_(WARNING)
 #define BRUNSLI_LOG_ERROR() BRUNSLI_LOG_(ERROR)

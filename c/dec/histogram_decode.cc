@@ -40,7 +40,8 @@ int ReadHistogramLength(BrunsliBitReader* br) {
 bool ReadHistogram(int precision_bits, int length, int* counts,
                    BrunsliBitReader* br) {
   if (!BrunsliBitReaderReadMoreInput(br)) {
-    BRUNSLI_LOG_DEBUG() << "[ReadHistogram] Unexpected end of input.";
+    BRUNSLI_LOG_DEBUG() << "[ReadHistogram] Unexpected end of input."
+                        << BRUNSLI_ENDL();
     return false;
   }
   int simple_code = BrunsliBitReaderReadBits(br, 1);
