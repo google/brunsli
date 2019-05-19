@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "../common/constants.h"
 #include "../common/jpeg_data.h"
