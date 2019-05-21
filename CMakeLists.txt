@@ -1,13 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
 
-# Set compilers to default to Clang is not set.
-if ("$ENV{CC}" STREQUAL "")
-  set(ENV{CC} clang)
-endif()
-if ("$ENV{CXX}" STREQUAL "")
-  set(ENV{CXX} clang++)
-endif()
-
 project(BRUNSLI C CXX)
 
 # Recommend clang for building.
