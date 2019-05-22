@@ -65,7 +65,7 @@ void CreateHuffmanTree(const uint32_t* data,
 
     const size_t n = tree.size();
     if (n == 1) {
-      depth[tree[0].index_right_or_value] = 1;      // Only one element.
+      depth[tree[0].index_right_or_value] = 1;  // Only one element.
       break;
     }
 

@@ -9,6 +9,8 @@
 #include <string>
 
 #include "../common/jpeg_data.h"
+#include "../common/status.h"
+#include "../common/types.h"
 #include "../dec/brunsli_decode.h"
 #include "../dec/jpeg_data_writer.h"
 

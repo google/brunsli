@@ -6,6 +6,9 @@
 
 #include "../common/lehmer_code.h"
 
+#include <vector>
+#include <utility>
+
 #include "gtest/gtest.h"
 #include "../common/types.h"
 

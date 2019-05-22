@@ -6,6 +6,12 @@
 
 #include "./brunsli_decode.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <iterator>
+#include <string>
+#include <vector>
+
 #include <brotli/decode.h>
 #include "../common/constants.h"
 #include "../common/context.h"
@@ -143,35 +149,36 @@ bool DecodeQuantTables(BrunsliBitReader* br, JPEGData* jpg) {
     return false;
   }
   bool have_internals_data = !jpg->quant.empty();
-  int num_quant_tables = BrunsliBitReaderReadBits(br, 2) + 1;
+  size_t num_quant_tables = BrunsliBitReaderReadBits(br, 2) + 1;
   jpg->quant.resize(num_quant_tables);
-  for (int i = 0; i < num_quant_tables; ++i) {
+  for (size_t i = 0; i < num_quant_tables; ++i) {
     JPEGQuantTable* q = &jpg->quant[i];
     int data_precision = 0;
     if (!BrunsliBitReaderReadBits(br, 1)) {
-      const int short_code = BrunsliBitReaderReadBits(br, 3);
-      for (int k = 0; k < kDCTBlockSize; ++k) {
-        q->values[k] = kStockQuantizationTables[i > 0][short_code][k];
+      const size_t short_code = BrunsliBitReaderReadBits(br, 3);
+      for (size_t k = 0; k < kDCTBlockSize; ++k) {
+        q->values[k] = kStockQuantizationTables[(i > 0) ? 1 : 0][short_code][k];
       }
     } else {
       const int qfactor = BrunsliBitReaderReadBits(br, 6);
       uint8_t predictor[kDCTBlockSize];
       FillQuantMatrix(i > 0, qfactor, predictor);
-      int last_diff = 0;
+      int delta = 0;
       for (int k = 0; k < kDCTBlockSize; ++k) {
         if (!BrunsliBitReaderReadMoreInput(br)) {
           return false;
         }
-        int v = 0;
         if (BrunsliBitReaderReadBits(br, 1)) {
           const int sign = BrunsliBitReaderReadBits(br, 1);
-          v = DecodeVarint(br, 16) + 1;
-          if (sign) v = -v;
+          const int diff = DecodeVarint(br, 16) + 1;
+          if (sign) {
+            delta -= diff;
+          } else {
+            delta += diff;
+          }
         }
-        v += last_diff;
-        last_diff = v;
         const int j = kJPEGNaturalOrder[k];
-        const int quant_value = predictor[j] + v;
+        const int quant_value = predictor[j] + delta;
         q->values[j] = quant_value;
         if (quant_value <= 0) {
           return false;
@@ -436,12 +443,7 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
   size_t nsize = DecodeLimitedVarint(br, 8, 4);
   jpg->has_zero_padding_bit = (nsize > 0);
   if (nsize > 0) {
-    const size_t nsize_limit =
-        7 * jpg->components.size() *
-        ((jpg->width + 7) * (jpg->height + 7)) >> 6;
-    if (nsize > nsize_limit) {
-      // This is to prevent large allocation (up to 4G!) by limiting to the
-      // maximum possible padding bits.
+    if (nsize > PaddingBitsLimit(*jpg)) {
       BRUNSLI_LOG_ERROR() << "Suspicious number of padding bits " << nsize
                           << BRUNSLI_ENDL();
       return false;
@@ -461,13 +463,13 @@ bool DecodeCoeffOrder(int* order, BrunsliInput* in) {
   int lehmer[kDCTBlockSize] = { 0 };
   static const int kSpan = 16;
   for (int i = 0; i < kDCTBlockSize; i += kSpan) {
-    if (!in->ReadBits(1)) continue;   // span is all-zero
+    if (!in->ReadBits(1)) continue;  // span is all-zero
     const int start = (i > 0) ? i : 1;
     const int end = i + kSpan;
     for (int j = start; j < end; ++j) {
       int v = 0;
       while (v <= kDCTBlockSize) {
-        const int bits =  in->ReadBits(3);
+        const int bits = in->ReadBits(3);
         v += bits;
         if (bits < 7) break;
       }
@@ -1166,7 +1168,7 @@ static BrunsliStatus DecodeOriginalJpg(const uint8_t* data, const size_t len,
   if (*pos >= len) {
     return BRUNSLI_INVALID_BRN;
   }
-  if (data[*pos++] != SectionMarker(kBrunsliOriginalJpgTag)) {
+  if (data[(*pos)++] != SectionMarker(kBrunsliOriginalJpgTag)) {
     return BRUNSLI_INVALID_BRN;
   }
   size_t jpg_len = 0;

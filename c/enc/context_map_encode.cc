@@ -9,8 +9,7 @@
 #include "./context_map_encode.h"
 
 #include <algorithm>
-#include <cstring> /* for memset */
-#include <limits>
+#include <cstring>  /* for memset */
 #include <vector>
 
 #include "../common/huffman_tree.h"
@@ -58,7 +57,7 @@ void StoreHuffmanTreeOfHuffmanTreeToBitMask(
   //   4          10
   //   5        1111
   static const uint8_t kHuffmanBitLengthHuffmanCodeSymbols[6] = {
-     0, 7, 3, 2, 1, 15
+    0, 7, 3, 2, 1, 15
   };
   static const uint8_t kHuffmanBitLengthHuffmanCodeBitLengths[6] = {
     2, 4, 3, 2, 2, 4

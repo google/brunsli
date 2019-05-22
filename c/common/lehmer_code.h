@@ -12,6 +12,7 @@
 #define BRUNSLI_COMMON_LEHMER_CODE_H_
 
 #include <algorithm>
+#include <utility>
 #include <vector>
 
 #include "./platform.h"

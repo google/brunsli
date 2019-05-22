@@ -6,9 +6,9 @@
 
 #include "./jpeg_data_reader.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
-#include <algorithm>
 
 #include "../common/constants.h"
 #include "../common/jpeg_data.h"
@@ -100,7 +100,7 @@ bool ProcessSOF(const uint8_t* data, const size_t len,
   std::vector<bool> ids_seen(256, false);
   for (int i = 0; i < jpg->components.size(); ++i) {
     const int id = ReadUint8(data, pos);
-    if (ids_seen[id]) {   // (cf. section B.2.2, syntax of Ci)
+    if (ids_seen[id]) {  // (cf. section B.2.2, syntax of Ci)
       BRUNSLI_LOG_INFO() << "Duplicate ID " << id << " in SOF."
                          << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::DUPLICATE_COMPONENT_ID;
@@ -168,7 +168,7 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
   std::vector<bool> ids_seen(256, false);
   for (int i = 0; i < comps_in_scan; ++i) {
     int id = ReadUint8(data, pos);
-    if (ids_seen[id]) {   // (cf. section B.2.3, regarding CSj)
+    if (ids_seen[id]) {  // (cf. section B.2.3, regarding CSj)
       BRUNSLI_LOG_INFO() << "Duplicate ID " << id << " in SOS."
                          << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::DUPLICATE_COMPONENT_ID;
@@ -867,7 +867,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
               jpg->error = JPEGReadError::EOB_RUN_TOO_LONG;
               return false;
             }
-            eobrun = -1;   // fresh start
+            eobrun = -1;  // fresh start
           } else {
             return false;
           }
@@ -1004,7 +1004,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
   uint16_t scan_progression[kMaxComponents][kDCTBlockSize] = { { 0 } };
 
   jpg->padding_bits.resize(0);
-  bool is_progressive = false;   // default
+  bool is_progressive = false;  // default
   do {
     // Read next marker.
     size_t num_skipped = FindNextMarker(data, len, pos);

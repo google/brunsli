@@ -9,6 +9,7 @@
 #include <string>
 
 #include "../common/jpeg_data.h"
+#include "../common/types.h"
 #include "../enc/brunsli_encode.h"
 #include "../enc/jpeg_data_reader.h"
 

@@ -6,7 +6,7 @@
 
 #include "./context_map_decode.h"
 
-#include <cstring> /* for memset */
+#include <cstring>  /* for memset */
 #include <vector>
 
 #include "../common/platform.h"

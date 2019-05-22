@@ -7,7 +7,7 @@
 #ifndef BRUNSLI_ENC_FAST_LOG_H_
 #define BRUNSLI_ENC_FAST_LOG_H_
 
-#include <math.h>
+#include <cmath>
 
 #include "../common/platform.h"
 #include "../common/types.h"
