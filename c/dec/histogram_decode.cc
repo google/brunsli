@@ -19,6 +19,7 @@ namespace brunsli {
 namespace {
 
 int ReadHistogramLength(BrunsliBitReader* br) {
+  // TODO: direct prefix code decoding would be faster / more readable.
   static const uint8_t kHistogramLengthBitLengths[16] = {
     8, 8, 6, 6, 6, 5, 4, 3, 3, 3, 3, 3, 3, 4, 5, 7,
   };
@@ -85,6 +86,7 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
     int logcounts[ANS_MAX_SYMBOLS];
     int omit_log = -1;
     int omit_pos = -1;
+    BRUNSLI_DCHECK(real_length > 2);
     for (int i = 0; i < real_length; ++i) {
       const HuffmanCode* p = huff;
       BrunsliBitReaderFillWindow(br, 6);
@@ -96,6 +98,7 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
         omit_pos = i;
       }
     }
+    BRUNSLI_DCHECK(omit_pos >= 0);
     for (int i = 0; i < real_length; ++i) {
       int code = logcounts[i];
       if (i == omit_pos) {
@@ -111,7 +114,7 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
       }
       total_count += counts[i];
     }
-    if (omit_pos < 0 || (1 << precision_bits) <= total_count) {
+    if (total_count >= (1 << precision_bits)) {
       // The histogram we've read sums to more than total_count (including at
       // least 1 for the omitted value).
       return false;

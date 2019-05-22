@@ -17,7 +17,7 @@ namespace brunsli {
 
 // #define USE_MULT_BY_RECIPROCAL
 
-// precision must be equal to:  #bits(state_) + #bits(freq)
+// precision must be equal to: #bits(state_) + #bits(freq)
 #define RECIPROCAL_PRECISION 42
 
 // Data structure representing one element of the encoding table built

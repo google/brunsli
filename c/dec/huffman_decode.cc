@@ -6,7 +6,8 @@
 
 #include "./huffman_decode.h"
 
-#include <cstring> /* for memset */
+#include <cstring>  /* for memset */
+#include <vector>
 
 #include "../common/types.h"
 #include "./bit_reader.h"
@@ -65,7 +66,7 @@ int ReadHuffmanCodeLengths(
       int repeat_delta;
       uint8_t new_len = 0;
       if (code_len == kCodeLengthRepeatCode) {
-        new_len =  prev_code_len;
+        new_len = prev_code_len;
       }
       if (repeat_code_len != new_len) {
         repeat = 0;

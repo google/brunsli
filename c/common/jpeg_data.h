@@ -280,6 +280,14 @@ inline bool JPEGDataIs444(const JPEGData& jpg) {
           jpg.components[2].v_samp_factor == 1);
 }
 
+// This limit helps to prevent large allocation.
+inline uint64_t PaddingBitsLimit(const JPEGData& jpg) {
+  // Just rough estimate, with MCU = 16px.
+  const uint64_t num_blocks = ((static_cast<uint64_t>(jpg.width) + 15u) >> 3u) *
+                              ((static_cast<uint64_t>(jpg.height) + 15u) >> 3u);
+  return 7u * num_blocks * jpg.components.size() + 256u;
+}
+
 }  // namespace brunsli
 
 #endif  // BRUNSLI_COMMON_JPEG_DATA_H_

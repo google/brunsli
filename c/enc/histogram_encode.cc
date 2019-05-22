@@ -26,7 +26,7 @@ static const uint16_t kHistogramLengthSymbols[ANS_MAX_SYMBOLS - 2] = {
 };
 
 // Static Huffman code for encoding logcounts.
-static const  uint8_t kLogCountBitLengths[ANS_LOG_TAB_SIZE + 1] = {
+static const uint8_t kLogCountBitLengths[ANS_LOG_TAB_SIZE + 1] = {
   5, 4, 4, 4, 3, 3, 2, 3, 3, 6, 6,
 };
 static const uint16_t kLogCountSymbols[ANS_LOG_TAB_SIZE + 1] = {

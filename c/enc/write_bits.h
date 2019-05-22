@@ -54,12 +54,12 @@ BRUNSLI_INLINE void WriteBits(size_t n_bits,
   uint8_t* array_pos = &array[*pos >> 3];
   const size_t bits_reserved_in_first_byte = (*pos & 7);
   bits <<= bits_reserved_in_first_byte;
-  *array_pos++ |= static_cast<uint8_t>(bits);
+  *(array_pos++) |= static_cast<uint8_t>(bits);
   for (size_t bits_left_to_write = n_bits + bits_reserved_in_first_byte;
        bits_left_to_write >= 9;
        bits_left_to_write -= 8) {
     bits >>= 8;
-    *array_pos++ = static_cast<uint8_t>(bits);
+    *(array_pos++) = static_cast<uint8_t>(bits);
   }
   *array_pos = 0;
   *pos += n_bits;

@@ -6,6 +6,14 @@
 
 #include "./brunsli_encode.h"
 
+#include <algorithm>
+#include <cstdlib>
+#include <iterator>
+#include <set>
+#include <string>
+#include <vector>
+#include <utility>
+
 #include <brotli/encode.h>
 #include "../common/constants.h"
 #include "../common/context.h"
@@ -76,7 +84,7 @@ void EncodeBase128(size_t val, uint8_t* data, size_t* pos) {
 
 void EncodeBase128Fix(size_t val, size_t len, uint8_t* data) {
   for (size_t i = 0; i < len; ++i) {
-    *data++ = (val & 0x7f) | (i + 1 < len ? 0x80 : 0);
+    *(data++) = (val & 0x7f) | (i + 1 < len ? 0x80 : 0);
     val >>= 7;
   }
 }
@@ -240,7 +248,7 @@ bool EncodeQuantTables(const JPEGData& jpg, size_t* storage_ix,
           return false;
         }
         const int new_diff = q.values[j] - predictor[j];
-        int diff = new_diff  - last_diff;
+        int diff = new_diff - last_diff;
         last_diff = new_diff;
         WriteBits(1, diff != 0, storage_ix, storage);
         if (diff) {
@@ -459,6 +467,7 @@ bool EncodeAuxData(const JPEGData& jpg, size_t* storage_ix, uint8_t* storage) {
     }
   }
   size_t nsize = jpg.has_zero_padding_bit ? jpg.padding_bits.size() : 0;
+  if (nsize > PaddingBitsLimit(jpg)) return false;
   // we limit to 32b for nsize
   EncodeLimitedVarint(nsize, 8, 4, storage_ix, storage);
   if (nsize > 0) {
@@ -534,7 +543,7 @@ void ComputeCoeffOrder(const coeff_t* coeffs, const int num_blocks, int* order,
   if (num_blocks >= 1024) {
     for (int i = 0; i < num_blocks; ++i) {
       for (int k = 0; k < kDCTBlockSize; ++k) {
-        if (*coeffs++ == 0) ++num_zeros[k];
+        if (*(coeffs++) == 0) ++num_zeros[k];
       }
       i += kSkipBlocks;
       coeffs += kSkipCoeffs;
@@ -720,12 +729,12 @@ class DataStream {
     const uint32_t state = ans.GetState();
     uint16_t* out = reinterpret_cast<uint16_t*>(storage);
     const uint16_t* out_start = out;
-    *out++ = (state >> 16) & 0xffff;
-    *out++ = (state >>  0) & 0xffff;
+    *(out++) = (state >> 16) & 0xffff;
+    *(out++) = (state >>  0) & 0xffff;
     for (int i = 0; i < pos_; ++i) {
       const CodeWord& word = code_words_[i];
       if (word.nbits) {
-        *out++ = word.value;
+        *(out++) = word.value;
       }
     }
     *storage_ix += (out - out_start) * 16;
@@ -823,7 +832,7 @@ void EncodeDC(const int mcu_cols,
       int block_ix = y * width;
       int* prev_sgn = &c->prev_sign[1];
       int* prev_abs = &c->prev_abs_coeff[2];
-      const coeff_t* dc_coeffs_in =  &all_dc_pred_errors[i][block_ix];
+      const coeff_t* dc_coeffs_in = &all_dc_pred_errors[i][block_ix];
       const coeff_t* ac_coeffs_in = &all_ac_coeffs[i][block_ix * kDCTBlockSize];
       for (int iy = 0; iy < v_samp[i]; ++iy, ++y) {
         for (int x = 0; x < width; ++x) {
@@ -899,7 +908,7 @@ void EncodeCoeffOrder(const int* order, DataStream* data_stream) {
     const int end = i + kSpan;
     int has_non_zero = 0;
     for (int j = start; j < end; ++j) has_non_zero |= lehmer[j];
-    if (!has_non_zero) {   // all zero in the span -> escape
+    if (!has_non_zero) {  // all zero in the span -> escape
       data_stream->AddBits(1, 0);
       continue;
     } else {
@@ -1115,7 +1124,7 @@ bool PredictDCCoeffs(const JPEGData& jpg, JPEGCodingState* s) {
           return false;
         }
         coeffs += kDCTBlockSize;
-        *pred_errors++ = err;
+        *(pred_errors++) = err;
       }
     }
   }

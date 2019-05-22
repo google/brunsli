@@ -9,7 +9,7 @@
 #ifndef BRUNSLI_COMMON_TYPES_H_
 #define BRUNSLI_COMMON_TYPES_H_
 
-#include <stddef.h> /* for size_t */
+#include <cstddef> /* for size_t */
 
 #if defined(_MSC_VER) && (_MSC_VER < 1600)
 typedef __int8 int8_t;

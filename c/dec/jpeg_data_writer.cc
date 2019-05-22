@@ -6,7 +6,10 @@
 
 #include "./jpeg_data_writer.h"
 
-#include <cstring> /* for memset, memcpy */
+#include <cstdlib>
+#include <cstring>  /* for memset, memcpy */
+#include <string>
+#include <vector>
 
 #include "../common/huffman_tree.h"
 #include "../common/platform.h"
@@ -221,7 +224,7 @@ bool EncodeDQT(const JPEGData& jpg, int* dqt_index,
   while (1) {
     const size_t idx = (*dqt_index)++;
     if (idx >= jpg.quant.size()) {
-      return false;   // corrupt input
+      return false;  // corrupt input
     }
     const JPEGQuantTable& table = jpg.quant[idx];
     data[pos++] = (table.precision << 4) + table.index;
@@ -533,7 +536,7 @@ static bool GetNextPadPattern(const int** pad_bits, const int* pad_bits_end,
       return false;
     }
     // TODO: DCHECK *src == {0, 1}
-    p |= *src++;
+    p |= *(src++);
   }
   *pad_bits = src;
   *pad_pattern = p;

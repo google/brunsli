@@ -10,8 +10,6 @@
 #define BRUNSLI_ENC_CLUSTER_H_
 
 #include <algorithm>
-#include <cmath>
-#include <complex>
 #include <map>
 #include <utility>
 #include <vector>
