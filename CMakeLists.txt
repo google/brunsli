@@ -59,12 +59,14 @@ if("${CMAKE_C_COMPILER_ID}" MATCHES "Clang" OR
     -Xclang -munwind-tables")
 
   # CPU flags
+  if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} \
     -mavx2 \
     -mfma \
     -Xclang -mprefer-vector-width=128 \
     -Xclang -target-cpu -Xclang haswell \
     -Xclang -target-feature -Xclang +avx2")
+  endif()
 
   add_compile_options(
     # Ignore this to allow redefining __DATE__ and others.
