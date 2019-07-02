@@ -26,7 +26,7 @@ void ComputeLehmerCode(const int* sigma, int len, int* code);
 
 // Decodes the Lehmer code in code[0..len) and puts the resulting permutation
 // into sigma[0..len).
-void DecodeLehmerCode(const int* code, int len, int* sigma);
+bool DecodeLehmerCode(const int* code, int len, int* sigma);
 
 // This class is an optimized Lehmer-like coder that takes the remaining
 // number of possible values into account to reduce the bit usage.

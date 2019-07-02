@@ -150,7 +150,9 @@ bool DecodeQuantTables(BrunsliBitReader* br, JPEGData* jpg) {
   }
   bool have_internals_data = !jpg->quant.empty();
   size_t num_quant_tables = BrunsliBitReaderReadBits(br, 2) + 1;
-  jpg->quant.resize(num_quant_tables);
+  if (jpg->quant.size() != num_quant_tables) {
+    return false;
+  }
   for (size_t i = 0; i < num_quant_tables; ++i) {
     JPEGQuantTable* q = &jpg->quant[i];
     int data_precision = 0;
@@ -192,11 +194,16 @@ bool DecodeQuantTables(BrunsliBitReader* br, JPEGData* jpg) {
       q->precision = data_precision;
       q->is_last = true;
       q->index = i;
+    } else {
+      if (q->precision != data_precision) return false;
     }
   }
   for (size_t i = 0; i < jpg->components.size(); ++i) {
     JPEGComponent* c = &jpg->components[i];
     c->quant_idx = BrunsliBitReaderReadBits(br, 2);
+    if (c->quant_idx >= jpg->quant.size()) {
+      return false;
+    }
   }
   return true;
 }
@@ -411,6 +418,11 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
     q->index = BrunsliBitReaderReadBits(br, 2);
     q->is_last = (i == num_quant_tables - 1) || BrunsliBitReaderReadBits(br, 1);
     q->precision = BrunsliBitReaderReadBits(br, 4);
+    if (q->precision > 1) {
+      BRUNSLI_LOG_ERROR() << "Invalid quantization table precision: "
+                          << q->precision << BRUNSLI_ENDL();
+      return false;
+    }
     // note that q->values[] are initialized to invalid 0 values.
   }
   int comp_ids = BrunsliBitReaderReadBits(br, 2);
@@ -473,18 +485,20 @@ bool DecodeCoeffOrder(int* order, BrunsliInput* in) {
         v += bits;
         if (bits < 7) break;
       }
-      if (v > kDCTBlockSize) v = kDCTBlockSize;
+      if (v > kDCTBlockSize) return false;
       lehmer[j] = v;
     }
   }
   int end = kDCTBlockSize - 1;
-  while (end > 0 && lehmer[end] == 0) {
+  while (end >= 1 && lehmer[end] == 0) {
     --end;
   }
+  if (lehmer[end] == 1) return false;
   for (int i = 1; i <= end; ++i) {
+    if (lehmer[i] == 0) return false;
     --lehmer[i];
   }
-  DecodeLehmerCode(lehmer, kDCTBlockSize, order);
+  if (!DecodeLehmerCode(lehmer, kDCTBlockSize, order)) return false;
   for (int k = 0; k < kDCTBlockSize; ++k) {
     order[k] = kJPEGNaturalOrder[order[k]];
   }
@@ -886,8 +900,10 @@ BrunsliStatus DecodeHeader(const uint8_t* data, const size_t len, size_t* pos,
     for (size_t i = 0; i < jpg->components.size(); ++i) {
       JPEGComponent* c = &jpg->components[i];
       c->v_samp_factor = (subsampling_code & 0xF) + 1;
+      if (c->v_samp_factor > kBrunsliMaxSampling) return BRUNSLI_INVALID_BRN;
       subsampling_code >>= 4;
       c->h_samp_factor = (subsampling_code & 0xF) + 1;
+      if (c->h_samp_factor > kBrunsliMaxSampling) return BRUNSLI_INVALID_BRN;
       subsampling_code >>= 4;
     }
     if (!UpdateSubsamplingDerivatives(jpg)) return BRUNSLI_INVALID_BRN;
@@ -1056,8 +1072,12 @@ bool DecodeHistogramDataSection(const uint8_t* data, const size_t len,
   int num_contexts = jpg->components.size();
   s->context_bits.resize(jpg->components.size());
   for (size_t i = 0; i < jpg->components.size(); ++i) {
-    s->context_bits[i] = std::min(BrunsliBitReaderReadBits(&br, 3), 6u);
-    num_contexts += kNumNonzeroContextSkip[s->context_bits[i]];
+    int scheme = BrunsliBitReaderReadBits(&br, 3);
+    if (scheme >= kNumSchemes) {
+      return false;
+    }
+    s->context_bits[i] = scheme;
+    num_contexts += kNumNonzeroContextSkip[scheme];
   }
   int num_histograms = DecodeVarLenUint8(&br) + 1;
   if (mode == BRUNSLI_READ_SIZES) {

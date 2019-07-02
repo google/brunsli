@@ -6,56 +6,34 @@
 
 #include "./lehmer_code.h"
 
+#include <utility>
 #include <vector>
 
 namespace brunsli {
 
-int FindIndexAndRemove(int val, int* s, int len) {
-  int idx = 0;
-  for (int i = 0; i < len; ++i) {
-    if (s[i] == val) {
-      s[i] = -1;
-      break;
-    } else if (s[i] != -1) {
-      ++idx;
-    }
-  }
-  return idx;
-}
-
 void ComputeLehmerCode(const int* sigma, const int len, int* code) {
-  std::vector<int> stdorder(len);
+  std::vector<int> items(len);
+  for (int i = 0; i < len; ++i) items[i] = i;
   for (int i = 0; i < len; ++i) {
-    stdorder[i] = i;
-  }
-  for (int i = 0; i < len; ++i) {
-    code[i] = FindIndexAndRemove(sigma[i], &stdorder[0], len);
+    std::vector<int>::iterator it =
+      std::find(items.begin(), items.end(), sigma[i]);
+    BRUNSLI_DCHECK(it != items.end());
+    code[i] = it - items.begin();
+    items.erase(it);
   }
 }
 
-int FindValueAndRemove(int idx, int* s, int len) {
-  int pos = 0;
-  int val = 0;
+bool DecodeLehmerCode(const int* code, int len, int* sigma) {
+  std::vector<int> items(len);
+  for (int i = 0; i < len; ++i) items[i] = i;
   for (int i = 0; i < len; ++i) {
-    if (s[i] == -1) continue;
-    if (pos == idx) {
-      val = s[i];
-      s[i] = -1;
-      break;
-    }
-    ++pos;
+    int index = code[i];
+    if (index >= items.size() || index < 0) return false;
+    const int value = items[index];
+    items.erase(items.begin() + index);
+    sigma[i] = value;
   }
-  return val;
-}
-
-void DecodeLehmerCode(const int* code, int len, int* sigma) {
-  std::vector<int> stdorder(len);
-  for (int i = 0; i < len; ++i) {
-    stdorder[i] = i;
-  }
-  for (int i = 0; i < len; ++i) {
-    sigma[i] = FindValueAndRemove(code[i], &stdorder[0], len);
-  }
+  return true;
 }
 
 }  // namespace brunsli

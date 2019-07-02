@@ -23,8 +23,7 @@ size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg);
 // Encodes the given jpg to the buffer data[0 ... *len) in brunsli format and
 // sets *len to the encoded size. Returns false on buffer overflow or invalid
 // jpg data.
-bool BrunsliEncodeJpeg(const JPEGData& jpg, bool preserve_bytes,
-                       uint8_t* data, size_t* len);
+bool BrunsliEncodeJpeg(const JPEGData& jpg, uint8_t* data, size_t* len);
 
 // Return the storage size needed to store raw jpg data in bypass mode.
 size_t GetBrunsliBypassSize(size_t jpg_size);

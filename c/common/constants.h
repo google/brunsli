@@ -37,6 +37,9 @@ static const int kBrunsliShortMarkerLimit = 0x40 + 3 * 0x100;
 static const uint8_t kBrunsliWiringTypeVarint = 0x0;
 static const uint8_t kBrunsliWiringTypeLengthDelimited = 0x2;
 
+// The maximum supported V / H sampling factor.
+static const int kBrunsliMaxSampling = 15;
+
 static constexpr uint8_t ValueMarker(uint8_t tag) {
   return (tag << 3) | kBrunsliWiringTypeVarint;
 }

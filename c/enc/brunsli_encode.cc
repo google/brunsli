@@ -255,6 +255,9 @@ bool EncodeQuantTables(const JPEGData& jpg, size_t* storage_ix,
           WriteBits(1, diff < 0, storage_ix, storage);
           if (diff < 0) diff = -diff;
           diff -= 1;
+          // This only happens on 16-bit precision with crazy values,
+          // e.g. [..., 65535, 1, 65535,...]
+          if (diff > 65535) return false;
           EncodeVarint(diff, 16, storage_ix, storage);
         }
       }
@@ -530,7 +533,9 @@ int SelectContextBits(size_t num_symbols) {
     6, 6, 6, 6,
   };
   int log2_size = Log2FloorNonZero(num_symbols);
-  return kContextBits[log2_size];
+  int scheme = kContextBits[log2_size];
+  BRUNSLI_DCHECK(scheme < kNumSchemes);
+  return scheme;
 }
 
 void ComputeCoeffOrder(const coeff_t* coeffs, const int num_blocks, int* order,
@@ -1370,7 +1375,6 @@ bool EncodeSection(const JPEGData& jpg,
 }
 
 bool BrunsliEncodeJpeg(const JPEGData& jpg,
-                       bool preserve_bytes,
                        uint8_t* data, size_t* len) {
   JPEGCodingState s;
   if (!PredictDCCoeffs(jpg, &s)) {
@@ -1384,8 +1388,7 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg,
                      1, *len, data, &pos)) {
     return false;
   }
-  if (preserve_bytes &&
-      !EncodeSection(jpg, NULL, kBrunsliJPEGInternalsTag,
+  if (!EncodeSection(jpg, NULL, kBrunsliJPEGInternalsTag,
                      EncodeJPEGInternals,
                      Base128Size(EstimateAuxDataSize(jpg)),
                      *len, data, &pos)) {

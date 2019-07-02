@@ -838,18 +838,16 @@ bool WriteJpeg(const JPEGData& jpg, bool force_sequential, JPEGOutput out) {
     pad_bits = jpg.padding_bits.data();
     pad_bits_end = pad_bits + jpg.padding_bits.size();
   }
-  int restart_interval;
+  int restart_interval = 0;
   bool is_progressive = false;
   if (force_sequential) {
     ComputeMarkerOrder(jpg, &marker_order);
     scan_info.push_back(CreateSequentialScanInfo(jpg));
     RebuildSequentialHuffmanCodes(jpg, &huffman_code);
-    restart_interval = 0;
   } else {
     marker_order = jpg.marker_order;
     scan_info = jpg.scan_info;
     huffman_code = jpg.huffman_code;
-    restart_interval = jpg.restart_interval;
     // progressive/sequential will be decided based on SOF marker
   }
 
@@ -896,7 +894,11 @@ bool WriteJpeg(const JPEGData& jpg, bool force_sequential, JPEGOutput out) {
       case 0xdb:
         ok = EncodeDQT(jpg, &dqt_index, out); break;
       case 0xdd:
-        ok = EncodeDRI(restart_interval, out); break;
+        {
+          restart_interval = jpg.restart_interval;
+          ok = EncodeDRI(restart_interval, out);
+        }
+        break;
       case 0xe0:
       case 0xe1:
       case 0xe2:
