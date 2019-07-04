@@ -108,7 +108,7 @@ bool ProcessFile(const std::string& file_name) {
     size_t output_size = brunsli::GetMaximumBrunsliEncodedSize(jpg);
     output.resize(output_size);
     uint8_t* output_data = reinterpret_cast<uint8_t*>(&output[0]);
-    ok = brunsli::BrunsliEncodeJpeg(jpg, true, output_data, &output_size);
+    ok = brunsli::BrunsliEncodeJpeg(jpg, output_data, &output_size);
     if (!ok) {
       // TODO: use fallback?
       fprintf(stderr, "Failed to transform JPEG to Brunsli\n");

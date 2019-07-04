@@ -111,8 +111,8 @@ bool ProcessSOF(const uint8_t* data, const size_t len,
     int factor = ReadUint8(data, pos);
     int h_samp_factor = factor >> 4;
     int v_samp_factor = factor & 0xf;
-    VERIFY_INPUT(h_samp_factor, 1, 15, SAMP_FACTOR);
-    VERIFY_INPUT(v_samp_factor, 1, 15, SAMP_FACTOR);
+    VERIFY_INPUT(h_samp_factor, 1, kBrunsliMaxSampling, SAMP_FACTOR);
+    VERIFY_INPUT(v_samp_factor, 1, kBrunsliMaxSampling, SAMP_FACTOR);
     jpg->components[i].h_samp_factor = h_samp_factor;
     jpg->components[i].v_samp_factor = v_samp_factor;
     jpg->components[i].quant_idx = ReadUint8(data, pos);
@@ -354,9 +354,10 @@ bool ProcessDQT(const uint8_t* data, const size_t len, size_t* pos,
     VERIFY_LEN(1);
     int quant_table_index = ReadUint8(data, pos);
     int quant_table_precision = quant_table_index >> 4;
+    VERIFY_INPUT(quant_table_precision, 0, 1, QUANT_TBL_PRECISION);
     quant_table_index &= 0xf;
     VERIFY_INPUT(quant_table_index, 0, 3, QUANT_TBL_INDEX);
-    VERIFY_LEN((quant_table_precision ? 2 : 1) * kDCTBlockSize);
+    VERIFY_LEN((quant_table_precision + 1) * kDCTBlockSize);
     JPEGQuantTable table;
     table.index = quant_table_index;
     table.precision = quant_table_precision;

@@ -26,9 +26,12 @@ static const uint8_t kNonzeroBuckets[64] = {
    9,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,  10,  10,  10,
   10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,
 };
+// kNonzeroBuckets[i] < kNumNonzeroBuckets
 static const uint8_t kNumNonzeroBuckets = 11;
 
-static const uint8_t kFreqContext[7][64] = {
+static const int kNumSchemes = 7;
+
+static const uint8_t kFreqContext[kNumSchemes][64] = {
   { 0, },
 
   { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
@@ -62,7 +65,7 @@ static const uint8_t kFreqContext[7][64] = {
    48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, },
 };
 
-static const uint16_t kNumNonzeroContext[7][64] = {
+static const uint16_t kNumNonzeroContext[kNumSchemes][64] = {
  { 0,   1,   1,   2,   2,   2,   3,   3,   3,   3,   4,   4,   4,   4,   4,   4,
    5,   5,   5,   5,   5,   5,   5,   5,   6,   6,   6,   6,   6,   6,   6,   6,
    6,   6,   6,   6,   6,   6,   6,   6,   7,   7,   7,   7,   7,   7,   7,   7,
@@ -100,7 +103,7 @@ static const uint16_t kNumNonzeroContext[7][64] = {
  }
 };
 
-static const uint16_t kNumNonzeroContextSkip[7] = {
+static const uint16_t kNumNonzeroContextSkip[kNumSchemes] = {
   8, 15, 31, 61, 120, 231, 412
 };
 
