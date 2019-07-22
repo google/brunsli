@@ -220,6 +220,20 @@
   BRUNSLI_GNUC_VERSION_CHECK(major, minor, patch)
 #endif
 
+#if defined(__has_feature)
+#define BRUNSLI_HAS_FEATURE(feature) __has_feature(feature)
+#else
+#define BRUNSLI_HAS_FEATURE(feature) (0)
+#endif
+
+#if defined(ADDRESS_SANITIZER) || BRUNSLI_HAS_FEATURE(address_sanitizer) || \
+    defined(THREAD_SANITIZER) || BRUNSLI_HAS_FEATURE(thread_sanitizer) ||   \
+    defined(MEMORY_SANITIZER) || BRUNSLI_HAS_FEATURE(memory_sanitizer)
+#define BRUNSLI_SANITIZED 1
+#else
+#define BRUNSLI_SANITIZED 0
+#endif
+
 #if defined(_WIN32) || defined(__CYGWIN__)
 #define BRUNSLI_PUBLIC
 #elif BRUNSLI_GNUC_VERSION_CHECK(3, 3, 0) ||                        \
