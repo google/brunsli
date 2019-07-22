@@ -25,9 +25,7 @@
 #include <iostream>
 
 // Implicitly enable BRUNSLI_DEBUG when sanitizers are on.
-#if !defined(BRUNSLI_DEBUG) &&                                  \
-    (defined(ADDRESS_SANITIZER) || defined(THREAD_SANITIZER) || \
-     defined(MEMORY_SANITIZER) || !defined(NDEBUG))
+#if !defined(BRUNSLI_DEBUG) && (BRUNSLI_SANITIZED || !defined(NDEBUG))
 #define BRUNSLI_DEBUG 1
 #endif
 
@@ -314,8 +312,7 @@ static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
 }
 #else  /* BRUNSLI_ALIGNED_READ */
 /* Unaligned memory access is allowed: just cast pointer to requested type. */
-#if defined(ADDRESS_SANITIZER) || defined(THREAD_SANITIZER) || \
-    defined(MEMORY_SANITIZER)
+#if BRUNSLI_SANITIZED
 /* Consider we have an unaligned load/store of 4 bytes from address 0x...05.
    AddressSanitizer will treat it as a 3-byte access to the range 05:07 and
    will miss a bug if 08 is the first unaddressable byte.
@@ -340,7 +337,7 @@ extern "C" {
 #define BrunsliUnalignedRead32 __sanitizer_unaligned_load32
 #define BrunsliUnalignedRead64 __sanitizer_unaligned_load64
 #define BrunsliUnalignedWrite64 __sanitizer_unaligned_store64
-#else
+#else  /* BRUNSLI_SANITIZED */
 static BRUNSLI_INLINE uint16_t BrunsliUnalignedRead16(const void* p) {
   return *(const uint16_t*)p;
 }
@@ -380,7 +377,7 @@ static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
 }
 #endif  /* BRUNSLI_GNUC_HAS_ATTRIBUTE(aligned, 2, 7, 0) */
 #endif  /* BRUNSLI_64_BITS */
-#endif  /* ASAN / TSAN / MSAN */
+#endif  /* BRUNSLI_SANITIZED */
 #endif  /* BRUNSLI_ALIGNED_READ */
 
 #if BRUNSLI_LITTLE_ENDIAN
