@@ -29,8 +29,6 @@ struct JPEGOutput {
   void* data;
 };
 
-// Variants with output callback.
-bool WriteJpeg(const JPEGData& jpg, bool force_sequential, JPEGOutput out);
 bool WriteJpeg(const JPEGData& jpg, JPEGOutput out);
 
 }  // namespace brunsli

@@ -14,8 +14,15 @@ file(GLOB BRUNSLI_COMMON_HEADERS
   c/common/*.h
 )
 
-file(GLOB BRUNSLI_DEC_SOURCES
-  c/dec/*.cc
+set(BRUNSLI_DEC_SOURCES
+  c/dec/ans_decode.cc
+  c/dec/bit_reader.cc
+  c/dec/brunsli_decode.cc
+  c/dec/context_map_decode.cc
+  c/dec/histogram_decode.cc
+  c/dec/huffman_decode.cc
+  c/dec/huffman_table.cc
+  c/dec/jpeg_data_writer.cc
 )
 
 # TODO(eustas): split public/private headers.
@@ -23,8 +30,14 @@ file(GLOB BRUNSLI_DEC_HEADERS
   c/dec/*.h
 )
 
-file(GLOB BRUNSLI_ENC_SOURCES
-  c/enc/*.cc
+set(BRUNSLI_ENC_SOURCES
+  c/enc/ans_encode.cc
+  c/enc/brunsli_encode.cc
+  c/enc/context_map_encode.cc
+  c/enc/encode.cc
+  c/enc/histogram_encode.cc
+  c/enc/jpeg_data_reader.cc
+  c/enc/jpeg_huffman_decode.cc
 )
 
 # TODO(eustas): split public/private headers.
@@ -41,126 +54,45 @@ add_library(brunslidec-static STATIC
   ${BRUNSLI_DEC_SOURCES}
   ${BRUNSLI_DEC_HEADERS}
 )
-
-add_library(brunslienc-static STATIC
-  ${BRUNSLI_ENC_SOURCES}
-  ${BRUNSLI_ENC_HEADERS}
-)
-
 target_link_libraries(brunslidec-static PRIVATE
   brotlidec-static
   brunslicommon-static
 )
 
+add_library(brunslienc-static STATIC
+  ${BRUNSLI_ENC_SOURCES}
+  ${BRUNSLI_ENC_HEADERS}
+)
 target_link_libraries(brunslienc-static PRIVATE
   brotlienc-static
   brunslicommon-static
 )
 
-foreach(lib brunslicommon-static brunslidec-static brunslienc-static)
-  if("${CMAKE_C_COMPILER_ID}" MATCHES "Clang" OR
-     "${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
-    target_compile_options(${lib} PUBLIC
-      # Debug flags
-      -dwarf-column-info
-      -debug-info-kind=line-tables-only
-      -dwarf-version=4
-      -debugger-tuning=gdb
+set(BRUNSLI_LIBRARIES brunslicommon-static brunslidec-static brunslienc-static)
 
-      # F_FLAGS
-      -fmerge-all-constants
-      -fno-builtin-fwrite
-      -fno-builtin-fread
-      -fno-signed-char
-      -fsized-deallocation
-      -fnew-alignment=8
-      -fno-cxx-exceptions
-      -fno-exceptions
-      -fno-slp-vectorize
-      -fno-vectorize
+if(NOT BRUNSLI_EMSCRIPTEN)
+add_library(brunslidec-c SHARED
+  c/dec/decode.cc
+)
+target_link_libraries(brunslidec-c PRIVATE brunslidec-static)
+add_library(brunslienc-c SHARED
+  c/enc/encode.cc
+)
+target_link_libraries(brunslienc-c PRIVATE brunslienc-static)
+list(APPEND BRUNSLI_LIBRARIES brunslidec-c brunslienc-c)
+endif()  # BRUNSLI_EMSCRIPTEN
 
-      # WARN_FLAGS
-      -Wformat-security
-      -Wno-char-subscripts
-      -Wno-error=deprecated-declarations
-      -Wno-sign-compare
-      -Wno-strict-overflow
-      -Wno-unused-function
-      -Wthread-safety-analysis
-      -Wno-unknown-warning-option
-      -Wno-unused-command-line-argument
-      -Wno-ignored-optimization-argument
-      -Wno-ambiguous-member-template
-      -Wno-pointer-sign
-      -Wno-address-of-packed-member
-      -Wno-enum-compare-switch
-      -Wno-expansion-to-defined
-      -Wno-extern-c-compat
-      -Wno-gnu-alignof-expression
-      -Wno-gnu-designator
-      -Wno-gnu-variable-sized-type-not-at-end
-      -Wno-ignored-attributes
-      -Wno-ignored-qualifiers
-      -Wno-inconsistent-missing-override
-      -Wno-invalid-source-encoding
-      -Wno-mismatched-tags
-      -Wno-potentially-evaluated-expression
-      -Wno-return-std-move
-      -Wno-self-assign-overloaded
-      -Wno-tautological-constant-compare
-      -Wno-tautological-constant-in-range-compare
-      -Wno-tautological-type-limit-compare
-      -Wno-tautological-undefined-compare
-      -Wno-tautological-unsigned-zero-compare
-      -Wno-tautological-unsigned-enum-zero-compare
-      -Wno-undefined-func-template
-      -Wno-unknown-pragmas
-      -Wno-unused-const-variable
-      -Wno-unused-lambda-capture
-      -Wno-unused-local-typedef
-      -Wno-unused-private-field
-      -Wno-private-header
-      -Wfloat-overflow-conversion
-      -Wfloat-zero-conversion
-      -Wfor-loop-analysis
-      -Wgnu-redeclared-enum
-      -Winfinite-recursion
-      -Wliteral-conversion
-      -Wself-assign
-      -Wstring-conversion
-      -Wtautological-overlap-compare
-      -Wunused-comparison
-      -Wvla
-      -Wno-reserved-user-defined-literal
-      -Wno-return-type-c-linkage
-      -Wno-deprecated
-      -Wno-invalid-offsetof
-      -Wno-literal-suffix
-      -Woverloaded-virtual
-      -Wnon-virtual-dtor
-      -Wdeprecated-increment-bool
-      -Wc++11-compat
-      -Wno-c++11-compat-binary-literal
-      -Wc++2a-extensions
-      -Wno-register
-      -Wno-dynamic-exception-spec
-      -Wprivate-header
-      -Wno-builtin-macro-redefined
-
-      # Language flags
-      -disable-free
-      -disable-llvm-verifier
-      -discard-value-names
-      # Note: this works only because this is the only -Xclang passed.
-      -Xclang -relaxed-aliasing
-      -fmath-errno
-    )
+foreach(lib IN LISTS BRUNSLI_LIBRARIES)
+  target_include_directories(${lib} PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}/c/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+  )
+  if(NOT BRUNSLI_EMSCRIPTEN)
+    set_property(TARGET ${lib} PROPERTY POSITION_INDEPENDENT_CODE ON)
   endif()
-
-  target_include_directories(${lib}
-    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}")
 endforeach()
 
+if(NOT BRUNSLI_EMSCRIPTEN)
 add_executable(cbrunsli c/tools/cbrunsli.cc)
 target_link_libraries(cbrunsli PRIVATE
   brunslienc-static
@@ -170,3 +102,4 @@ add_executable(dbrunsli c/tools/dbrunsli.cc)
 target_link_libraries(dbrunsli PRIVATE
   brunslidec-static
 )
+endif()  # BRUNSLI_EMSCRIPTEN
