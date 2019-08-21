@@ -26,6 +26,11 @@ STRICT_C_OPTIONS_ = [
 ]
 
 filegroup(
+    name = "public_headers",
+    srcs = glob(["c/include/brunsli/*.h"]),
+)
+
+filegroup(
     name = "common_headers",
     srcs = glob(["c/common/*.h"]),
 )
@@ -42,7 +47,10 @@ filegroup(
 
 filegroup(
     name = "dec_sources",
-    srcs = glob(["c/dec/*.cc"]),
+    srcs = glob(
+        ["c/dec/*.cc"],
+        exclude = ["c/dec/decode.cc"],
+    ),
 )
 
 filegroup(
@@ -52,7 +60,17 @@ filegroup(
 
 filegroup(
     name = "enc_sources",
-    srcs = glob(["c/enc/*.cc"]),
+    srcs = glob(
+        ["c/enc/*.cc"],
+        exclude = ["c/enc/encode.cc"],
+    ),
+)
+
+cc_library(
+    name = "brunsli_inc",
+    hdrs = [":public_headers"],
+    copts = STRICT_C_OPTIONS,
+    strip_include_prefix = "c/include",
 )
 
 cc_library(
@@ -81,6 +99,26 @@ cc_library(
     deps = [
         ":brunslicommon",
         "@brotli//:brotlienc",
+    ],
+)
+
+cc_library(
+    name = "brunslidec_c",
+    srcs = ["c/dec/decode.cc"],
+    copts = STRICT_C_OPTIONS,
+    deps = [
+        ":brunsli_inc",
+        ":brunslidec",
+    ],
+)
+
+cc_library(
+    name = "brunslienc_c",
+    srcs = ["c/enc/encode.cc"],
+    copts = STRICT_C_OPTIONS,
+    deps = [
+        ":brunsli_inc",
+        ":brunslienc",
     ],
 )
 

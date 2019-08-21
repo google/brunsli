@@ -1,6 +1,9 @@
 OS := $(shell uname)
 BINDIR = bin
 OBJDIR = $(BINDIR)/obj
+BROTLI_DIR = third_party/brotli
+BROTLI_INCLUDE = $(BROTLI_DIR)/c/include
+BRUNSLI_INCLUDE = c/include
 SOURCES = $(wildcard c/common/*.cc) $(wildcard c/dec/*.cc) \
           $(wildcard c/enc/*.cc)
 TOOLS_SOURCES = $(wildcard c/tools/*.cc)
@@ -38,15 +41,15 @@ $(DIRS):
 	mkdir -p $@
 
 $(LIBBROTLI):
-	$(MAKE) -C third_party/brotli lib
+	$(MAKE) -C $(BROTLI_DIR) lib
 
 cbrunsli: $(OBJECTS) $(CBRUNSLI) $(LIBBROTLI)
 	$(CXX) $(LDFLAGS) $(OBJECTS) $(CBRUNSLI) \
-        -lm -Lthird_party/brotli -l$(LIBBROTLI) -o $(BINDIR)/cbrunsli
+        -lm -L$(BROTLI_DIR) -l$(LIBBROTLI) -o $(BINDIR)/cbrunsli
 
 dbrunsli: $(OBJECTS) $(DBRUNSLI) $(LIBBROTLI)
 	$(CXX) $(LDFLAGS) $(OBJECTS) $(DBRUNSLI) \
-        -lm -Lthird_party/brotli -l$(LIBBROTLI) -o $(BINDIR)/dbrunsli
+        -lm -L$(BROTLI_DIR) -l$(LIBBROTLI) -o $(BINDIR)/dbrunsli
 
 clean:
 	rm -rf $(BINDIR)
@@ -54,5 +57,5 @@ clean:
 
 .SECONDEXPANSION:
 $(ALL_OBJECTS): $$(patsubst %.o,%.cc,$$(patsubst $$(OBJDIR)/%,%,$$@)) | $(DIRS)
-	$(CXX) $(CFLAGS) $(CPPFLAGS) -Ithird_party/brotli/c/include \
+	$(CXX) $(CFLAGS) $(CPPFLAGS) -I$(BROTLI_INCLUDE) -I$(BRUNSLI_INCLUDE) \
         -c $(patsubst %.o,%.cc,$(patsubst $(OBJDIR)/%,%,$@)) -o $@

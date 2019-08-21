@@ -674,39 +674,6 @@ bool EncodeScan(const JPEGData& jpg, const JPEGScanInfo& scan_info,
          JPEGWrite(out, bw.data.get(), bw.pos);
 }
 
-void ComputeMarkerOrder(const JPEGData& jpg,
-                        std::vector<uint8_t>* marker_order) {
-  for (size_t i = 0; i < jpg.app_data.size(); ++i) {
-    marker_order->push_back(jpg.app_data[i][0]);
-  }
-  for (size_t i = 0; i < jpg.com_data.size(); ++i) {
-    marker_order->push_back(0xfe);
-  }
-  for (size_t i = 0; i < jpg.quant.size(); ++i) {
-    marker_order->push_back(0xdb);
-  }
-  marker_order->push_back(0xc0);
-  marker_order->push_back(0xc4);
-  marker_order->push_back(0xda);
-  marker_order->push_back(0xd9);
-}
-
-// Returns a scan info for sequential interleaved scan.
-JPEGScanInfo CreateSequentialScanInfo(const JPEGData& jpg) {
-  JPEGScanInfo scan_info;
-  scan_info.Ss = 0;
-  scan_info.Se = 63;
-  scan_info.Ah = 0;
-  scan_info.Al = 0;
-  scan_info.components.resize(jpg.components.size());
-  for (size_t i = 0; i < scan_info.components.size(); ++i) {
-    scan_info.components[i].comp_idx = i;
-    scan_info.components[i].dc_tbl_idx = i > 0 ? 1 : 0;
-    scan_info.components[i].ac_tbl_idx = i > 0 ? 1 : 0;
-  }
-  return scan_info;
-}
-
 // Updates dc_histogram and ac_histogram with the counts of the DC/AC symbols
 // that will be added by a sequential jpeg encoder for this block. Every symbol
 // is counted twice so that we can add a fake symbol at the end with count 1 to
@@ -740,68 +707,6 @@ void UpdateHistogramForDCTBlock(const coeff_t* coeffs,
   }
 }
 
-// Builds a JPEG-style huffman code from the given histogram.
-void BuildHuffmanCode(const uint32_t* histogram, int* counts, int* values) {
-  uint8_t depth[kHistogramSize] = { 0 };
-  CreateHuffmanTree(histogram, kHistogramSize, kJpegHuffmanMaxBitLength, depth);
-  for (int i = 0; i < kHistogramSize; ++i) {
-    if (depth[i] > 0) {
-      ++counts[depth[i]];
-    }
-  }
-  int offset[kJpegHuffmanMaxBitLength + 1] = { 0 };
-  for (int i = 1; i <= kJpegHuffmanMaxBitLength; ++i) {
-    offset[i] = offset[i - 1] + counts[i - 1];
-  }
-  for (int i = 0; i < kHistogramSize; ++i) {
-    if (depth[i] > 0) {
-      values[offset[depth[i]]++] = i;
-    }
-  }
-}
-
-// Using the coefficient data already present in jpg, fills in huffman_code
-// using sequential interleaved Huffman encoding.
-void RebuildSequentialHuffmanCodes(const JPEGData& jpg,
-                                   std::vector<JPEGHuffmanCode>* huffman_code) {
-  // Gather histograms for 2 DC and 2 AC Huffman codes
-  uint32_t histograms[4 * kHistogramSize] = { 0 };
-  coeff_t last_dc_coeff[4] = { 0 };
-  for (int mcu_y = 0; mcu_y < jpg.MCU_rows; ++mcu_y) {
-    for (int mcu_x = 0; mcu_x < jpg.MCU_cols; ++mcu_x) {
-      for (size_t i = 0; i < jpg.components.size(); ++i) {
-        const JPEGComponent& c = jpg.components[i];
-        int dc_histo_offset = i > 0 ? kHistogramSize : 0;
-        int ac_histo_offset = (i > 0 ? 3 : 2) * kHistogramSize;
-        uint32_t* dc_histogram = &histograms[dc_histo_offset];
-        uint32_t* ac_histogram = &histograms[ac_histo_offset];
-        for (int iy = 0; iy < c.v_samp_factor; ++iy) {
-          for (int ix = 0; ix < c.h_samp_factor; ++ix) {
-            int block_y = mcu_y * c.v_samp_factor + iy;
-            int block_x = mcu_x * c.h_samp_factor + ix;
-            int block_idx = block_y * c.width_in_blocks + block_x;
-            UpdateHistogramForDCTBlock(&c.coeffs[block_idx << 6],
-                                       &last_dc_coeff[i],
-                                       dc_histogram, ac_histogram);
-          }
-        }
-      }
-    }
-  }
-
-  // Build Huffman codes from histograms.
-  for (int i = 0; i < 4; ++i) {
-    JPEGHuffmanCode huff;
-    huff.slot_id = (i < 2 ? i : (i - 2) + 0x10);
-    huff.is_last = (i == 3);
-    histograms[(i + 1) * kHistogramSize - 1] = 1;
-    BuildHuffmanCode(&histograms[i * kHistogramSize],
-                     &huff.counts[0],
-                     &huff.values[0]);
-    huffman_code->push_back(huff);
-  }
-}
-
 }  // namespace
 
 bool WriteJpegBypass(const JPEGData& jpg, JPEGOutput out) {
@@ -811,10 +716,18 @@ bool WriteJpegBypass(const JPEGData& jpg, JPEGOutput out) {
   return JPEGWrite(out, jpg.original_jpg, jpg.original_jpg_size);
 }
 
-bool WriteJpeg(const JPEGData& jpg, bool force_sequential, JPEGOutput out) {
+bool WriteJpeg(const JPEGData& jpg, JPEGOutput out) {
   if (jpg.version == 1) {
     return WriteJpegBypass(jpg, out);
   }
+
+  const std::vector<uint8_t>& marker_order = jpg.marker_order;
+  // Valid Brunsli requires, at least, 0xD9 marker.
+  // This might happen on corrupted stream, or on unconditioned JPEGData.
+  if (marker_order.empty()) {
+    return false;
+  }
+
   static const uint8_t kSOIMarker[2] = { 0xff, 0xd8 };
   if (!JPEGWrite(out, kSOIMarker, sizeof(kSOIMarker))) {
     return false;
@@ -828,10 +741,8 @@ bool WriteJpeg(const JPEGData& jpg, bool force_sequential, JPEGOutput out) {
   std::vector<HuffmanCodeTable> dc_huff_table(kMaxHuffmanTables);
   std::vector<HuffmanCodeTable> ac_huff_table(kMaxHuffmanTables);
 
-  // Copy or re-compute fields that are encoding-specific.
-  std::vector<uint8_t> marker_order;
-  std::vector<JPEGScanInfo> scan_info;
-  std::vector<JPEGHuffmanCode> huffman_code;
+  const std::vector<JPEGScanInfo>& scan_info = jpg.scan_info;
+  const std::vector<JPEGHuffmanCode>& huffman_code = jpg.huffman_code;
   const int* pad_bits = nullptr;
   const int* pad_bits_end = nullptr;
   if (jpg.has_zero_padding_bit) {
@@ -839,17 +750,8 @@ bool WriteJpeg(const JPEGData& jpg, bool force_sequential, JPEGOutput out) {
     pad_bits_end = pad_bits + jpg.padding_bits.size();
   }
   bool seen_dri_marker = false;
+  // progressive/sequential will be decided based on SOF marker
   bool is_progressive = false;
-  if (force_sequential) {
-    ComputeMarkerOrder(jpg, &marker_order);
-    scan_info.push_back(CreateSequentialScanInfo(jpg));
-    RebuildSequentialHuffmanCodes(jpg, &huffman_code);
-  } else {
-    marker_order = jpg.marker_order;
-    scan_info = jpg.scan_info;
-    huffman_code = jpg.huffman_code;
-    // progressive/sequential will be decided based on SOF marker
-  }
 
   for (size_t i = 0; i < marker_order.size(); ++i) {
     uint8_t marker = marker_order[i];
@@ -930,11 +832,6 @@ bool WriteJpeg(const JPEGData& jpg, bool force_sequential, JPEGOutput out) {
   static const uint8_t kEOIMarker[2] = { 0xff, 0xd9 };
   return (JPEGWrite(out, kEOIMarker, sizeof(kEOIMarker)) &&
           JPEGWrite(out, jpg.tail_data));
-}
-
-bool WriteJpeg(const JPEGData& jpg, JPEGOutput out) {
-  const bool force_sequential = jpg.marker_order.empty();
-  return WriteJpeg(jpg, force_sequential, out);
 }
 
 }  // namespace brunsli

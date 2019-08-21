@@ -188,6 +188,9 @@ bool DecodeQuantTables(BrunsliBitReader* br, JPEGData* jpg) {
         if (quant_value >= 256) {
           data_precision = 1;
         }
+        if (quant_value >= 65536) {
+          return false;
+        }
       }
     }
     if (!have_internals_data) {
