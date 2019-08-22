@@ -14,6 +14,8 @@ check_c_source_compiles(
 )
 if (BRUNSLI_EMSCRIPTEN)
   message("-- Compiler is EMSCRIPTEN")
+  set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
+  set(CMAKE_EXECUTABLE_SUFFIX ".js")
 else()
   message("-- Compiler is not EMSCRIPTEN")
 endif()
