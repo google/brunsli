@@ -115,7 +115,11 @@ function logDownloadLink(fileName, fileContent) {
   let t2 = text(" to dowload the result.");
   let l1 = document.createElement('a');
   l1.appendChild(t1);
-  l1.setAttribute('href', 'data:application/octet-stream;base64,' + btoa(String.fromCharCode.apply(null, fileContent)));
+  let chars = [];
+  for (let i = 0; i < fileContent.length; ++i) {
+    chars.push(String.fromCharCode(fileContent[i]));
+  }
+  l1.setAttribute('href', 'data:application/octet-stream;base64,' + btoa(chars.join('')));
   l1.setAttribute('download', fileName);
   log('w3-text-black', [t0, l1, t2]);
 }
