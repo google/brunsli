@@ -97,9 +97,24 @@ add_executable(cbrunsli c/tools/cbrunsli.cc)
 target_link_libraries(cbrunsli PRIVATE
   brunslienc-static
 )
-
 add_executable(dbrunsli c/tools/dbrunsli.cc)
 target_link_libraries(dbrunsli PRIVATE
   brunslidec-static
 )
+else()  # BRUNSLI_EMSCRIPTEN
+set(WASM_MODULES brunslicodec-wasm brunslidec-wasm brunslienc-wasm)
+foreach(module IN LISTS WASM_MODULES)
+add_executable(${module} wasm/codec.cc)
+target_link_libraries(${module} PRIVATE brunslidec-static brunslienc-static)
+endforeach()
+set(WASM_LINK_FLAGS "-O3 --closure 1 -s TOTAL_MEMORY=256MB")
+set(WASM_COMMON_EXPORT "\"_malloc\",\"_free\"")
+set(WASM_DEC_EXPORT "\"_BrunsliToJpeg\",\"_GetJpegData\",\"_GetJpegLength\",\"_FreeJpeg\"")
+set(WASM_ENC_EXPORT "\"_JpegToBrunsli\",\"_GetBrunsliData\",\"_GetBrunsliLength\",\"_FreeBrunsli\"")
+set_target_properties(brunslicodec-wasm PROPERTIES LINK_FLAGS
+  "${WASM_LINK_FLAGS} -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_DEC_EXPORT},${WASM_ENC_EXPORT}]'")
+set_target_properties(brunslidec-wasm PROPERTIES LINK_FLAGS
+  "${WASM_LINK_FLAGS} -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_DEC_EXPORT}]'")
+set_target_properties(brunslienc-wasm PROPERTIES LINK_FLAGS
+  "${WASM_LINK_FLAGS} -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_ENC_EXPORT}]'")
 endif()  # BRUNSLI_EMSCRIPTEN
