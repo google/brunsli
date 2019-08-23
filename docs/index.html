@@ -18,6 +18,20 @@
   .punch-line {
     border-top: 2px #AAA dashed;
   }
+  .spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #AAA;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  margin: 16px -16px;
+  animation: spin 0.64s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 </style>
 </head>
 <body>
@@ -44,6 +58,7 @@
       Drop your .jpg or .brn files here.
     </div>
     <div class="w3-justify" id="output"></div>
+    <div class="w3-display-container w3-hide" id="spinner"><div class="w3-display-middle spinner"></div></div>
   </div></div>
 
   <div class="w3-margin-bottom"></div>
@@ -54,6 +69,9 @@ var Module = {};
 let dropboard = document.getElementById('dropboard');
 let fileSelector = document.getElementById('fileSelector');
 let output = document.getElementById('output');
+let spinner = document.getElementById('spinner');
+let blobUrls = [];
+let fileList = [];
 function onDragOver(evt) {
   evt.stopPropagation();
   evt.preventDefault();
@@ -62,9 +80,11 @@ function onDragOver(evt) {
 function onDrop(evt) {
   evt.stopPropagation();
   evt.preventDefault();
+  if (fileList.length) return;
   processFiles(evt.dataTransfer.files);
 }
 function onClick(evt) {
+  if (fileList.length) return;
   if (evt.button) return;
   if (!evt.isTrusted) return;  // stop recursion
   evt.stopPropagation();
@@ -78,13 +98,24 @@ function onFileSelect(evt) {
 }
 function processFiles(files) {
   output.innerHTML = '';
-  for (var i = 0, f; f = files[i]; i++) processFile(f);
+  while (blobUrls.length) URL.revokeObjectURL(blobUrls.pop());
+  dropboard.disabled = true;
+  spinner.classList.remove('w3-hide');
+  for (var i = 0, f; f = files[i]; i++) fileList.unshift(f);
+  processNextFile();
 }
-function processFile(file) {
+function processNextFile() {
+  if (fileList.length == 0) {
+    dropboard.disabled = false;
+    spinner.classList.add('w3-hide');
+    return;
+  }
+  let file = fileList.pop();
   let fileName = file.name;
   let fileType = file.type;
   let reader = new FileReader();
   reader.onload = (e) => {
+    setTimeout(processNextFile, 0);
     let bytes = e.target.result;
     let size = bytes.byteLength;
     var bytesView = new Uint8Array(bytes);
@@ -115,11 +146,9 @@ function logDownloadLink(fileName, fileContent) {
   let t2 = text(" to dowload the result.");
   let l1 = document.createElement('a');
   l1.appendChild(t1);
-  let chars = [];
-  for (let i = 0; i < fileContent.length; ++i) {
-    chars.push(String.fromCharCode(fileContent[i]));
-  }
-  l1.setAttribute('href', 'data:application/octet-stream;base64,' + btoa(chars.join('')));
+  let blobUrl = URL.createObjectURL(new Blob([fileContent]));
+  blobUrls.push(blobUrl);
+  l1.setAttribute('href', blobUrl);
   l1.setAttribute('download', fileName);
   log('w3-text-black', [t0, l1, t2]);
 }

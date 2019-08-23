@@ -7,7 +7,7 @@ We are committed making JPEG XL a first-class citizen of the open-source and clo
 The currently planned/on-going integration work includes:
 
 - [x] one-shot C API / dynamic library
-- [ ] WASM module
+- [x] WASM module
 - [ ] Node.js module
 - [ ] Java bindings
 - [ ] Python bindings
