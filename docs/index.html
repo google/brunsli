@@ -3,17 +3,22 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link rel="shortcut icon" href="favicon.ico">
+<link rel="icon" type="image/png" href="favicon-96.png">
 <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,900">
 <style>
   body {font-family: "Lato", sans-serif}
   #dropboard {
+    background-color: #f4fff4;
     border-radius: 15px;
+    padding: 12px;
     border: 2px #AAA dashed;
     font-weight: bold;
   }
   #dropboard:hover {
     border-color: #888;
+    background-color: #dfd!important;
   }
   .punch-line {
     border-top: 2px #AAA dashed;
@@ -37,25 +42,32 @@
 <body>
 <div class="w3-top">
   <div class="w3-bar w3-black w3-card">
-    <a href="#brunsli" class="w3-bar-item w3-button w3-padding-large">Brunsli</a>
-    <a href="#demo" class="w3-bar-item w3-button w3-padding-large">Demo</a>
+    <a href="#brunsli" class="w3-bar-item w3-button"><img alt="JPEG XL logo" src="favicon-96.png" width="22" style="vertical-align: bottom; margin: 0 4px 0 0">JPEG XL Lossless Recompression</a>
+    <a href="#demo" class="w3-bar-item w3-button">Demo</a>
   </div>
 </div>
 
-<div class="w3-content" style="max-width:2000px;margin-top:46px">
-  <div class="w3-light-gray" id="brunsli"><div class="w3-container w3-content w3-center" style="max-width:800px">
-    <h2 class="w3-wide">Brusnli</h2>
-    <p class="w3-justify">Some Inspiring text.</p>
+<div class="w3-content" style="max-width:2880px;margin-top:38px">
+  <div class="w3-light-gray" id="brunsli"><div class="w3-container w3-content w3-center" style="max-width:1200px">
+    <h4>JPEG XL Lossless Recompression<br/>.jpg ⇄ .jxl</h4>
+    <p class="w3-opacity"><i>Respect your digital heritage.</i></p>
+    <p class="w3-justify">JPEG files can be transformed into the <a href="https://jpeg.org/jpegxl/index.html">JPEG XL</a> form without quality loss, while reducing their size by 22<nbsp/>%. JPEG XL preserves all the data in a more efficient container, where the integrity of an original photograph is maintained  byte-by-byte — without damage to our digital cultural heritage.</p>
+    <p class="w3-justify">On this page you can be one of the first to try out the new compression technology on your photographs. The conversion process runs locally in your browser using <a href="https://webassembly.org/">WebAssembly</a> technology, no images are uploaded to servers. This demo only works with <i>.jpg</i> files, there is no <i>.png</i> nor <i>.gif</i> support at the moment.</p>
+    <p class="w3-justify">Lossless recompression improves JPEG XL’s compatibility with existing clients such as older generation phones and browsers not yet having dedicated JPEG XL support. The lossless recompressing feature simplifies the ecosystem migration to JPEG XL: servers can store a single JPEG XL file to serve both JPEG and JPEG XL clients, and multiple efficiency and transfer speed improvements will be available in an ecosystem having a rich mixture of old and new clients. The format has several flexibility considerations for interoperability and migration of JPEG to JPEG XL, and incremental steps of quality improvement can be taken while remaining compatible with both the old and new formats.</p>
   </div></div>
 
-  <div id="demo"><div class="w3-container w3-content w3-center" style="max-width:800px">
-    <h2 class="w3-wide">Demo</h2>
-    <div class="w3-input w3-button w3-large dropboard" id="dropboard">
-      <div class="w3-xlarge">⇩</div>
+  <div id="demo"><div class="w3-container w3-content w3-center" style="max-width:1200px">
+    <h4>Demo</h4>
+    <div class="w3-input w3-large dropboard" id="dropboard">
       <div style="opacity: 0;font-size: 0; margin: -7.5px">
         <input type="file" id="fileSelector" name="files[]" multiple />
       </div>
-      Drop your .jpg or .brn files here.
+      <span class='w3-show'>Drop your <span class="w3-text-blue">.jpg</span></span>
+      <span id="more-actions" class="w3-hide w3-animate-zoom">or <span class="w3-text-green">.jxl</span></span>
+      <span class='w3-show'>file here.</span>
+      <div style="visibility: hidden;font-size: 0; margin: -7.5px">
+        <input type="file" id="dummy" name="files[]" multiple />
+      </div>
     </div>
     <div class="w3-justify" id="output"></div>
     <div class="w3-display-container w3-hide" id="spinner"><div class="w3-display-middle spinner"></div></div>
@@ -70,6 +82,7 @@ let dropboard = document.getElementById('dropboard');
 let fileSelector = document.getElementById('fileSelector');
 let output = document.getElementById('output');
 let spinner = document.getElementById('spinner');
+let moreActions = document.getElementById('more-actions');
 let blobUrls = [];
 let fileList = [];
 function onDragOver(evt) {
@@ -108,6 +121,7 @@ function processNextFile() {
   if (fileList.length == 0) {
     dropboard.disabled = false;
     spinner.classList.add('w3-hide');
+    moreActions.classList.add('w3-show');
     return;
   }
   let file = fileList.pop();
@@ -122,6 +136,7 @@ function processNextFile() {
     let data = Module._malloc(size);
     Module.HEAPU8.set(bytesView, data);
     if (fileType == 'image/jpeg') {
+      logImage(bytesView);
       processJpeg(fileName, data, size);
     } else {
       processBrunsli(fileName, data, size);
@@ -139,6 +154,24 @@ function log(clazz, content) {
 }
 function text(str) {
   return document.createTextNode(str);
+}
+function logImage(jpegContent) {
+  let blobUrl = URL.createObjectURL(new Blob([jpegContent], {type: 'image/jpeg'}));
+  blobUrls.push(blobUrl);
+  let img = document.createElement('img');
+  img.setAttribute('src', blobUrl);
+  img.className = 'w3-hover-opacity';
+  img.style.maxWidth = "800px";
+  img.style.maxHeight = "128px";
+  let modalImg = document.createElement('img');
+  modalImg.setAttribute('src', blobUrl);
+  modalImg.className = 'w3-modal-content';
+  let modalDiv = document.createElement('div');
+  modalDiv.className = 'w3-modal w3-animate-opacity';
+  modalDiv.appendChild(modalImg);
+  modalDiv.addEventListener('click', evt => modalDiv.style.display = 'none', false);
+  img.addEventListener('click', evt => modalDiv.style.display = 'block', false);
+  log('w3-center w3-margin', [img, modalDiv]);
 }
 function logDownloadLink(fileName, fileContent) {
   let t0 = text("Click the ");
@@ -167,10 +200,10 @@ function processJpeg(fileName, jpegData, jpegSize) {
   output.set(brunsliDataView);
   Module._FreeBrunsli(brunsli);
   log('w3-text-gray', [text("Output size: " + brunsliSize)]);
-  logDownloadLink(fileName + '.brn', output);
+  logDownloadLink(fileName + '.jxl', output);
 }
 function processBrunsli(fileName, brunsliData, brunsliSize) {
-  log('w3-text-gray', [text("Processing " + fileName + " as Brunsli")]);
+  log('w3-text-gray', [text("Processing " + fileName + " as JPEG XL Lossless Recompressed")]);
   log('w3-text-gray', [text("Input size: " + brunsliSize)]);
   let jpeg = Module._BrunsliToJpeg(brunsliData, brunsliSize);
   if (!jpeg) {
@@ -184,6 +217,7 @@ function processBrunsli(fileName, brunsliData, brunsliSize) {
   output.set(jpegDataView);
   Module._FreeBrunsli(jpeg);
   log('w3-text-gray', [text("Output size: " + jpegSize)]);
+  logImage(output);
   logDownloadLink(fileName + '.jpg', output);
 }
 document.addEventListener('DOMContentLoaded', () => {
