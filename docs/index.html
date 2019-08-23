@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,900">
 <style>
-  body {font-family: "Lato", sans-serif}
+  body {font-family: "Lato", sans-serif;}
   #dropboard {
     background-color: #f4fff4;
     border-radius: 15px;
@@ -24,19 +24,23 @@
     border-top: 2px #AAA dashed;
   }
   .spinner {
-  border: 4px solid #f3f3f3;
-  border-top: 4px solid #AAA;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  margin: 16px -16px;
-  animation: spin 0.64s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #AAA;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    margin: 16px -16px;
+    animation: spin 0.64s linear infinite;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+  @media (max-width: 600px) {
+    .w3-modal-content {
+        max-width: 90%;
+    }
+  }
 </style>
 </head>
 <body>
@@ -63,7 +67,7 @@
         <input type="file" id="fileSelector" name="files[]" multiple />
       </div>
       <span class='w3-show'>Drop your <span class="w3-text-blue">.jpg</span></span>
-      <span id="more-actions" class="w3-hide w3-animate-zoom">or <span class="w3-text-green">.jxl</span></span>
+      <span id="more-actions" class="w3-hide w3-animate-opacity">or <span class="w3-text-green">.jxl</span></span>
       <span class='w3-show'>file here.</span>
       <div style="visibility: hidden;font-size: 0; margin: -7.5px">
         <input type="file" id="dummy" name="files[]" multiple />
@@ -73,7 +77,7 @@
     <div class="w3-display-container w3-hide" id="spinner"><div class="w3-display-middle spinner"></div></div>
   </div></div>
 
-  <div class="w3-margin-bottom"></div>
+  <div id="bottom" class="w3-margin-bottom"></div>
 </div>
 
 <script type="text/javascript">
@@ -83,6 +87,7 @@ let fileSelector = document.getElementById('fileSelector');
 let output = document.getElementById('output');
 let spinner = document.getElementById('spinner');
 let moreActions = document.getElementById('more-actions');
+let bottom = document.getElementById('bottom');
 let blobUrls = [];
 let fileList = [];
 function onDragOver(evt) {
@@ -113,15 +118,25 @@ function processFiles(files) {
   output.innerHTML = '';
   while (blobUrls.length) URL.revokeObjectURL(blobUrls.pop());
   dropboard.disabled = true;
-  spinner.classList.remove('w3-hide');
   for (var i = 0, f; f = files[i]; i++) fileList.unshift(f);
+  if (!moreActions.classList.contains('w3-show')) {
+    moreActions.classList.add('w3-show');
+    window.scrollTo(0, document.body.scrollHeight);
+    setTimeout(doProcessFiles, 250);
+  } else {
+    doProcessFiles();
+  }
+}
+function doProcessFiles() {
+  spinner.classList.remove('w3-hide');
+  window.scrollTo(0, document.body.scrollHeight);
   processNextFile();
 }
+
 function processNextFile() {
   if (fileList.length == 0) {
     dropboard.disabled = false;
     spinner.classList.add('w3-hide');
-    moreActions.classList.add('w3-show');
     return;
   }
   let file = fileList.pop();
@@ -151,6 +166,7 @@ function log(clazz, content) {
   line.className = clazz;
   for (node of content) line.appendChild(node);
   output.appendChild(line);
+  setTimeout(() => bottom.scrollIntoView(true), 1);
 }
 function text(str) {
   return document.createTextNode(str);
@@ -190,7 +206,7 @@ function processJpeg(fileName, jpegData, jpegSize) {
   log('w3-text-gray', [text("Input size: " + jpegSize)]);
   let brunsli = Module._JpegToBrunsli(jpegData, jpegSize);
   if (!brunsli) {
-    log('w3-text-red', text("Brunsli compression failed"));
+    log('w3-text-red', text("JXL Recompression failed"));
     return;
   }
   let brunsliData = Module._GetBrunsliData(brunsli);
@@ -203,11 +219,11 @@ function processJpeg(fileName, jpegData, jpegSize) {
   logDownloadLink(fileName + '.jxl', output);
 }
 function processBrunsli(fileName, brunsliData, brunsliSize) {
-  log('w3-text-gray', [text("Processing " + fileName + " as JPEG XL Lossless Recompressed")]);
+  log('w3-text-gray', [text("Processing " + fileName + " as JXL")]);
   log('w3-text-gray', [text("Input size: " + brunsliSize)]);
   let jpeg = Module._BrunsliToJpeg(brunsliData, brunsliSize);
   if (!jpeg) {
-    log('w3-text-red', [text("Brunsli decompression failed")]);
+    log('w3-text-red', [text("Reconstuction failed")]);
     return;
   }
   let jpegData = Module._GetJpegData(jpeg);
