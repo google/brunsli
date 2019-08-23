@@ -174,7 +174,7 @@ function processBrunsli(fileName, brunsliData, brunsliSize) {
   log('w3-text-gray', [text("Input size: " + brunsliSize)]);
   let jpeg = Module._BrunsliToJpeg(brunsliData, brunsliSize);
   if (!jpeg) {
-    log('w3-text-red', text("Brunsli decompression failed"));
+    log('w3-text-red', [text("Brunsli decompression failed")]);
     return;
   }
   let jpegData = Module._GetJpegData(jpeg);
