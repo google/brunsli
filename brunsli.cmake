@@ -45,6 +45,9 @@ file(GLOB BRUNSLI_ENC_HEADERS
   c/enc/*.h
 )
 
+set(BRUNSLI_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/c/include")
+mark_as_advanced(BRUNSLI_INCLUDE_DIRS)
+
 add_library(brunslicommon-static STATIC
   ${BRUNSLI_COMMON_SOURCES}
   ${BRUNSLI_COMMON_HEADERS}
@@ -118,3 +121,17 @@ set_target_properties(brunslidec-wasm PROPERTIES LINK_FLAGS
 set_target_properties(brunslienc-wasm PROPERTIES LINK_FLAGS
   "${WASM_LINK_FLAGS} -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_ENC_EXPORT}]'")
 endif()  # BRUNSLI_EMSCRIPTEN
+
+# Installation
+if(NOT BRUNSLI_EMSCRIPTEN)
+  install(
+    TARGETS brunslidec-c brunslienc-c
+    ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+    LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+  )
+
+  install(
+    DIRECTORY ${BRUNSLI_INCLUDE_DIRS}/brunsli
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  )
+endif() # BRUNSLI_EMSCRIPTEN
