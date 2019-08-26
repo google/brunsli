@@ -8,6 +8,7 @@
 <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Lato:400,900">
 <style>
+  html {scroll-behavior: smooth;}
   body {font-family: "Lato", sans-serif;}
   #dropboard {
     background-color: #f4fff4;
@@ -142,18 +143,20 @@ function processFiles(files) {
   for (var i = 0, f; f = files[i]; i++) fileList.unshift(f);
   if (!moreActions.classList.contains('w3-show')) {
     moreActions.classList.add('w3-show');
-    window.scrollTo(0, document.body.scrollHeight);
-    setTimeout(doProcessFiles, 250);
+    window.requestAnimationFrame(onAnimationFrame);
+    setTimeout(doProcessFiles, 200);
   } else {
     doProcessFiles();
   }
 }
 function doProcessFiles() {
   spinner.classList.remove('w3-hide');
-  window.scrollTo(0, document.body.scrollHeight);
+  window.requestAnimationFrame(onAnimationFrame);
   processNextFile();
 }
-
+function onAnimationFrame(timestamp) {
+  window.scrollTo(0, document.body.scrollHeight);
+}
 function processNextFile() {
   if (fileList.length == 0) {
     dropboard.disabled = false;
