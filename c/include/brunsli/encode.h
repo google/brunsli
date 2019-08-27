@@ -13,7 +13,9 @@ https://opensource.org/licenses/MIT.
 
 /* C API for brunsli encoder */
 
+#if defined(__cplusplus) || defined(c_plusplus)
 extern "C" {
+#endif
 
 /*
 Encodes brunsli file to JPEG. Returns 1 on success, 0 on error.
@@ -25,6 +27,8 @@ to outfun.
 int EncodeBrunsli(size_t insize, const unsigned char* in, void* outdata,
     size_t (*outfun)(void* outdata, const unsigned char* buf, size_t size));
 
+#if defined(__cplusplus) || defined(c_plusplus)
 }  /* extern "C" */
+#endif
 
 #endif  /* BRUNSLI_ENC_ENCODE_H_ */
