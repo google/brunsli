@@ -103,7 +103,7 @@
 </div>
 
 <script type="text/javascript">
-var Module = {};
+let brunsliModule;
 let dropboard = document.getElementById('dropboard');
 let fileSelector = document.getElementById('fileSelector');
 let output = document.getElementById('output');
@@ -172,15 +172,15 @@ function processNextFile() {
     let bytes = e.target.result;
     let size = bytes.byteLength;
     var bytesView = new Uint8Array(bytes);
-    let data = Module._malloc(size);
-    Module.HEAPU8.set(bytesView, data);
+    let data = brunsliModule._malloc(size);
+    brunsliModule.HEAPU8.set(bytesView, data);
     if (fileType == 'image/jpeg') {
       logImage(bytesView);
       processJpeg(fileName, data, size);
     } else {
       processBrunsli(fileName, data, size);
     }
-    Module._free(data);
+    brunsliModule._free(data);
     log('punch-line', []);
   };
   reader.readAsArrayBuffer(file);
@@ -228,39 +228,40 @@ function logDownloadLink(fileName, fileContent) {
 function processJpeg(fileName, jpegData, jpegSize) {
   log('w3-text-gray', [text("Processing " + fileName + " as JPEG")]);
   log('w3-text-gray', [text("Input size: " + jpegSize)]);
-  let brunsli = Module._JpegToBrunsli(jpegData, jpegSize);
+  let brunsli = brunsliModule._JpegToBrunsli(jpegData, jpegSize);
   if (!brunsli) {
     log('w3-text-red', text("JXL Recompression failed"));
     return;
   }
-  let brunsliData = Module._GetBrunsliData(brunsli);
-  let brunsliSize = Module._GetBrunsliLength(brunsli);
-  let brunsliDataView = new Uint8Array(Module.HEAPU8.subarray(brunsliData, brunsliData + brunsliSize));
+  let brunsliData = brunsliModule._GetBrunsliData(brunsli);
+  let brunsliSize = brunsliModule._GetBrunsliLength(brunsli);
+  let brunsliDataView = new Uint8Array(brunsliModule.HEAPU8.subarray(brunsliData, brunsliData + brunsliSize));
   let output = new Uint8Array(brunsliSize);
   output.set(brunsliDataView);
-  Module._FreeBrunsli(brunsli);
+  brunsliModule._FreeBrunsli(brunsli);
   log('w3-text-gray', [text("Output size: " + brunsliSize)]);
   logDownloadLink(fileName + '.jxl', output);
 }
 function processBrunsli(fileName, brunsliData, brunsliSize) {
   log('w3-text-gray', [text("Processing " + fileName + " as JXL")]);
   log('w3-text-gray', [text("Input size: " + brunsliSize)]);
-  let jpeg = Module._BrunsliToJpeg(brunsliData, brunsliSize);
+  let jpeg = brunsliModule._BrunsliToJpeg(brunsliData, brunsliSize);
   if (!jpeg) {
     log('w3-text-red', [text("Reconstuction failed")]);
     return;
   }
-  let jpegData = Module._GetJpegData(jpeg);
-  let jpegSize = Module._GetJpegLength(jpeg);
-  let jpegDataView = new Uint8Array(Module.HEAPU8.subarray(jpegData, jpegData + jpegSize));
+  let jpegData = brunsliModule._GetJpegData(jpeg);
+  let jpegSize = brunsliModule._GetJpegLength(jpeg);
+  let jpegDataView = new Uint8Array(brunsliModule.HEAPU8.subarray(jpegData, jpegData + jpegSize));
   let output = new Uint8Array(jpegSize);
   output.set(jpegDataView);
-  Module._FreeBrunsli(jpeg);
+  brunsliModule._FreeBrunsli(jpeg);
   log('w3-text-gray', [text("Output size: " + jpegSize)]);
   logImage(output);
   logDownloadLink(fileName + '.jpg', output);
 }
 document.addEventListener('DOMContentLoaded', () => {
+brunsliModule = BrunsliCodecModule();
 dropboard.addEventListener('dragover', onDragOver, false);
 dropboard.addEventListener('drop', onDrop, false);
 dropboard.addEventListener('click', onClick, false);
