@@ -24,7 +24,7 @@ static inline int NextTableBitSize(const int* count, int len) {
   return len - kJpegHuffmanRootTableBits;
 }
 
-void BuildJpegHuffmanTable(const int* count_in, const int* symbols,
+void BuildJpegHuffmanTable(const int* count, const int* symbols,
                            HuffmanTableEntry* lut) {
   HuffmanTableEntry code;    // current table entry
   HuffmanTableEntry* table;  // next available space in table
@@ -37,11 +37,11 @@ void BuildJpegHuffmanTable(const int* count_in, const int* symbols,
   int table_size;  // size of current table
 
   // Make a local copy of the input bit length histogram.
-  int count[kJpegHuffmanMaxBitLength + 1] = { 0 };
+  int tmp_count[kJpegHuffmanMaxBitLength + 1] = { 0 };
   int total_count = 0;
   for (len = 1; len <= kJpegHuffmanMaxBitLength; ++len) {
-    count[len] = count_in[len];
-    total_count += count[len];
+    tmp_count[len] = count[len];
+    total_count += tmp_count[len];
   }
 
   table = lut;
@@ -62,7 +62,7 @@ void BuildJpegHuffmanTable(const int* count_in, const int* symbols,
   key = 0;
   idx = 0;
   for (len = 1; len <= kJpegHuffmanRootTableBits; ++len) {
-    for (; count[len] > 0; --count[len]) {
+    for (; tmp_count[len] > 0; --tmp_count[len]) {
       code.bits = len;
       code.value = symbols[idx++];
       reps = 1 << (kJpegHuffmanRootTableBits - len);
@@ -78,11 +78,11 @@ void BuildJpegHuffmanTable(const int* count_in, const int* symbols,
   low = 0;
   for (len = kJpegHuffmanRootTableBits + 1;
        len <= kJpegHuffmanMaxBitLength; ++len) {
-    for (; count[len] > 0; --count[len]) {
+    for (; tmp_count[len] > 0; --tmp_count[len]) {
       // Start a new sub-table if the previous one is full.
       if (low >= table_size) {
         table += table_size;
-        table_bits = NextTableBitSize(count, len);
+        table_bits = NextTableBitSize(tmp_count, len);
         table_size = 1 << table_bits;
         low = 0;
         lut[key].bits = table_bits + kJpegHuffmanRootTableBits;

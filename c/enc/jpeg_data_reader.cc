@@ -1112,7 +1112,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
     if (!FixupIndexes(jpg)) {
       return false;
     }
-    if (jpg->huffman_code.size() == 0) {
+    if (jpg->huffman_code.empty()) {
       // Section B.2.4.2: "If a table has never been defined for a particular
       // destination, then when this destination is specified in a scan header,
       // the results are unpredictable."

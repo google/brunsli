@@ -51,7 +51,7 @@ void CreateHuffmanTree(const uint32_t* data,
 // of a Huffman tree. The generated Huffman tree is to be compressed once
 // more using a Huffman tree
 void WriteHuffmanTree(const uint8_t* depth,
-                      size_t num,
+                      size_t length,
                       size_t* tree_size,
                       uint8_t* tree,
                       uint8_t* extra_bits_data);

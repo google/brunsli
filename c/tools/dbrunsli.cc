@@ -94,7 +94,8 @@ bool WriteFile(const std::string& file_name, const std::string& content) {
   return ok;
 }
 
-bool ProcessFile(const std::string& file_name) {
+bool ProcessFile(const std::string& file_name,
+                 const std::string& outfile_name) {
   std::string input;
   if (!ReadFile(file_name, &input)) {
     return false;
@@ -119,18 +120,20 @@ bool ProcessFile(const std::string& file_name) {
     }
   }
 
-  return WriteFile(file_name + ".jpg", output);
+  return WriteFile(outfile_name, output);
 }
 
 int main(int argc, char** argv) {
-  if (argc != 2) {
-    fprintf(stderr, "Usage: dbrunsli FILE\n");
+  if (argc != 2 && argc != 3) {
+    fprintf(stderr, "Usage: dbrunsli FILE [OUTPUT_FILE, default=FILE.jpg]\n");
     return EXIT_FAILURE;
   }
-  std::string file_name = std::string(argv[1]);
+  const std::string file_name = std::string(argv[1]);
   if (file_name.empty()) {
     fprintf(stderr, "Empty input file name.\n");
     return EXIT_FAILURE;
   }
-  return ProcessFile(file_name) ? EXIT_SUCCESS : EXIT_FAILURE;
+  const std::string outfile_name = argc == 2 ? file_name + ".jpg" :
+                                   std::string(argv[2]);
+  return ProcessFile(file_name, outfile_name) ? EXIT_SUCCESS : EXIT_FAILURE;
 }

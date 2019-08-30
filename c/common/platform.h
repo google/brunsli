@@ -498,14 +498,16 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 #define BRUNSLI_DCHECK(V)
 #endif
 
+namespace brunsli {
 void BrunsliDumpAndAbort(const char* f, int l, const char* fn);
+}  // namespace brunsli
 
 // TODO: use "predict false" to move the code out of hot path.
 #define BRUNSLI_CHECK(V) \
-  if (!(V)) {                                               \
-   BrunsliDumpAndAbort(__FILE__, __LINE__, __FUNCTION__);   \
-    /* Tell the compiler, that there is no escape route. */ \
-    while (true) ;                                          \
+  if (!(V)) {                                                         \
+    ::brunsli::BrunsliDumpAndAbort(__FILE__, __LINE__, __FUNCTION__); \
+    /* Tell the compiler, that there is no escape route. */           \
+    while (true) ;                                                    \
   }
 
 // TODO: Pick up upgrade after https://github.com/google/brotli/pull/636
