@@ -8,7 +8,7 @@
 
 #include <cstring> /* for memcpy */
 
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

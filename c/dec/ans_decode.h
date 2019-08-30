@@ -11,7 +11,7 @@
 #define BRUNSLI_DEC_ANS_DECODE_H_
 
 #include "../common/ans_params.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./bit_reader.h"
 #include "./brunsli_input.h"
 

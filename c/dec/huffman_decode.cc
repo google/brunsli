@@ -9,7 +9,7 @@
 #include <cstring>  /* for memset */
 #include <vector>
 
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./bit_reader.h"
 #include "./huffman_table.h"
 

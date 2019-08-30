@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "./platform.h"
-#include "./types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

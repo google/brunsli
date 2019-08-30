@@ -9,9 +9,11 @@ The currently planned/on-going integration work includes:
 - [x] one-shot C API / dynamic library
 - [x] WASM module
 - [ ] Node.js module
-- [ ] Java bindings
+- [x] Java bindings
 - [ ] Python bindings
-- [ ] Nginx transcoding / serving modules
-- [ ] Apache transcoding / serving modules
+- [ ] Nginx transcoding module
+- [ ] Nginx serving module
+- [ ] Apache transcoding module
+- [ ] Apache serving module
 
 Stay tuned!

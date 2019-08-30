@@ -9,7 +9,7 @@
 #ifndef BRUNSLI_ENC_JPEG_HUFFMAN_DECODE_H_
 #define BRUNSLI_ENC_JPEG_HUFFMAN_DECODE_H_
 
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

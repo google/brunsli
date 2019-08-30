@@ -9,7 +9,7 @@
 #ifndef BRUNSLI_COMMON_PREDICT_H_
 #define BRUNSLI_COMMON_PREDICT_H_
 
-#include "./jpeg_data.h"
+#include <brunsli/jpeg_data.h>
 
 namespace brunsli {
 

@@ -6,7 +6,7 @@
 
 #include "./predict.h"
 
-#include "./jpeg_data.h"
+#include <brunsli/jpeg_data.h>
 
 namespace brunsli {
 

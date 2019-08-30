@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include "./types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

@@ -1,0 +1,3 @@
+# Force bazel to link GLIBCXX statically.
+build --action_env=BAZEL_LINKLIBS=-l%:libstdc++.a
+build --action_env=BAZEL_LINKOPTS=-static-libstdc++

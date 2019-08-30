@@ -4,7 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include "./jpeg_data_writer.h"
+#include <brunsli/jpeg_data_writer.h>
 
 #include <cstdlib>
 #include <cstring>  /* for memset, memcpy */
@@ -13,7 +13,7 @@
 
 #include "../common/huffman_tree.h"
 #include "../common/platform.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./jpeg_bit_writer.h"
 
 namespace brunsli {

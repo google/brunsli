@@ -9,7 +9,7 @@
 #ifndef BRUNSLI_COMMON_HUFFMAN_TREE_H_
 #define BRUNSLI_COMMON_HUFFMAN_TREE_H_
 
-#include "./types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

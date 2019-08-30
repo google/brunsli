@@ -7,8 +7,8 @@
 #ifndef BRUNSLI_COMMON_CONSTANTS_H_
 #define BRUNSLI_COMMON_CONSTANTS_H_
 
-#include "./jpeg_data.h"
-#include "./types.h"
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
 
 namespace brunsli {
 

@@ -11,7 +11,7 @@
 #include "../common/ans_params.h"
 #include "../common/histogram.h"
 #include "../common/platform.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./fast_log.h"
 #include "./write_bits.h"
 

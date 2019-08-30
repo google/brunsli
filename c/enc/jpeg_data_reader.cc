@@ -4,16 +4,16 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include "./jpeg_data_reader.h"
+#include <brunsli/jpeg_data_reader.h>
 
 #include <algorithm>
 #include <string>
 #include <vector>
 
 #include "../common/constants.h"
-#include "../common/jpeg_data.h"
+#include <brunsli/jpeg_data.h>
 #include "../common/platform.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./jpeg_huffman_decode.h"
 
 namespace brunsli {

@@ -10,7 +10,7 @@
 #define BRUNSLI_ENC_WRITE_BITS_H_
 
 #include "../common/platform.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

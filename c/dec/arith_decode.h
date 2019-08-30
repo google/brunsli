@@ -8,7 +8,7 @@
 #define BRUNSLI_DEC_ARITH_DECODE_H_
 
 #include "../common/distributions.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./brunsli_input.h"
 
 namespace brunsli {

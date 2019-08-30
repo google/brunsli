@@ -8,7 +8,7 @@
 
 #include "./constants.h"
 #include "./platform.h"
-#include "./types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

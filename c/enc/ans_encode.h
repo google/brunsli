@@ -11,7 +11,7 @@
 #define BRUNSLI_ENC_ANS_ENCODE_H_
 
 #include "../common/ans_params.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

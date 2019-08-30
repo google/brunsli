@@ -1,6 +1,11 @@
 workspace(name = "org_brunsli")
 
 local_repository(
+    name = "ignore_org_brunsli_java",
+    path = "java",
+)
+
+local_repository(
     name = "brotli",
     path = "third_party/brotli",
 )

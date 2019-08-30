@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

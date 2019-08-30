@@ -8,7 +8,7 @@
 
 #include <vector>
 
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./histogram_encode.h"
 
 namespace brunsli {

@@ -10,9 +10,9 @@
 #include <vector>
 
 #include "./distributions.h"
-#include "./jpeg_data.h"
+#include <brunsli/jpeg_data.h>
 #include "./platform.h"
-#include "./types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

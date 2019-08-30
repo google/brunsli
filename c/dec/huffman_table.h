@@ -7,7 +7,7 @@
 #ifndef BRUNSLI_DEC_HUFFMAN_TABLE_H_
 #define BRUNSLI_DEC_HUFFMAN_TABLE_H_
 
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

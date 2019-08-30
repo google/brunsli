@@ -7,7 +7,7 @@
 #include "../dec/bit_reader.h"
 
 #include "gtest/gtest.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

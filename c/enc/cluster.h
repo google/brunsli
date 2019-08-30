@@ -15,7 +15,7 @@
 #include <vector>
 
 #include "../common/platform.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./fast_log.h"
 
 namespace brunsli {

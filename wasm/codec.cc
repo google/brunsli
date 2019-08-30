@@ -1,9 +1,9 @@
 #include <string>
 
-#include "c/dec/brunsli_decode.h"
-#include "c/dec/jpeg_data_writer.h"
-#include "c/enc/brunsli_encode.h"
-#include "c/enc/jpeg_data_reader.h"
+#include <brunsli/brunsli_decode.h>
+#include <brunsli/jpeg_data_writer.h>
+#include <brunsli/brunsli_encode.h>
+#include <brunsli/jpeg_data_reader.h>
 
 using namespace brunsli;
 

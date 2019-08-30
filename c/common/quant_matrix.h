@@ -10,7 +10,7 @@
 #define BRUNSLI_COMMON_QUANT_MATRIX_H_
 
 #include "./constants.h"
-#include "./types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

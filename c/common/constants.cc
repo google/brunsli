@@ -6,7 +6,7 @@
 
 #include "./constants.h"
 
-#include "./types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

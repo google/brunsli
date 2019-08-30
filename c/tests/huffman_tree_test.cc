@@ -10,7 +10,7 @@
 
 #include "gtest/gtest.h"
 #include "../common/platform.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 
