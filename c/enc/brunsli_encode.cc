@@ -1237,7 +1237,7 @@ bool EncodeMetaData(const JPEGData& jpg,
     metadata.append(1, 0xfe);
     metadata.append(s);
   }
-  if (jpg.tail_data.size() > 0) {
+  if (!jpg.tail_data.empty()) {
     metadata.append(1, 0xd9);
     metadata.append(jpg.tail_data);
   }

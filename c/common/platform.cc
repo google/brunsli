@@ -9,8 +9,12 @@
 #include <cstdio>
 #include <cstdlib>  // for abort
 
+namespace brunsli {
+
 void BrunsliDumpAndAbort(const char* f, int l, const char* fn) {
   fprintf(stderr, "%s:%d (%s)\n", f, l, fn);
   fflush(stderr);
   abort();
 }
+
+}  // namespace brunsli
