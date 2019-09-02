@@ -11,7 +11,7 @@
 #ifndef BRUNSLI_COMMON_DISTRIBUTIONS_H_
 #define BRUNSLI_COMMON_DISTRIBUTIONS_H_
 
-#include "./types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

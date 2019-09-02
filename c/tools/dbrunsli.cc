@@ -8,11 +8,11 @@
 #include <cstdlib>
 #include <string>
 
-#include "../common/jpeg_data.h"
-#include "../common/status.h"
-#include "../common/types.h"
-#include "../dec/brunsli_decode.h"
-#include "../dec/jpeg_data_writer.h"
+#include <brunsli/jpeg_data.h>
+#include <brunsli/status.h>
+#include <brunsli/types.h>
+#include <brunsli/brunsli_decode.h>
+#include <brunsli/jpeg_data_writer.h>
 
 int StringWriter(void* data, const uint8_t* buf, size_t count) {
   std::string* output = reinterpret_cast<std::string*>(data);

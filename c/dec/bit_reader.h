@@ -10,7 +10,7 @@
 #define BRUNSLI_DEC_BIT_READER_H_
 
 #include "../common/platform.h"
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

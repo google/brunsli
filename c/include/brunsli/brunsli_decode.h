@@ -10,10 +10,9 @@
 #ifndef BRUNSLI_DEC_BRUNSLI_DECODE_H_
 #define BRUNSLI_DEC_BRUNSLI_DECODE_H_
 
-#include "../common/jpeg_data.h"
-#include "../common/status.h"
-#include "../common/types.h"
-#include "./brunsli_aux_data.h"
+#include <brunsli/jpeg_data.h>
+#include <brunsli/status.h>
+#include <brunsli/types.h>
 
 namespace brunsli {
 
@@ -22,6 +21,8 @@ typedef enum {
   BRUNSLI_READ_SIZES,    // header and histogram sections
   BRUNSLI_READ_ALL,      // everything
 } BrunsliReadMode;
+
+struct BrunsliAuxData;
 
 // Parses the brunsli byte stream contained in data[0 ... len) and fills in *jpg
 // with the parsed information.

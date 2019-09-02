@@ -7,6 +7,40 @@ package(
 
 licenses(["notice"])  # MIT
 
+exports_files(["LICENSE"])
+
+config_setting(
+    name = "darwin",
+    values = {"cpu": "darwin"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "darwin_x86_64",
+    values = {"cpu": "darwin_x86_64"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "windows",
+    values = {"cpu": "x64_windows"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "windows_msvc",
+    values = {"cpu": "x64_windows_msvc"},
+    visibility = ["//visibility:public"],
+)
+
+config_setting(
+    name = "windows_msys",
+    values = {"cpu": "x64_windows_msys"},
+    visibility = ["//visibility:public"],
+)
+
+load(":compiler_config_setting.bzl", "create_msvc_config")
+
 STRICT_C_OPTIONS = [
     "-Wno-sign-compare",  # everywhere
 ]
@@ -78,6 +112,7 @@ cc_library(
     srcs = [":common_sources"],
     hdrs = [":common_headers"],
     copts = STRICT_C_OPTIONS,
+    deps = [":brunsli_inc"],
 )
 
 cc_library(

@@ -6,10 +6,10 @@
 
 #include <brunsli/encode.h>
 
-#include "../common/jpeg_data.h"
-#include "../common/types.h"
-#include "./brunsli_encode.h"
-#include "./jpeg_data_reader.h"
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
+#include <brunsli/brunsli_encode.h>
+#include <brunsli/jpeg_data_reader.h>
 
 /* C API for brunsli encoder */
 

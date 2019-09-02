@@ -7,7 +7,7 @@
 #ifndef BRUNSLI_DEC_CONTEXT_MAP_DECODE_H_
 #define BRUNSLI_DEC_CONTEXT_MAP_DECODE_H_
 
-#include "../common/types.h"
+#include <brunsli/types.h>
 #include "./bit_reader.h"
 
 namespace brunsli {

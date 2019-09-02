@@ -10,8 +10,8 @@
 #ifndef BRUNSLI_ENC_BRUNSLI_ENCODE_H_
 #define BRUNSLI_ENC_BRUNSLI_ENCODE_H_
 
-#include "../common/jpeg_data.h"
-#include "../common/types.h"
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
 
 namespace brunsli {
 

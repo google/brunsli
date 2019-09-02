@@ -7,7 +7,7 @@
 #ifndef BRUNSLI_DEC_BRUNSLI_INPUT_H_
 #define BRUNSLI_DEC_BRUNSLI_INPUT_H_
 
-#include "../common/types.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
 

@@ -9,8 +9,8 @@
 #ifndef BRUNSLI_DEC_JPEG_DATA_WRITER_H_
 #define BRUNSLI_DEC_JPEG_DATA_WRITER_H_
 
-#include "../common/jpeg_data.h"
-#include "../common/types.h"
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
 
 namespace brunsli {
 

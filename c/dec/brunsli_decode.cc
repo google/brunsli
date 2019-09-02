@@ -4,7 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include "./brunsli_decode.h"
+#include <brunsli/brunsli_decode.h>
 
 #include <algorithm>
 #include <cstdlib>
@@ -25,7 +25,7 @@
 #include "./brunsli_aux_data.h"
 #include "./brunsli_input.h"
 #include "./context_map_decode.h"
-#include "./jpeg_data_writer.h"
+#include <brunsli/jpeg_data_writer.h>
 
 namespace brunsli {
 
