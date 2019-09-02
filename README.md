@@ -12,8 +12,8 @@ The currently planned/on-going integration work includes:
 - [x] Java bindings
 - [ ] Python bindings
 - [ ] Nginx transcoding module
-- [ ] Nginx serving module
+- [x] Nginx serving module
 - [ ] Apache transcoding module
-- [ ] Apache serving module
+- [x] Apache serving module
 
 Stay tuned!
