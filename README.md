@@ -10,6 +10,7 @@ The currently planned/on-going integration work includes:
 - [x] WASM module
 - [ ] Node.js module
 - [x] Java bindings
+- [x] Python libraries support (OpenCV, imageio, PythonMagic, PIL, etc.)
 - [ ] Python bindings
 - [ ] Nginx transcoding module
 - [x] Nginx serving module
