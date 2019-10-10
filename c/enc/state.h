@@ -9,6 +9,7 @@
 #ifndef BRUNSLI_ENC_STATE_H_
 #define BRUNSLI_ENC_STATE_H_
 
+#include <array>
 #include <memory>
 #include <vector>
 
