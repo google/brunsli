@@ -12,8 +12,7 @@ extern "C" {
 std::string* BrunsliToJpeg(const uint8_t* data, size_t length) {
   std::string* result = nullptr;
   JPEGData jpg;
-  BrunsliStatus status =
-      BrunsliDecodeJpeg(data, length, BRUNSLI_READ_ALL, &jpg, nullptr);
+  BrunsliStatus status = BrunsliDecodeJpeg(data, length, &jpg);
   if (status != BRUNSLI_OK) {
     printf("Decoding Brunsli failed with status %d\n", status);
     return result;
@@ -49,7 +48,7 @@ void FreeJpeg(std::string* jpeg) { delete jpeg; }
 std::string* JpegToBrunsli(const uint8_t* data, size_t length) {
   std::string* result = nullptr;
   brunsli::JPEGData jpg;
-  if (!ReadJpeg(data, length, &jpg)) {
+  if (!ReadJpeg(data, length, ::brunsli::JPEG_READ_ALL, &jpg)) {
     printf("Parsing JPEG failed\n");
     return result;
   }

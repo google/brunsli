@@ -10,6 +10,7 @@
 #ifndef BRUNSLI_DEC_STATE_H_
 #define BRUNSLI_DEC_STATE_H_
 
+#include <array>
 #include <vector>
 
 #include <brunsli/jpeg_data.h>
