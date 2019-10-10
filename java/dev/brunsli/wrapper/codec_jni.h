@@ -4,8 +4,8 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#ifndef ORG_BRUNSLI_WRAPPER_CODEC_JNI_H_
-#define ORG_BRUNSLI_WRAPPER_CODEC_JNI_H_
+#ifndef DEV_BRUNSLI_WRAPPER_CODEC_JNI_H_
+#define DEV_BRUNSLI_WRAPPER_CODEC_JNI_H_
 
 #include <jni.h>
 
@@ -20,7 +20,7 @@ extern "C" {
  * @returns byte array JPEG stream on success; otherwise null
  */
 JNIEXPORT jbyteArray JNICALL
-Java_org_brunsli_wrapper_CodecJNI_nativeDecode(
+Java_dev_brunsli_wrapper_CodecJNI_nativeDecode(
     JNIEnv* env, jobject /*jobj*/, jobject input);
 
 /**
@@ -30,11 +30,11 @@ Java_org_brunsli_wrapper_CodecJNI_nativeDecode(
  * @returns byte array Brunsli stream on success; otherwise null
  */
 JNIEXPORT jbyteArray JNICALL
-Java_org_brunsli_wrapper_CodecJNI_nativeEncode(
+Java_dev_brunsli_wrapper_CodecJNI_nativeEncode(
     JNIEnv* env, jobject /*jobj*/, jobject input);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif  // ORG_BRUNSLI_WRAPPER_CODEC_JNI_H_
+#endif  // DEV_BRUNSLI_WRAPPER_CODEC_JNI_H_

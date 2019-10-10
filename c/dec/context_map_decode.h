@@ -14,11 +14,9 @@ namespace brunsli {
 
 // Reads the context map from the bit stream. The context map is an array of
 // context_map_size histogram ids. The number of different histogram ids is
-// given in num_htrees.
-bool DecodeContextMap(int num_htrees,
-                      int context_map_size,
-                      uint8_t* context_map,
-                      BrunsliBitReader* br);
+// given in num_h_trees.
+bool DecodeContextMap(int num_h_trees, int context_map_size,
+                      uint8_t* context_map, BrunsliBitReader* br);
 
 }  // namespace brunsli
 

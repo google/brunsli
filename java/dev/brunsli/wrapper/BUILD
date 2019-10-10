@@ -44,6 +44,6 @@ java_test(
     jvm_flags = [
         "-DBRUNSLI_JNI_LIBRARY=$(location :brunsli_jni)",
     ],
-    test_class = "org.brunsli.wrapper.CodecTest",
+    test_class = "dev.brunsli.wrapper.CodecTest",
     runtime_deps = [":test_lib"],
 )

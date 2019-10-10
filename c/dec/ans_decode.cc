@@ -31,7 +31,7 @@ bool ANSBuildMapTable(const int counts[], int alphabet_size,
 
 }  // namespace
 
-bool ANSDecodingData::ReadFromBitStream(int alphabet_size,
+bool ANSDecodingData::ReadFromBitStream(size_t alphabet_size,
                                         BrunsliBitReader* br) {
   std::vector<int> counts(alphabet_size);
   return (ReadHistogram(ANS_LOG_TAB_SIZE, alphabet_size, &counts[0], br) &&

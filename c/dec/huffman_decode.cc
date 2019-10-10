@@ -17,15 +17,14 @@ namespace brunsli {
 
 static const int kCodeLengthCodes = 18;
 static const uint8_t kCodeLengthCodeOrder[kCodeLengthCodes] = {
-  1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 };
 static const uint8_t kDefaultCodeLength = 8;
 static const uint8_t kCodeLengthRepeatCode = 16;
 
-int ReadHuffmanCodeLengths(
-    const uint8_t* code_length_code_lengths,
-    int num_symbols, uint8_t* code_lengths,
-    BrunsliBitReader* br) {
+int ReadHuffmanCodeLengths(const uint8_t* code_length_code_lengths,
+                           int num_symbols, uint8_t* code_lengths,
+                           BrunsliBitReader* br) {
   int symbol = 0;
   uint8_t prev_code_len = kDefaultCodeLength;
   int repeat = 0;
@@ -33,13 +32,12 @@ int ReadHuffmanCodeLengths(
   int space = 32768;
   HuffmanCode table[32];
 
-  uint16_t counts[16] = { 0 };
+  uint16_t counts[16] = {0};
   for (int i = 0; i < kCodeLengthCodes; ++i) {
     ++counts[code_length_code_lengths[i]];
   }
-  if (!BuildHuffmanTable(table, 5,
-                         code_length_code_lengths,
-                         kCodeLengthCodes, &counts[0])) {
+  if (!BuildHuffmanTable(table, 5, code_length_code_lengths, kCodeLengthCodes,
+                         &counts[0])) {
     return 0;
   }
 
@@ -58,7 +56,7 @@ int ReadHuffmanCodeLengths(
       code_lengths[symbol++] = code_len;
       if (code_len != 0) {
         prev_code_len = code_len;
-        space -= 32768 >> code_len;
+        space -= 32768u >> code_len;
       }
     } else {
       const int extra_bits = code_len - 14;
@@ -115,7 +113,7 @@ bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
     int i;
     int max_bits_counter = alphabet_size - 1;
     int max_bits = 0;
-    int symbols[4] = { 0 };
+    int symbols[4] = {0};
     const int num_symbols = (int)BrunsliBitReaderReadBits(br, 2) + 1;
     while (max_bits_counter) {
       max_bits_counter >>= 1;
@@ -130,8 +128,7 @@ bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
       case 1:
         break;
       case 3:
-        ok = ((symbols[0] != symbols[1]) &&
-              (symbols[0] != symbols[2]) &&
+        ok = ((symbols[0] != symbols[1]) && (symbols[0] != symbols[2]) &&
               (symbols[1] != symbols[2]));
         break;
       case 2:
@@ -139,12 +136,9 @@ bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
         code_lengths[symbols[1]] = 1;
         break;
       case 4:
-        ok = ((symbols[0] != symbols[1]) &&
-              (symbols[0] != symbols[2]) &&
-              (symbols[0] != symbols[3]) &&
-              (symbols[1] != symbols[2]) &&
-              (symbols[1] != symbols[3]) &&
-              (symbols[2] != symbols[3]));
+        ok = ((symbols[0] != symbols[1]) && (symbols[0] != symbols[2]) &&
+              (symbols[0] != symbols[3]) && (symbols[1] != symbols[2]) &&
+              (symbols[1] != symbols[3]) && (symbols[2] != symbols[3]));
         if (BrunsliBitReaderReadBits(br, 1)) {
           code_lengths[symbols[2]] = 3;
           code_lengths[symbols[3]] = 3;
@@ -152,16 +146,19 @@ bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
           code_lengths[symbols[0]] = 2;
         }
         break;
+      default:
+        // Unreachable.
+        return false;
     }
-  } else {  /* Decode Huffman-coded code lengths. */
+  } else { /* Decode Huffman-coded code lengths. */
     int i;
-    uint8_t code_length_code_lengths[kCodeLengthCodes] = { 0 };
+    uint8_t code_length_code_lengths[kCodeLengthCodes] = {0};
     int space = 32;
     int num_codes = 0;
     /* Static Huffman code for the code length code lengths */
     static const HuffmanCode huff[16] = {
-      {2, 0}, {2, 4}, {2, 3}, {3, 2}, {2, 0}, {2, 4}, {2, 3}, {4, 1},
-      {2, 0}, {2, 4}, {2, 3}, {3, 2}, {2, 0}, {2, 4}, {2, 3}, {4, 5},
+        {2, 0}, {2, 4}, {2, 3}, {3, 2}, {2, 0}, {2, 4}, {2, 3}, {4, 1},
+        {2, 0}, {2, 4}, {2, 3}, {3, 2}, {2, 0}, {2, 4}, {2, 3}, {4, 5},
     };
     for (i = simple_code_or_skip; i < kCodeLengthCodes && space > 0; ++i) {
       const int code_len_idx = kCodeLengthCodeOrder[i];
@@ -173,22 +170,21 @@ bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
       v = (uint8_t)p->value;
       code_length_code_lengths[code_len_idx] = v;
       if (v != 0) {
-        space -= (32 >> v);
+        space -= (32u >> v);
         ++num_codes;
       }
     }
     ok = (num_codes == 1 || space == 0) &&
-        ReadHuffmanCodeLengths(code_length_code_lengths,
-                               alphabet_size, &code_lengths[0], br);
+         ReadHuffmanCodeLengths(code_length_code_lengths, alphabet_size,
+                                &code_lengths[0], br);
   }
-  uint16_t counts[16] = { 0 };
+  uint16_t counts[16] = {0};
   for (int i = 0; i < alphabet_size; ++i) {
     ++counts[code_lengths[i]];
   }
   if (ok) {
     table_size = BuildHuffmanTable(&table_[0], kHuffmanTableBits,
-                                   &code_lengths[0], alphabet_size,
-                                   &counts[0]);
+                                   &code_lengths[0], alphabet_size, &counts[0]);
   }
   return (table_size > 0);
 }

@@ -21,7 +21,7 @@ static const int kDCTBlockSize = 64;
 static const int kMaxComponents = 4;
 static const int kMaxQuantTables = 4;
 static const int kMaxHuffmanTables = 4;
-static const int kJpegHuffmanMaxBitLength = 16;
+static const size_t kJpegHuffmanMaxBitLength = 16;
 static const int kJpegHuffmanAlphabetSize = 256;
 static const int kJpegDCAlphabetSize = 12;
 static const int kMaxDHTMarkers = 512;
@@ -122,7 +122,7 @@ struct JPEGQuantTable {
   JPEGQuantTable() : values(kDCTBlockSize), precision(0),
                      index(0), is_last(true) {}
 
-  std::vector<int> values;
+  std::vector<int32_t> values;
   int precision;
   // The index of this quantization table as it was parsed from the input JPEG.
   // Each DQT marker segment contains an 'index' field, and we save this index

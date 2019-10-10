@@ -6,10 +6,11 @@
 
 /* Bit reading helpers */
 
+#include "./bit_reader.h"
+
 #include <cstring> /* for memset, memcpy */
 
 #include "../common/platform.h"
-#include "./bit_reader.h"
 
 namespace brunsli {
 

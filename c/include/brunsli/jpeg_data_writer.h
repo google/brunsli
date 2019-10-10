@@ -24,6 +24,7 @@ struct JPEGOutput {
   bool Write(const uint8_t* buf, size_t len) const {
     return (len == 0) || (cb(data, buf, len) == len);
   }
+
  private:
   JPEGOutputHook cb;
   void* data;

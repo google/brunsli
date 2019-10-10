@@ -16,23 +16,22 @@
 
 namespace brunsli {
 
-typedef enum {
-  BRUNSLI_READ_HEADER,   // only signature and header
-  BRUNSLI_READ_SIZES,    // header and histogram sections
-  BRUNSLI_READ_ALL,      // everything
-} BrunsliReadMode;
-
-struct BrunsliAuxData;
-
 // Parses the brunsli byte stream contained in data[0 ... len) and fills in *jpg
 // with the parsed information.
 // The *jpg object is valid only as long as the input data is valid.
 // Returns BRUNSLI_OK, unless the data is not valid brunsli byte stream, or is
 // truncated.
-BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, const size_t len,
-                                BrunsliReadMode mode,
-                                JPEGData* jpg,
-                                BrunsliAuxData* aux);
+BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, size_t len, JPEGData* jpg);
+
+/* Check if data looks like Brunsli stream.
+ * Currently, only 6 byte signature is compared
+ * (i.e. if |len| < 6, result is always "false").
+ */
+bool IsBrunsli(const uint8_t* data, size_t len);
+
+// Returns the estimated peak memory usage (in bytes) of the BrunsliDecodeJpeg
+// function. If parsing is failed, then result is 0.
+size_t BrunsliEstimateDecoderPeakMemoryUsage(const uint8_t* data, size_t len);
 
 }  // namespace brunsli
 

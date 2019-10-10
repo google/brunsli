@@ -21,13 +21,14 @@ inline uint64_t HasZeroByte(uint64_t x) {
 
 // Handles the packing of bits into output bytes.
 struct BitWriter {
-  explicit BitWriter(size_t length) : len(length),
-                                      data(new uint8_t[len]),
-                                      pos(0),
-                                      put_buffer(0),
-                                      put_bits(64),
-                                      overflow(false),
-                                      invalid_write(false) {}
+  explicit BitWriter(size_t length)
+      : len(length),
+        data(new uint8_t[len]),
+        pos(0),
+        put_buffer(0),
+        put_bits(64),
+        overflow(false),
+        invalid_write(false) {}
 
   void WriteBits(int nbits, uint64_t bits) {
     if (nbits == 0) {
@@ -97,8 +98,8 @@ struct BitWriter {
       put_bits += 8;
     }
     if (put_bits < 64) {
-      int padmask = 0xff >> (64 - put_bits);
-      int c = ((put_buffer >> 56) & ~padmask) | pad_pattern;
+      int pad_mask = 0xFFu >> (64 - put_bits);
+      int c = ((put_buffer >> 56) & ~pad_mask) | pad_pattern;
       EmitByte(c);
     }
     put_buffer = 0;

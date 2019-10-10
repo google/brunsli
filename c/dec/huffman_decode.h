@@ -12,13 +12,13 @@
 
 #include <vector>
 
-#include "./huffman_table.h"
 #include "./bit_reader.h"
+#include "./huffman_table.h"
 
 namespace brunsli {
 
-static const int kHuffmanTableMask = 0xff;
-static const int kHuffmanTableBits = 8;
+static const size_t kHuffmanTableMask = 0xFFu;
+static const size_t kHuffmanTableBits = 8u;
 static const int kMaxHuffmanTableSize = 2048;
 
 struct HuffmanDecodingData {
@@ -34,16 +34,18 @@ struct HuffmanDecodingData {
 
 struct HuffmanDecoder {
   // Decodes the next Huffman coded symbol from the bit-stream.
-  int ReadSymbol(const HuffmanDecodingData& code, BrunsliBitReader* br) {
-    int nbits;
+  static uint16_t ReadSymbol(const HuffmanDecodingData& code,
+                             BrunsliBitReader* br) {
+    size_t nbits;
     BrunsliBitReaderFillWindow(br, 16);
     const HuffmanCode* table = &code.table_[0];
     table += (br->val_ >> br->bit_pos_) & kHuffmanTableMask;
-    nbits = table->bits - kHuffmanTableBits;
-    if (nbits > 0) {
+    nbits = table->bits;
+    if (nbits > kHuffmanTableBits) {
+      nbits -= kHuffmanTableBits;
       br->bit_pos_ += kHuffmanTableBits;
       table += table->value;
-      table += (br->val_ >> br->bit_pos_) & ((1 << nbits) - 1);
+      table += (br->val_ >> br->bit_pos_) & ((1u << nbits) - 1);
     }
     br->bit_pos_ += table->bits;
     return table->value;

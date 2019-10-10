@@ -34,7 +34,6 @@ set(BRUNSLI_ENC_SOURCES
   c/enc/ans_encode.cc
   c/enc/brunsli_encode.cc
   c/enc/context_map_encode.cc
-  c/enc/encode.cc
   c/enc/histogram_encode.cc
   c/enc/jpeg_data_reader.cc
   c/enc/jpeg_huffman_decode.cc

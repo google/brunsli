@@ -30,7 +30,7 @@ jbyteArray ToByteArray(JNIEnv* env, const std::string& data) {
 extern "C" {
 #endif
 
-JNIEXPORT jbyteArray JNICALL Java_org_brunsli_wrapper_CodecJNI_nativeDecode(
+JNIEXPORT jbyteArray JNICALL Java_dev_brunsli_wrapper_CodecJNI_nativeDecode(
     JNIEnv* env, jobject /*jobj*/, jobject input) {
   uint8_t* data =
       reinterpret_cast<uint8_t*>(env->GetDirectBufferAddress(input));
@@ -40,7 +40,7 @@ JNIEXPORT jbyteArray JNICALL Java_org_brunsli_wrapper_CodecJNI_nativeDecode(
 
   ::brunsli::JPEGData jpg;
   ::brunsli::BrunsliStatus status = ::brunsli::BrunsliDecodeJpeg(
-      data, length, ::brunsli::BRUNSLI_READ_ALL, &jpg, nullptr);
+      data, length, &jpg);
   if (status != ::brunsli::BRUNSLI_OK) {
     return nullptr;
   }
@@ -59,7 +59,7 @@ JNIEXPORT jbyteArray JNICALL Java_org_brunsli_wrapper_CodecJNI_nativeDecode(
   return ToByteArray(env, output);
 }
 
-JNIEXPORT jbyteArray JNICALL Java_org_brunsli_wrapper_CodecJNI_nativeEncode(
+JNIEXPORT jbyteArray JNICALL Java_dev_brunsli_wrapper_CodecJNI_nativeEncode(
     JNIEnv* env, jobject /*jobj*/, jobject input) {
   uint8_t* data =
       reinterpret_cast<uint8_t*>(env->GetDirectBufferAddress(input));

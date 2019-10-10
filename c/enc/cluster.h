@@ -16,6 +16,7 @@
 
 #include "../common/platform.h"
 #include <brunsli/types.h>
+#include "./histogram_encode.h"
 #include "./fast_log.h"
 
 namespace brunsli {
@@ -41,6 +42,11 @@ inline double ClusterCostDiff(int size_a, int size_b) {
   int size_c = size_a + size_b;
   return size_a * FastLog2(size_a) + size_b * FastLog2(size_b) -
       size_c * FastLog2(size_c);
+}
+
+template<typename HistogramType>
+double PopulationCost(const HistogramType& h) {
+  return PopulationCost(&h.data_[0], h.total_count_);
 }
 
 // Computes the bit cost reduction by combining out[idx1] and out[idx2] and if
@@ -278,9 +284,9 @@ void ClusterHistograms(const std::vector<HistogramType>& in,
     // Collapse similar histograms within block groups.
     for (int i = 0; i < block_group_offsets.size(); ++i) {
       int offset = block_group_offsets[i] * num_contexts;
-      int length = ((i + 1 < block_group_offsets.size() ?
-                     block_group_offsets[i + 1] * num_contexts : in_size) -
-                    offset);
+      int next_offset = i + 1 < block_group_offsets.size() ?
+                     block_group_offsets[i + 1] * num_contexts : in_size;
+      int length = next_offset - offset;
       int nclusters =
           HistogramCombine(&(*out)[0], &cluster_size[0],
                            &(*histogram_symbols)[offset], length,

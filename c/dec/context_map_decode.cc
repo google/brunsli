@@ -39,11 +39,9 @@ void InverseMoveToFrontTransform(uint8_t* v, int v_len) {
 
 }  // namespace
 
-bool DecodeContextMap(int num_htrees,
-                      int context_map_size,
-                      uint8_t* context_map,
-                      BrunsliBitReader* br) {
-  if (num_htrees <= 1) {
+bool DecodeContextMap(int num_h_trees, int context_map_size,
+                      uint8_t* context_map, BrunsliBitReader* br) {
+  if (num_h_trees <= 1) {
     memset(context_map, 0, (size_t)context_map_size);
     return true;
   }
@@ -55,24 +53,22 @@ bool DecodeContextMap(int num_htrees,
   }
   std::vector<HuffmanCode> table(kMaxHuffmanTableSize);
   HuffmanDecodingData entropy;
-  if (!entropy.ReadFromBitStream(num_htrees + max_run_length_prefix, br)) {
+  if (!entropy.ReadFromBitStream(num_h_trees + max_run_length_prefix, br)) {
     return false;
   }
-  HuffmanDecoder decoder;
-  int i;
-  for (i = 0; i < context_map_size;) {
+  for (int i = 0; i < context_map_size;) {
     int code;
     if (!BrunsliBitReaderReadMoreInput(br)) {
       BRUNSLI_LOG_DEBUG() << "[DecodeContextMap] Unexpected end of input."
                           << BRUNSLI_ENDL();
       return false;
     }
-    code = decoder.ReadSymbol(entropy, br);
+    code = HuffmanDecoder::ReadSymbol(entropy, br);
     if (code == 0) {
       context_map[i] = 0;
       ++i;
     } else if (code <= max_run_length_prefix) {
-      int reps = 1 + (1 << code) + (int)BrunsliBitReaderReadBits(br, code);
+      int reps = 1 + (1u << code) + (int)BrunsliBitReaderReadBits(br, code);
       while (--reps) {
         if (i >= context_map_size) {
           return false;
