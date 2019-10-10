@@ -49,7 +49,7 @@ void FreeJpeg(std::string* jpeg) { delete jpeg; }
 std::string* JpegToBrunsli(const uint8_t* data, size_t length) {
   std::string* result = nullptr;
   brunsli::JPEGData jpg;
-  if (!ReadJpeg(data, length, JPEG_READ_ALL, &jpg)) {
+  if (!ReadJpeg(data, length, &jpg)) {
     printf("Parsing JPEG failed\n");
     return result;
   }

@@ -90,26 +90,28 @@ bool WriteFile(const std::string& file_name, const std::string& content) {
 bool ProcessFile(const std::string& file_name,
                  const std::string& outfile_name) {
   std::string input;
-  if (!ReadFile(file_name, &input)) {
-    return false;
-  }
+  bool ok = ReadFile(file_name, &input);
+  if (!ok) return false;
 
   std::string output;
   {
     brunsli::JPEGData jpg;
     const uint8_t* input_data = reinterpret_cast<const uint8_t*>(input.data());
-    bool ok = brunsli::ReadJpeg(input_data, input.size(),
-                                brunsli::JPEG_READ_ALL, &jpg);
+    ok = brunsli::ReadJpeg(input_data, input.size(), brunsli::JPEG_READ_ALL,
+                           &jpg);
     input.clear();
     input.shrink_to_fit();
     if (!ok) {
       fprintf(stderr, "Failed to parse JPEG input.\n");
       return false;
     }
+
     size_t output_size = brunsli::GetMaximumBrunsliEncodedSize(jpg);
     output.resize(output_size);
     uint8_t* output_data = reinterpret_cast<uint8_t*>(&output[0]);
+
     ok = brunsli::BrunsliEncodeJpeg(jpg, output_data, &output_size);
+
     if (!ok) {
       // TODO: use fallback?
       fprintf(stderr, "Failed to transform JPEG to Brunsli\n");
@@ -118,7 +120,8 @@ bool ProcessFile(const std::string& file_name,
     output.resize(output_size);
   }
 
-  return WriteFile(outfile_name, output);
+  ok = WriteFile(outfile_name, output);
+  return ok;
 }
 
 int main(int argc, char** argv) {
@@ -131,7 +134,8 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Empty input file name.\n");
     return EXIT_FAILURE;
   }
-  const std::string outfile_name = argc == 2 ? file_name + ".brn" :
-                                   std::string(argv[2]);
-  return ProcessFile(file_name, outfile_name) ? EXIT_SUCCESS : EXIT_FAILURE;
+  const std::string outfile_name =
+      argc == 2 ? file_name + ".brn" : std::string(argv[2]);
+  bool ok = ProcessFile(file_name, outfile_name);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

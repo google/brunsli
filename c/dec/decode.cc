@@ -17,29 +17,29 @@
 extern "C" {
 
 struct OutputStruct {
-  size_t (*fun)(void* outdata, const unsigned char* buf, size_t size);
+  size_t (*fun)(void* out_data, const uint8_t* buf, size_t size);
   void* data;
 };
 
-int DecodeBrunsli(size_t insize, const unsigned char* in, void* outdata,
-    size_t (*outfun)(void* outdata, const unsigned char* buf, size_t size)) {
-  OutputStruct out = {outfun, outdata};
+int DecodeBrunsli(size_t in_size, const uint8_t* in, void* out_data,
+                  DecodeBrunsliSink out_fun) {
+  OutputStruct out = {out_fun, out_data};
   brunsli::JPEGData jpg;
-  brunsli::BrunsliStatus status = brunsli::BrunsliDecodeJpeg(
-      reinterpret_cast<const uint8_t*>(in), insize,
-      brunsli::BRUNSLI_READ_ALL, &jpg, nullptr);
+  brunsli::BrunsliStatus status = brunsli::BrunsliDecodeJpeg(in, in_size, &jpg);
   if (status != brunsli::BRUNSLI_OK) {
     return 0;
   }
-  brunsli::JPEGOutput writer([](void* data, const uint8_t* buf, size_t count) {
-    OutputStruct* out = (OutputStruct*)data;
-    int result = out->fun(out->data, buf, count) == count ? count : -1;
-    return result;
-  }, &out);
+  brunsli::JPEGOutput writer(
+      [](void* data, const uint8_t* buf, size_t count) {
+        OutputStruct* sink = (OutputStruct*)data;
+        int result = sink->fun(sink->data, buf, count) == count ? count : -1;
+        return result;
+      },
+      &out);
   if (!brunsli::WriteJpeg(jpg, writer)) {
     return 0;
   }
   return 1;  // ok
 }
 
-}  /* extern "C" */
+} /* extern "C" */

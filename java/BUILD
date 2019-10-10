@@ -14,11 +14,11 @@ genrule(
 genrule(
     name = "copy_link_jni_md_header",
     srcs = select({
-        "@org_brunsli//:darwin": ["@openjdk_macosx_jni_md_h//file"],
-        "@org_brunsli//:darwin_x86_64": ["@openjdk_macosx_jni_md_h//file"],
-        "@org_brunsli//:windows_msys": ["@openjdk_windows_jni_md_h//file"],
-        "@org_brunsli//:windows_msvc": ["@openjdk_windows_jni_md_h//file"],
-        "@org_brunsli//:windows": ["@openjdk_windows_jni_md_h//file"],
+        "@dev_brunsli//:darwin": ["@openjdk_macosx_jni_md_h//file"],
+        "@dev_brunsli//:darwin_x86_64": ["@openjdk_macosx_jni_md_h//file"],
+        "@dev_brunsli//:windows_msys": ["@openjdk_windows_jni_md_h//file"],
+        "@dev_brunsli//:windows_msvc": ["@openjdk_windows_jni_md_h//file"],
+        "@dev_brunsli//:windows": ["@openjdk_windows_jni_md_h//file"],
         "//conditions:default": ["@openjdk_solaris_jni_md_h//file"],
     }),
     outs = ["jni/jni_md.h"],
@@ -38,7 +38,7 @@ cc_library(
 
 genrule(
     name = "license_resource",
-    srcs = ["@org_brunsli//:LICENSE"],
+    srcs = ["@dev_brunsli//:LICENSE"],
     outs = ["META-INF/LICENSE"],
     cmd = "cp -f $< $@",
 )
@@ -54,7 +54,7 @@ java_library(
 cc_binary(
     name = "brunsli_jni.dll",
     srcs = [
-        "//org/brunsli/wrapper:jni_src",
+        "//dev/brunsli/wrapper:jni_src",
     ],
     linkopts = [
         "-Wl,--version-script,$(location :jni.ldscript)",
@@ -63,8 +63,8 @@ cc_binary(
     deps = [
         ":jni.ldscript",
         ":jni_inc",
-        "@org_brunsli//:brunsli_inc",
-        "@org_brunsli//:brunslidec",
-        "@org_brunsli//:brunslienc",
+        "@dev_brunsli//:brunsli_inc",
+        "@dev_brunsli//:brunslidec",
+        "@dev_brunsli//:brunslienc",
     ],
 )

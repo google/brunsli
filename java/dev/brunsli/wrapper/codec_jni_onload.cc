@@ -15,9 +15,9 @@ extern "C" {
 
 static const JNINativeMethod kCodecMethods[] = {
     {"nativeDecode", "(Ljava/nio/ByteBuffer;)[B",
-     reinterpret_cast<void*>(Java_org_brunsli_wrapper_CodecJNI_nativeDecode)},
+     reinterpret_cast<void*>(Java_dev_brunsli_wrapper_CodecJNI_nativeDecode)},
     {"nativeEncode", "(Ljava/nio/ByteBuffer;)[B",
-     reinterpret_cast<void*>(Java_org_brunsli_wrapper_CodecJNI_nativeEncode)}};
+     reinterpret_cast<void*>(Java_dev_brunsli_wrapper_CodecJNI_nativeEncode)}};
 
 JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
   JNIEnv* env;
@@ -25,7 +25,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     return -1;
   }
 
-  jclass clazz = env->FindClass("org/brunsli/wrapper/CodecJNI");
+  jclass clazz = env->FindClass("dev/brunsli/wrapper/CodecJNI");
   if (clazz == nullptr) {
     return -1;
   }

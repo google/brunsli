@@ -20,7 +20,7 @@ namespace brunsli {
 /* Returns reverse(reverse(key, len) + 1, len), where reverse(key, len) is the
    bit-wise reversal of the len least significant bits of key. */
 static inline int GetNextKey(int key, int len) {
-  int step = 1 << (len - 1);
+  int step = 1u << (len - 1);
   while (key & step) {
     step >>= 1;
   }
@@ -29,8 +29,7 @@ static inline int GetNextKey(int key, int len) {
 
 /* Stores code in table[0], table[step], table[2*step], ..., table[end] */
 /* Assumes that end is an integer multiple of step */
-static inline void ReplicateValue(HuffmanCode* table,
-                                  int step, int end,
+static inline void ReplicateValue(HuffmanCode* table, int step, int end,
                                   HuffmanCode code) {
   do {
     end -= step;
@@ -41,9 +40,9 @@ static inline void ReplicateValue(HuffmanCode* table,
 /* Returns the table width of the next 2nd level table. count is the histogram
    of bit lengths for the remaining symbols, len is the code length of the next
    processed symbol */
-static inline int NextTableBitSize(const uint16_t* const count,
-                                   int len, int root_bits) {
-  int left = 1 << (len - root_bits);
+static inline int NextTableBitSize(const uint16_t* const count, int len,
+                                   int root_bits) {
+  int left = 1u << (len - root_bits);
   while (len < MAX_LENGTH) {
     left -= count[len];
     if (left <= 0) break;
@@ -53,10 +52,8 @@ static inline int NextTableBitSize(const uint16_t* const count,
   return len - root_bits;
 }
 
-int BuildHuffmanTable(HuffmanCode* root_table,
-                      int root_bits,
-                      const uint8_t* const code_lengths,
-                      int code_lengths_size,
+int BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
+                      const uint8_t* const code_lengths, int code_lengths_size,
                       uint16_t* count) {
   HuffmanCode code;    /* current table entry */
   HuffmanCode* table;  /* next available space in table */
@@ -100,7 +97,7 @@ int BuildHuffmanTable(HuffmanCode* root_table,
 
   table = root_table;
   table_bits = root_bits;
-  table_size = 1 << table_bits;
+  table_size = 1u << table_bits;
   total_size = table_size;
 
   /* special case code with only one value */
@@ -118,7 +115,7 @@ int BuildHuffmanTable(HuffmanCode* root_table,
   /* create the repetitions by memcpy if possible in the coming loop */
   if (table_bits > max_length) {
     table_bits = max_length;
-    table_size = 1 << table_bits;
+    table_size = 1u << table_bits;
   }
   key = 0;
   symbol = 0;
@@ -148,7 +145,7 @@ int BuildHuffmanTable(HuffmanCode* root_table,
       if ((key & mask) != low) {
         table += table_size;
         table_bits = NextTableBitSize(count, len, root_bits);
-        table_size = 1 << table_bits;
+        table_size = 1u << table_bits;
         total_size += table_size;
         low = key & mask;
         root_table[low].bits = static_cast<uint8_t>(table_bits + root_bits);

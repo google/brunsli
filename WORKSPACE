@@ -1,7 +1,7 @@
-workspace(name = "org_brunsli")
+workspace(name = "dev_brunsli")
 
 local_repository(
-    name = "ignore_org_brunsli_java",
+    name = "ignore_dev_brunsli_java",
     path = "java",
 )
 

@@ -17,7 +17,7 @@ namespace brunsli {
 // cooridinates (x,y). The coefficients in the coeffs array are laid out
 // block-by-block, i.e. the DC coefficient in the block above is
 // *(coeffs - 64 * w).
-int PredictWithAdaptiveMedian(const coeff_t* coeffs, int x, int y, int w);
+int PredictWithAdaptiveMedian(const coeff_t* coeffs, int x, int y, int stride);
 
 }  // namespace brunsli
 

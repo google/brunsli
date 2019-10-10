@@ -12,11 +12,10 @@
 
 namespace brunsli {
 
-#define ANS_LOG_TAB_SIZE 10
-#define ANS_TAB_SIZE (1 << ANS_LOG_TAB_SIZE)
-#define ANS_TAB_MASK (ANS_TAB_SIZE - 1)
+#define ANS_LOG_TAB_SIZE 10u
+#define ANS_TAB_SIZE (1u << ANS_LOG_TAB_SIZE)
 #define ANS_MAX_SYMBOLS 18
-#define ANS_SIGNATURE 0x13  // Initial state, used as CRC.
+#define ANS_SIGNATURE 0x13u  // Initial state, used as CRC.
 
 }  // namespace brunsli
 

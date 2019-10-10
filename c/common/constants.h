@@ -69,8 +69,8 @@ static const uint8_t kBrunsliSignature[] = {
 };
 static const size_t kBrunsliSignatureSize = sizeof(kBrunsliSignature);
 
-static const int kMaxApp0Densities = 8;
-static const int kApp0Densities[kMaxApp0Densities] = {
+static const size_t kMaxApp0Densities = 8;
+static const uint16_t kApp0Densities[kMaxApp0Densities] = {
   1, 72, 96, 100, 150, 180, 240, 300
 };
 

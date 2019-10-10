@@ -4,7 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-package org.brunsli.wrapper;
+package dev.brunsli.wrapper;
 
 import java.nio.ByteBuffer;
 

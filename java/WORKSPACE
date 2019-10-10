@@ -1,7 +1,7 @@
-workspace(name = "org_brunsli_java")
+workspace(name = "dev_brunsli_java")
 
 local_repository(
-    name = "org_brunsli",
+    name = "dev_brunsli",
     path = "..",
 )
 

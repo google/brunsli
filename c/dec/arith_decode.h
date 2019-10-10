@@ -17,11 +17,11 @@ namespace brunsli {
 // skal@ wrote the original version, szabadka@ ported it for brunsli.
 class BinaryArithmeticDecoder {
  public:
-  BinaryArithmeticDecoder() : low_(0), high_(~0), value_(0) {}
+  BinaryArithmeticDecoder() : low_(0), high_(~0u), value_(0) {}
 
   void Init(BrunsliInput* in) {
     value_ = in->GetNextWord();
-    value_ = (value_ << 16) | in->GetNextWord();
+    value_ = (value_ << 16u) | in->GetNextWord();
   }
 
   // Returns the next bit decoded from the bit stream, based on the given 8-bit
@@ -29,7 +29,7 @@ class BinaryArithmeticDecoder {
   // be the same as the one used by the encoder.
   int ReadBit(int prob, BrunsliInput* in) {
     const uint32_t diff = high_ - low_;
-    const uint32_t split = low_ + (((uint64_t)diff * prob) >> 8);
+    const uint32_t split = low_ + (((uint64_t)diff * prob) >> 8u);
     int bit;
     if (value_ > split) {
       low_ = split + 1;
@@ -38,11 +38,11 @@ class BinaryArithmeticDecoder {
       high_ = split;
       bit = 0;
     }
-    if (((low_ ^ high_) >> 16) == 0) {
-      value_ = (value_ << 16) | in->GetNextWord();
-      low_ <<= 16;
-      high_ <<= 16;
-      high_ |= 0xffff;
+    if (((low_ ^ high_) >> 16u) == 0) {
+      value_ = (value_ << 16u) | in->GetNextWord();
+      low_ <<= 16u;
+      high_ <<= 16u;
+      high_ |= 0xFFFFu;
     }
     return bit;
   }

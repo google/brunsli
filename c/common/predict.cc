@@ -26,9 +26,9 @@ int AdaptiveMedian(int w, int n, int nw) {
 
 }  // namespace
 
-int PredictWithAdaptiveMedian(const coeff_t* coeffs, int x, int y, int w) {
+int PredictWithAdaptiveMedian(const coeff_t* coeffs, int x, int y, int stride) {
   const int offset1 = -kDCTBlockSize;
-  const int offset2 = -w * kDCTBlockSize;
+  const int offset2 = -stride;
   const int offset3 = offset2 + offset1;
   if (y != 0) {
     if (x != 0) {

@@ -97,30 +97,36 @@ bool WriteFile(const std::string& file_name, const std::string& content) {
 bool ProcessFile(const std::string& file_name,
                  const std::string& outfile_name) {
   std::string input;
-  if (!ReadFile(file_name, &input)) {
-    return false;
-  }
+  bool ok = ReadFile(file_name, &input);
+  if (!ok) return false;
 
   std::string output;
   {
     brunsli::JPEGData jpg;
     const uint8_t* input_data = reinterpret_cast<const uint8_t*>(input.data());
-    brunsli::BrunsliStatus status = brunsli::BrunsliDecodeJpeg(
-        input_data, input.size(), brunsli::BRUNSLI_READ_ALL, &jpg, nullptr);
+
+    brunsli::BrunsliStatus status =
+        brunsli::BrunsliDecodeJpeg(input_data, input.size(), &jpg);
+    ok = (status == brunsli::BRUNSLI_OK);
+
     input.clear();
     input.shrink_to_fit();
-    if (status != brunsli::BRUNSLI_OK) {
+    if (!ok) {
       fprintf(stderr, "Failed to parse Brunsli input.\n");
       return false;
     }
+
     brunsli::JPEGOutput writer(StringWriter, &output);
-    if (!brunsli::WriteJpeg(jpg, writer)) {
+    ok = brunsli::WriteJpeg(jpg, writer);
+    if (!ok) {
       fprintf(stderr, "Failed to serialize JPEG data.\n");
       return false;
     }
   }
 
-  return WriteFile(outfile_name, output);
+  ok = WriteFile(outfile_name, output);
+
+  return ok;
 }
 
 int main(int argc, char** argv) {

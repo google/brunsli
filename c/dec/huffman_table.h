@@ -12,16 +12,14 @@
 namespace brunsli {
 
 typedef struct {
-  uint8_t bits;     /* number of bits used for this symbol */
-  uint16_t value;   /* symbol value or table offset */
+  uint8_t bits;    /* number of bits used for this symbol */
+  uint16_t value;  /* symbol value or table offset */
 } HuffmanCode;
 
 /* Builds Huffman lookup table assuming code lengths are in symbol order. */
 /* Returns false in case of error (invalid tree or memory error). */
-int BuildHuffmanTable(HuffmanCode* root_table,
-                      int root_bits,
-                      const uint8_t* const code_lengths,
-                      int code_lengths_size,
+int BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
+                      const uint8_t* code_lengths, int code_lengths_size,
                       uint16_t* count_arg);
 
 }  // namespace brunsli
