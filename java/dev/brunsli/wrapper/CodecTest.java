@@ -17,6 +17,14 @@ import org.junit.runners.JUnit4;
 /** Tests for {@link dev.brunsli.wrapper.Codec}. */
 @RunWith(JUnit4.class)
 public class CodecTest {
+
+  static {
+    String jniLibrary = System.getProperty("BRUNSLI_JNI_LIBRARY");
+    if (jniLibrary != null) {
+      System.load(new java.io.File(jniLibrary).getAbsolutePath());
+    }
+  }
+
   @Test
   public void testRoundtrip() throws IOException {
     byte[] original = {(byte) 0xff, (byte) 0xd8, (byte) 0xff, (byte) 0xe0, 0x00, 0x10, 0x4a, 0x46,

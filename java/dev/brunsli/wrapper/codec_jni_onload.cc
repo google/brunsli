@@ -25,7 +25,7 @@ JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
     return -1;
   }
 
-  jclass clazz = env->FindClass("org/brunsli/wrapper/CodecJNI");
+  jclass clazz = env->FindClass("dev/brunsli/wrapper/CodecJNI");
   if (clazz == nullptr) {
     return -1;
   }

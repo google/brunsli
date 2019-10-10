@@ -59,7 +59,8 @@ class EntropyCodes {
  public:
   EntropyCodes(const std::vector<Histogram>& histograms, int num_bands,
                const std::vector<int>& offsets);
-  EntropyCodes(const EntropyCodes&) = delete;
+  // GCC is insane!
+  //EntropyCodes(const EntropyCodes&) = delete;
   void EncodeContextMap(size_t* storage_ix, uint8_t* storage) const;
   void BuildAndStoreEntropyCodes(size_t* storage_ix, uint8_t* storage);
   const ANSTable* GetANSTable(int context) const;

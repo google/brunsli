@@ -1,7 +1,7 @@
 workspace(name = "dev_brunsli_java")
 
 local_repository(
-    name = "devg_brunsli",
+    name = "dev_brunsli",
     path = "..",
 )
 
