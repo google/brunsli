@@ -1,0 +1,12 @@
+image: Visual Studio 2019
+configuration: Release
+
+install:
+  - cmake .
+
+build:
+  project: brunsli.sln
+
+artifacts:
+  - path: bin\Release\brunsli.exe
+    name: $(APPVEYOR_PROJECT_NAME)
