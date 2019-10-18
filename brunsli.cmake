@@ -37,6 +37,7 @@ set(BRUNSLI_ENC_SOURCES
   c/enc/histogram_encode.cc
   c/enc/jpeg_data_reader.cc
   c/enc/jpeg_huffman_decode.cc
+  c/enc/write_bits.cc
 )
 
 # TODO(eustas): split public/private headers.
