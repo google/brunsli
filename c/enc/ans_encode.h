@@ -12,6 +12,7 @@
 
 #include "../common/ans_params.h"
 #include <brunsli/types.h>
+#include "./write_bits.h"
 
 namespace brunsli {
 
@@ -52,8 +53,8 @@ class ANSCoder {
     const uint32_t offset = state_ - v * t.freq_ + t.start_;
     state_ = (v << ANS_LOG_TAB_SIZE) + offset;
 #else
-    state_ = ((state_ / t.freq_) << ANS_LOG_TAB_SIZE)
-           + (state_ % t.freq_) + t.start_;
+    state_ = ((state_ / t.freq_) << ANS_LOG_TAB_SIZE) + (state_ % t.freq_) +
+             t.start_;
 #endif
     return bits;
   }
@@ -64,9 +65,8 @@ class ANSCoder {
   uint32_t state_;
 };
 
-void BuildAndStoreANSEncodingData(const int* histogram,
-                                  ANSTable* table,
-                                  size_t* storage_ix, uint8_t* storage);
+void BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
+                                  Storage* storage);
 
 }  // namespace brunsli
 

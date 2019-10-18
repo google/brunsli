@@ -14,6 +14,11 @@
 #include <brunsli/brunsli_decode.h>
 #include <brunsli/jpeg_data_writer.h>
 
+#if defined(BRUNSLI_EXPERIMENTAL_GROUPS)
+#include "../experimental/groups.h"
+#include <highwayhash/data_parallel.h>
+#endif
+
 int StringWriter(void* data, const uint8_t* buf, size_t count) {
   std::string* output = reinterpret_cast<std::string*>(data);
   output->append(reinterpret_cast<const char*>(buf), count);
@@ -105,9 +110,21 @@ bool ProcessFile(const std::string& file_name,
     brunsli::JPEGData jpg;
     const uint8_t* input_data = reinterpret_cast<const uint8_t*>(input.data());
 
+#if defined(BRUNSLI_EXPERIMENTAL_GROUPS)
+    {
+      highwayhash::ThreadPool thread_pool(4);
+      brunsli::Executor executor = [&](const brunsli::Runnable& runnable,
+                                       size_t num_tasks) {
+        thread_pool.Run(0, num_tasks, runnable);
+      };
+      ok = brunsli::DecodeGroups(input_data, input.size(), &jpg, 32, 128,
+                                 &executor);
+    }
+#else
     brunsli::BrunsliStatus status =
         brunsli::BrunsliDecodeJpeg(input_data, input.size(), &jpg);
     ok = (status == brunsli::BRUNSLI_OK);
+#endif
 
     input.clear();
     input.shrink_to_fit();
@@ -139,7 +156,9 @@ int main(int argc, char** argv) {
     fprintf(stderr, "Empty input file name.\n");
     return EXIT_FAILURE;
   }
-  const std::string outfile_name = argc == 2 ? file_name + ".jpg" :
-                                   std::string(argv[2]);
-  return ProcessFile(file_name, outfile_name) ? EXIT_SUCCESS : EXIT_FAILURE;
+  const std::string outfile_name =
+      argc == 2 ? file_name + ".jpg" : std::string(argv[2]);
+
+  bool ok = ProcessFile(file_name, outfile_name);
+  return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }

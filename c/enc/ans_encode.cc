@@ -10,6 +10,7 @@
 
 #include <brunsli/types.h>
 #include "./histogram_encode.h"
+#include "./write_bits.h"
 
 namespace brunsli {
 
@@ -38,17 +39,16 @@ void ANSBuildInfoTable(const int* counts, int alphabet_size,
 
 }  // namespace
 
-void BuildAndStoreANSEncodingData(const int* histogram,
-                                  ANSTable* table,
-                                  size_t* storage_ix, uint8_t* storage) {
+void BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
+                                  Storage* storage) {
   int num_symbols;
-  int symbols[kMaxNumSymbolsForSmallCode] = { 0 };
+  int symbols[kMaxNumSymbolsForSmallCode] = {0};
   std::vector<int> counts(histogram, histogram + ANS_MAX_SYMBOLS);
   int omit_pos;
   NormalizeCounts(&counts[0], &omit_pos, ANS_MAX_SYMBOLS, ANS_LOG_TAB_SIZE,
                   &num_symbols, symbols);
   ANSBuildInfoTable(&counts[0], ANS_MAX_SYMBOLS, table->info_);
-  EncodeCounts(&counts[0], omit_pos, num_symbols, symbols, storage_ix, storage);
+  EncodeCounts(&counts[0], omit_pos, num_symbols, symbols, storage);
 }
 
 }  // namespace brunsli

@@ -11,6 +11,7 @@
 
 #include "../common/ans_params.h"
 #include <brunsli/types.h>
+#include "./write_bits.h"
 
 namespace brunsli {
 
@@ -25,12 +26,8 @@ static const int kMaxNumSymbolsForSmallCode = 4;
 // Each count will all be rounded to multiples of
 // 1 << GetPopulationCountPrecision(count), except possibly for one. The index
 // of that count will be stored in *omit_pos.
-void NormalizeCounts(int* counts,
-                     int* omit_pos,
-                     const int length,
-                     const int precision_bits,
-                     int* num_symbols,
-                     int* symbols);
+void NormalizeCounts(int* counts, int* omit_pos, const int length,
+                     const int precision_bits, int* num_symbols, int* symbols);
 
 // Stores a histogram in counts[0 .. ANS_MAX_SYMBOLS) to the bit-stream where
 // the sum of all population counts is ANS_TAB_SIZE and the number of symbols
@@ -39,12 +36,8 @@ void NormalizeCounts(int* counts,
 // with non-zero population counts.
 // Each count must be rounded to a multiple of
 // 1 << GetPopulationCountPrecision(count), except possibly counts[omit_pos].
-void EncodeCounts(const int* counts,
-                  const int omit_pos,
-                  const int num_symbols,
-                  const int* symbols,
-                  size_t* storage_ix,
-                  uint8_t* storage);
+void EncodeCounts(const int* counts, const int omit_pos, const int num_symbols,
+                  const int* symbols, Storage* storage);
 
 // Returns an estimate of the number of bits required to encode the given
 // histogram (header bits plus data bits).

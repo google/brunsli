@@ -18,6 +18,7 @@
 #include "../common/platform.h"
 #include <brunsli/types.h>
 #include "./ans_encode.h"
+#include "./write_bits.h"
 
 namespace brunsli {
 namespace internal {
@@ -60,10 +61,10 @@ class EntropyCodes {
  public:
   EntropyCodes(const std::vector<Histogram>& histograms, int num_bands,
                const std::vector<int>& offsets);
-  // GCC is insane!
+  // GCC declares it won't apply RVO, even if it actually does.
   //EntropyCodes(const EntropyCodes&) = delete;
-  void EncodeContextMap(size_t* storage_ix, uint8_t* storage) const;
-  void BuildAndStoreEntropyCodes(size_t* storage_ix, uint8_t* storage);
+  void EncodeContextMap(Storage* storage) const;
+  void BuildAndStoreEntropyCodes(Storage* storage);
   const ANSTable* GetANSTable(int context) const;
 
  private:
@@ -101,7 +102,7 @@ class DataStream {
   // Encodes the next bit to the bit stream, based on the 8-bit precision
   // probability, i.e. P(bit = 0) = prob / 256. Statistics are updated in 'p'.
   void AddBit(Prob* const p, int bit);
-  void EncodeCodeWords(EntropyCodes* s, size_t* storage_ix, uint8_t* storage);
+  void EncodeCodeWords(EntropyCodes* s, Storage* storage);
 
  private:
   struct CodeWord {
@@ -145,8 +146,8 @@ bool PredictDCCoeffs(State* state);
 void EncodeDC(State* state);
 void EncodeAC(State* state);
 EntropyCodes PrepareEntropyCodes(State* state);
-bool BrunsliSerialize(State* state, const JPEGData& jpg,
-                      uint32_t skip_sections, uint8_t* data, size_t* len);
+bool BrunsliSerialize(State* state, const JPEGData& jpg, uint32_t skip_sections,
+                      uint8_t* data, size_t* len);
 
 }  // namespace enc
 }  // namespace internal
