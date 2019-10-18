@@ -10,14 +10,20 @@
 #include <vector>
 
 #include <brunsli/types.h>
+#include "./write_bits.h"
 
 namespace brunsli {
+
+// Builds a Huffman tree for the given histogram, and encodes it into storage
+// in a format that can be read by HuffmanDecodingData::ReadFromBitstream.
+void BuildAndStoreHuffmanTree(const uint32_t* histogram, const size_t length,
+                              uint8_t* depth, uint16_t* bits,
+                              Storage* storage);
 
 // Encodes the given context map to the bit stream. The number of different
 // histogram ids is given by num_clusters.
 void EncodeContextMap(const std::vector<uint32_t>& context_map,
-                      size_t num_clusters,
-                      size_t* storage_ix, uint8_t* storage);
+                      size_t num_clusters, Storage* storage);
 
 }  // namespace brunsli
 

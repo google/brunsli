@@ -19,18 +19,18 @@ namespace brunsli {
 
 // Static Huffman code for encoding histogram length.
 static const uint8_t kHistogramLengthBitLengths[ANS_MAX_SYMBOLS - 2] = {
-  8, 8, 6, 6, 6, 5, 4, 3, 3, 3, 3, 3, 3, 4, 5, 7,
+    8, 8, 6, 6, 6, 5, 4, 3, 3, 3, 3, 3, 3, 4, 5, 7,
 };
 static const uint16_t kHistogramLengthSymbols[ANS_MAX_SYMBOLS - 2] = {
-  127, 255, 15, 47, 31, 7, 3, 0, 4, 2, 6, 1, 5, 11, 23, 63,
+    127, 255, 15, 47, 31, 7, 3, 0, 4, 2, 6, 1, 5, 11, 23, 63,
 };
 
 // Static Huffman code for encoding logcounts.
 static const uint8_t kLogCountBitLengths[ANS_LOG_TAB_SIZE + 1] = {
-  5, 4, 4, 4, 3, 3, 2, 3, 3, 6, 6,
+    5, 4, 4, 4, 3, 3, 2, 3, 3, 6, 6,
 };
 static const uint16_t kLogCountSymbols[ANS_LOG_TAB_SIZE + 1] = {
-  15, 3, 11, 7, 2, 6, 0, 1, 5, 31, 63,
+    15, 3, 11, 7, 2, 6, 0, 1, 5, 31, 63,
 };
 
 // Returns the difference between largest count that can be represented and is
@@ -42,9 +42,9 @@ static int SmallestIncrement(int count) {
   return (1 << drop_bits);
 }
 
-template<bool minimize_error_of_sum> bool RebalanceHistogram(
-    const float* targets, int max_symbol, int table_size, int* omit_pos,
-    int* counts) {
+template <bool minimize_error_of_sum>
+bool RebalanceHistogram(const float* targets, int max_symbol, int table_size,
+                        int* omit_pos, int* counts) {
   BRUNSLI_DCHECK(table_size >= 2);
   int sum = 0;
   float sum_nonrounded = 0.0;
@@ -66,8 +66,8 @@ template<bool minimize_error_of_sum> bool RebalanceHistogram(
       counts[n] -= counts[n] & (inc - 1);
       const float target =
           minimize_error_of_sum ? (sum_nonrounded - sum) : targets[n];
-      if (counts[n] == 0 || (target > counts[n] + inc / 2 &&
-                             counts[n] + inc < table_size)) {
+      if (counts[n] == 0 ||
+          (target > counts[n] + inc / 2 && counts[n] + inc < table_size)) {
         counts[n] += inc;
       }
       sum += counts[n];
@@ -83,7 +83,6 @@ template<bool minimize_error_of_sum> bool RebalanceHistogram(
   *omit_pos = remainder_pos;
   return counts[remainder_pos] > 0;
 }
-
 
 void NormalizeCounts(int* counts, int* omit_pos, const int length,
                      const int precision_bits, int* num_symbols, int* symbols) {
@@ -128,33 +127,29 @@ void NormalizeCounts(int* counts, int* omit_pos, const int length,
   }
 }
 
-void EncodeCounts(const int* counts,
-                  const int omit_pos,
-                  const int num_symbols,
-                  const int* symbols,
-                  size_t* storage_ix,
-                  uint8_t* storage) {
+void EncodeCounts(const int* counts, const int omit_pos, const int num_symbols,
+                  const int* symbols, Storage* storage) {
   int max_bits = 5;  // = 1 + Log2Floor(ANS_MAX_SYMBOLS - 1);
   if (num_symbols <= 2) {
     // Small tree marker to encode 1-2 symbols.
-    WriteBits(1, 1, storage_ix, storage);
+    WriteBits(1, 1, storage);
     if (num_symbols == 0) {
-      WriteBits(max_bits + 1, 0, storage_ix, storage);
+      WriteBits(max_bits + 1, 0, storage);
     } else {
-      WriteBits(1, num_symbols - 1, storage_ix, storage);
+      WriteBits(1, num_symbols - 1, storage);
       for (int i = 0; i < num_symbols; ++i) {
-        WriteBits(max_bits, symbols[i], storage_ix, storage);
+        WriteBits(max_bits, symbols[i], storage);
       }
     }
     if (num_symbols == 2) {
-      WriteBits(ANS_LOG_TAB_SIZE, counts[symbols[0]], storage_ix, storage);
+      WriteBits(ANS_LOG_TAB_SIZE, counts[symbols[0]], storage);
     }
   } else {
     // Mark non-small tree.
-    WriteBits(1, 0, storage_ix, storage);
+    WriteBits(1, 0, storage);
 
     int length = 0;
-    int logcounts[ANS_MAX_SYMBOLS] = { 0 };
+    int logcounts[ANS_MAX_SYMBOLS] = {0};
     int omit_log = 0;
     for (int i = 0; i < ANS_MAX_SYMBOLS; ++i) {
       BRUNSLI_DCHECK(counts[i] <= ANS_TAB_SIZE);
@@ -175,14 +170,12 @@ void EncodeCounts(const int* counts,
     // Since num_symbols >= 3, we know that length >= 3, therefore we encode
     // length - 3 with a static Huffman code.
     WriteBits(kHistogramLengthBitLengths[length - 3],
-              kHistogramLengthSymbols[length - 3],
-              storage_ix, storage);
+              kHistogramLengthSymbols[length - 3], storage);
 
     // The logcount values are encoded with a static Huffman code.
     for (int i = 0; i < length; ++i) {
       WriteBits(kLogCountBitLengths[logcounts[i]],
-                kLogCountSymbols[logcounts[i]],
-                storage_ix, storage);
+                kLogCountSymbols[logcounts[i]], storage);
     }
     for (int i = 0; i < length; ++i) {
       if (logcounts[i] > 1 && i != omit_pos) {
@@ -190,7 +183,7 @@ void EncodeCounts(const int* counts,
         int drop_bits = logcounts[i] - 1 - bitcount;
         BRUNSLI_CHECK((counts[i] & ((1 << drop_bits) - 1)) == 0);
         WriteBits(bitcount, (counts[i] >> drop_bits) - (1 << bitcount),
-                  storage_ix, storage);
+                  storage);
       }
     }
   }

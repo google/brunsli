@@ -46,10 +46,6 @@
 #define BRUNSLI_X_BIG_ENDIAN BIG_ENDIAN
 #endif
 
-#if defined(BRUNSLI_DEBUG)
-#include <cassert>
-#endif
-
 /* The following macros were borrowed from https://github.com/nemequ/hedley
  * with permission of original author - Evan Nemerson <evan@nemerson.com> */
 
@@ -492,12 +488,6 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 #define BRUNSLI_LOG_ERROR() BRUNSLI_LOG_(ERROR)
 #endif  // defined(BRUNSLI_DISABLE_LOG)
 
-#if defined(BRUNSLI_DEBUG)
-#define BRUNSLI_DCHECK(V) assert(V)
-#else
-#define BRUNSLI_DCHECK(V)
-#endif
-
 namespace brunsli {
 void BrunsliDumpAndAbort(const char* f, int l, const char* fn);
 }  // namespace brunsli
@@ -509,6 +499,12 @@ void BrunsliDumpAndAbort(const char* f, int l, const char* fn);
     /* Tell the compiler, that there is no escape route. */           \
     while (true) ;                                                    \
   }
+
+#if defined(BRUNSLI_DEBUG)
+#define BRUNSLI_DCHECK(V) BRUNSLI_CHECK(V)
+#else
+#define BRUNSLI_DCHECK(V)
+#endif
 
 // TODO: Pick up upgrade after https://github.com/google/brotli/pull/636
 //               is landed and merged.

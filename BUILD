@@ -157,24 +157,65 @@ cc_library(
     ],
 )
 
+config_setting(
+    name = "experimental",
+    define_values = {
+        "brunsli_groups": "experimental",
+    },
+)
+
+EXPERIMENTAL_DEPS = select({
+    ":experimental": [
+        ":groups",
+        "@highwayhash//:highwayhash_inc",
+    ],
+    "//conditions:default": [],
+})
+
+EXPERIMENTAL_DEFINES = select({
+    ":experimental": ["BRUNSLI_EXPERIMENTAL_GROUPS"],
+    "//conditions:default": [],
+})
+
+EXPERIMENTAL_LINKOPTS = select({
+    ":experimental": ["-pthread"],
+    "//conditions:default": [],
+})
+
+cc_library(
+    name = "groups",
+    srcs = ["c/experimental/groups.cc"],
+    hdrs = ["c/experimental/groups.h"],
+    copts = STRICT_C_OPTIONS,
+    deps = [
+        ":brunslicommon",
+        ":brunslidec",
+        ":brunslienc",
+    ],
+)
+
 cc_binary(
     name = "cbrunsli",
     srcs = ["c/tools/cbrunsli.cc"],
     copts = STRICT_C_OPTIONS,
+    defines = EXPERIMENTAL_DEFINES,
+    linkopts = EXPERIMENTAL_LINKOPTS,
     deps = [
         ":brunslicommon",
         ":brunslienc",
-    ],
+    ] + EXPERIMENTAL_DEPS,
 )
 
 cc_binary(
     name = "dbrunsli",
     srcs = ["c/tools/dbrunsli.cc"],
     copts = STRICT_C_OPTIONS,
+    defines = EXPERIMENTAL_DEFINES,
+    linkopts = EXPERIMENTAL_LINKOPTS,
     deps = [
         ":brunslicommon",
         ":brunslidec",
-    ],
+    ] + EXPERIMENTAL_DEPS,
 )
 
 cc_test(
