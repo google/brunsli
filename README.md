@@ -1,5 +1,5 @@
 ### Introduction
-[![Travis Build Status](https://travis-ci.com/google/brunsli.svg?branch=master)](https://travis-ci.com/google/brunsli)
+[![Travis Build Status](https://travis-ci.org/google/brunsli.svg?branch=master)](https://travis-ci.org/google/brunsli)
 
 Brunsli is a lossless JPEG repacking library.
 
