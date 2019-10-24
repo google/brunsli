@@ -9,5 +9,5 @@ build:
   project: brunsli.sln
 
 artifacts:
-  - path: \**\*.*
+  - path: \Release\**\*.*
     name: $(APPVEYOR_PROJECT_NAME)
