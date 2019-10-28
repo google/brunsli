@@ -29,23 +29,25 @@ Stay tuned!
 
 ## Build instructions
 
-### Linux
+### Clone and prepare
 
-The basic commands to clone, build, and install brunsli on Linux are:
+Run the following commands to clone and prepare brunsli:
 
-    git clone https://github.com/google/brunsli.git
+    git clone --depth=1 https://github.com/google/brunsli.git
     cd brunsli
     git submodule update --init --recursive
-    cmake ./
+    mkdir build; cd build
+    cmake ..
+
+### Linux
+
+On Linux, compile and install by running: 
+
     make -j
     make -j install
 
 ### Windows
 
-The basic commands to clone and build brunsli on Windows with Visual Studio are:
+On Windows, compile with Visual Studio:
 
-    git clone https://github.com/google/brunsli.git
-    cd brunsli
-    git submodule update --init --recursive
-    cmake ./
     msbuild brunsli.sln
