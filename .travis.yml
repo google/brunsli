@@ -3,7 +3,8 @@ dist: bionic
 osx_image: xcode11.2
 
 script:
- - cmake ./
+ - mkdir build; cd build
+ - cmake ..
  - make -j
  - sudo make -j install
 
