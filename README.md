@@ -1,4 +1,4 @@
-### Introduction
+## Introduction
 [![Travis Build Status](https://travis-ci.org/google/brunsli.svg?branch=master)](https://travis-ci.org/google/brunsli)
 
 Brunsli is a lossless JPEG repacking library.
@@ -27,13 +27,25 @@ The currently planned/on-going integration work includes:
 
 Stay tuned!
 
-### Build instructions
+## Build instructions
 
-The basic commands to clone, build, and install brunsli are:
+### Linux
 
-    $ git clone https://github.com/google/brunsli.git
-    $ cd brunsli
-    $ git submodule update --init --recursive
-    $ cmake ./
-    $ make -j
-    $ make -j install
+The basic commands to clone, build, and install brunsli on Linux are:
+
+    git clone https://github.com/google/brunsli.git
+    cd brunsli
+    git submodule update --init --recursive
+    cmake ./
+    make -j
+    make -j install
+
+### Windows
+
+The basic commands to clone and build brunsli on Windows with Visual Studio are:
+
+    git clone https://github.com/google/brunsli.git
+    cd brunsli
+    git submodule update --init --recursive
+    cmake ./
+    msbuild brunsli.sln
