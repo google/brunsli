@@ -30,9 +30,8 @@ int ReadHistogramLength(BrunsliBitReader* br) {
   }
   BuildHuffmanTable(table, 8, kHistogramLengthBitLengths, 16, &counts[0]);
   const HuffmanCode* p = table;
-  BrunsliBitReaderFillWindow(br, 8);
-  p += (br->val_ >> br->bit_pos_) & 255;
-  br->bit_pos_ += p->bits;
+  p += BrunsliBitReaderGet(br, 8);
+  BrunsliBitReaderDrop(br, p->bits);
   return p->value + 3;
 }
 
@@ -40,25 +39,20 @@ int ReadHistogramLength(BrunsliBitReader* br) {
 
 bool ReadHistogram(int precision_bits, int length, int* counts,
                    BrunsliBitReader* br) {
-  if (!BrunsliBitReaderReadMoreInput(br)) {
-    BRUNSLI_LOG_DEBUG() << "[ReadHistogram] Unexpected end of input."
-                        << BRUNSLI_ENDL();
-    return false;
-  }
-  int simple_code = BrunsliBitReaderReadBits(br, 1);
+  int simple_code = BrunsliBitReaderRead(br, 1);
   if (simple_code == 1) {
     int i;
     int max_bits_counter = length - 1;
     int max_bits = 0;
     int symbols[2] = {0};
-    const int num_symbols = BrunsliBitReaderReadBits(br, 1) + 1;
+    const int num_symbols = BrunsliBitReaderRead(br, 1) + 1;
     while (max_bits_counter) {
       max_bits_counter >>= 1;
       ++max_bits;
     }
     memset(counts, 0, length * sizeof(counts[0]));
     for (i = 0; i < num_symbols; ++i) {
-      symbols[i] = BrunsliBitReaderReadBits(br, max_bits) % length;
+      symbols[i] = BrunsliBitReaderRead(br, max_bits) % length;
     }
     if (num_symbols == 1) {
       counts[symbols[0]] = 1u << precision_bits;
@@ -66,7 +60,7 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
       if (symbols[0] == symbols[1]) {  // corrupt data
         return false;
       }
-      counts[symbols[0]] = BrunsliBitReaderReadBits(br, precision_bits);
+      counts[symbols[0]] = BrunsliBitReaderRead(br, precision_bits);
       counts[symbols[1]] = (1u << precision_bits) - counts[symbols[0]];
     }
   } else {
@@ -89,9 +83,8 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
     BRUNSLI_DCHECK(real_length > 2);
     for (int i = 0; i < real_length; ++i) {
       const HuffmanCode* p = huff;
-      BrunsliBitReaderFillWindow(br, 6);
-      p += (br->val_ >> br->bit_pos_) & 63;
-      br->bit_pos_ += p->bits;
+      p += BrunsliBitReaderGet(br, 6);
+      BrunsliBitReaderDrop(br, p->bits);
       log_counts[i] = p->value;
       if (log_counts[i] > omit_log) {
         omit_log = log_counts[i];
@@ -109,9 +102,8 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
         counts[i] = 1;
       } else {
         int bit_count = GetPopulationCountPrecision(code - 1);
-        counts[i] =
-            (1u << (code - 1)) +
-            (BrunsliBitReaderReadBits(br, bit_count) << (code - 1 - bit_count));
+        counts[i] = (1u << (code - 1)) + (BrunsliBitReaderRead(br, bit_count)
+                                          << (code - 1 - bit_count));
       }
       total_count += counts[i];
     }
@@ -122,7 +114,7 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
     }
     counts[omit_pos] = (1u << precision_bits) - total_count;
   }
-  return true;
+  return BrunsliBitReaderIsHealthy(br);
 }
 
 }  // namespace brunsli

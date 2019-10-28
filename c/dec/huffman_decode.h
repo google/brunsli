@@ -36,18 +36,17 @@ struct HuffmanDecoder {
   // Decodes the next Huffman coded symbol from the bit-stream.
   static uint16_t ReadSymbol(const HuffmanDecodingData& code,
                              BrunsliBitReader* br) {
-    size_t nbits;
-    BrunsliBitReaderFillWindow(br, 16);
+    size_t n_bits;
     const HuffmanCode* table = &code.table_[0];
-    table += (br->val_ >> br->bit_pos_) & kHuffmanTableMask;
-    nbits = table->bits;
-    if (nbits > kHuffmanTableBits) {
-      nbits -= kHuffmanTableBits;
-      br->bit_pos_ += kHuffmanTableBits;
+    table += BrunsliBitReaderGet(br, kHuffmanTableBits);
+    n_bits = table->bits;
+    if (n_bits > kHuffmanTableBits) {
+      BrunsliBitReaderDrop(br, kHuffmanTableBits);
+      n_bits -= kHuffmanTableBits;
       table += table->value;
-      table += (br->val_ >> br->bit_pos_) & ((1u << nbits) - 1);
+      table += BrunsliBitReaderGet(br, n_bits);
     }
-    br->bit_pos_ += table->bits;
+    BrunsliBitReaderDrop(br, table->bits);
     return table->value;
   }
 };

@@ -47,9 +47,9 @@ bool DecodeContextMap(int num_h_trees, int context_map_size,
   }
 
   int max_run_length_prefix = 0;
-  int use_rle_for_zeros = (int)BrunsliBitReaderReadBits(br, 1);
+  int use_rle_for_zeros = (int)BrunsliBitReaderRead(br, 1);
   if (use_rle_for_zeros) {
-    max_run_length_prefix = (int)BrunsliBitReaderReadBits(br, 4) + 1;
+    max_run_length_prefix = (int)BrunsliBitReaderRead(br, 4) + 1;
   }
   std::vector<HuffmanCode> table(kMaxHuffmanTableSize);
   HuffmanDecodingData entropy;
@@ -58,17 +58,12 @@ bool DecodeContextMap(int num_h_trees, int context_map_size,
   }
   for (int i = 0; i < context_map_size;) {
     int code;
-    if (!BrunsliBitReaderReadMoreInput(br)) {
-      BRUNSLI_LOG_DEBUG() << "[DecodeContextMap] Unexpected end of input."
-                          << BRUNSLI_ENDL();
-      return false;
-    }
     code = HuffmanDecoder::ReadSymbol(entropy, br);
     if (code == 0) {
       context_map[i] = 0;
       ++i;
     } else if (code <= max_run_length_prefix) {
-      int reps = 1 + (1u << code) + (int)BrunsliBitReaderReadBits(br, code);
+      int reps = 1 + (1u << code) + (int)BrunsliBitReaderRead(br, code);
       while (--reps) {
         if (i >= context_map_size) {
           return false;
@@ -81,10 +76,10 @@ bool DecodeContextMap(int num_h_trees, int context_map_size,
       ++i;
     }
   }
-  if (BrunsliBitReaderReadBits(br, 1)) {
+  if (BrunsliBitReaderRead(br, 1)) {
     InverseMoveToFrontTransform(context_map, context_map_size);
   }
-  return true;
+  return BrunsliBitReaderIsHealthy(br);
 }
 
 }  // namespace brunsli

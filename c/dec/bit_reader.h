@@ -14,126 +14,121 @@
 
 namespace brunsli {
 
-#define BRUNSLI_BIT_READER_SLACK (32 + 8)
+typedef struct {
+  const uint8_t* next_;
+  const uint8_t* end_;
+  uint32_t num_bits_;
+  uint32_t bits_;
+  /*
+     Number of "virtual" zero bytes located after the end of buffer being
+     put into the bit buffer.
 
-/* Masking with this expression turns to a single "Unsigned Bit Field Extract"
-   UBFX instruction on ARM. */
-static BRUNSLI_INLINE uint32_t BrunsliBitMask(uint32_t n) {
+     The concept of debt is useful for two purposes:
+      - postpone handling of "unexpected end of input"
+      - allow efficient peeking of input near the end
+
+     It is OK to have debt, while "balance" is non-negative.
+     BrunsliBitReaderUnload returns debt, if possible.
+   */
+  uint32_t num_debt_bytes_;
+} BrunsliBitReader;
+
+static BRUNSLI_INLINE uint32_t BrunsliBitReaderBitMask(uint32_t n) {
   return ~((0xFFFFFFFFu) << n);
 }
 
-// TODO: remove this definition when it becomes unused.
-#if (BRUNSLI_64_BITS && BRUNSLI_LITTLE_ENDIAN)
-#define BRUNSLI_64_BITS_LITTLE_ENDIAN 1
-#else
-#define BRUNSLI_64_BITS_LITTLE_ENDIAN 0
-#endif
-
-typedef struct {
-#if (BRUNSLI_64_BITS_LITTLE_ENDIAN)
-  uint64_t val_; /* pre-fetched bits */
-#else
-  uint32_t val_; /* pre-fetched bits */
-#endif
-  const uint8_t* src_; /* next input */
-  int available_;      /* number of bytes available to read */
-  uint32_t bit_pos_;   /* current bit-reading position in val_ */
-
-  /* Tail is used as data source when input is almost depleted. At most
-   * BRUNSLI_BIT_READER_SLACK are user input, the remaining are zeros to make
-   * a guarantee that BRUNSLI_BIT_READER_SLACK bytes would be safely read,
-   * plus extra space for bulk (uint64_t) reads. */
-  uint8_t tail_[BRUNSLI_BIT_READER_SLACK * 2];
-} BrunsliBitReader;
-
-/* Initializes the bit-reader fields. Returns 0 in case of failure. */
-void BrunsliBitReaderInit(BrunsliBitReader* br, const uint8_t* buffer,
-                          size_t length);
-
-/*
- * Reload up to 32 bits byte-by-byte.
- * This function works on both little- and big-endian.
- */
-static BRUNSLI_INLINE void BrunsliShiftBytes32(BrunsliBitReader* br) {
-  while (br->bit_pos_ >= 8) {
-    br->val_ >>= 8u;
-    br->val_ |= ((uint32_t)*br->src_) << 24u;
-    ++br->src_;
-    --br->available_;
-    br->bit_pos_ -= 8;
-  }
+/* Internal. */
+static BRUNSLI_INLINE void BrunsliBitReaderOweByte(BrunsliBitReader* br) {
+  br->num_bits_ += 8;
+  br->num_debt_bytes_++;
 }
 
-/* Prepare for further input reading. */
-static BRUNSLI_INLINE int BrunsliBitReaderReadMoreInput(
-    BrunsliBitReader* const br) {
-  if (br->available_ <= -8) {
-    return 0;
-  }
-  int tail_offset = BRUNSLI_BIT_READER_SLACK - br->available_;
-  if (tail_offset >= 0) {
-    br->src_ = &br->tail_[tail_offset];
-  }
-  return 1;
-}
-
-/* Guarantees that there are at least n_bits in the buffer.
-   n_bits should be in the range [1..24] */
-static BRUNSLI_INLINE void BrunsliBitReaderFillWindow(
-    BrunsliBitReader* const br, int n_bits) {
-#if (BRUNSLI_64_BITS_LITTLE_ENDIAN)
-  // We guarantee 32 available bits, no matter how much is requested.
-  (void)n_bits;
-  if (br->bit_pos_ >= 32) {
-    br->val_ >>= 32u;
-    br->bit_pos_ ^= 32u; /* here same as -= 32 because of the if condition */
-    br->val_ |= ((uint64_t)(*((const uint32_t*)br->src_))) << 32u;
-    br->available_ -= 4;
-    br->src_ += 4;
-  }
-#elif (BRUNSLI_LITTLE_ENDIAN)
-  if (br->bit_pos_ >= 16) {
-    br->val_ >>= 16;
-    br->bit_pos_ ^= 16; /* here same as -= 16 because of the if condition */
-    br->val_ |= ((uint32_t)(*((const uint16_t*)br->src_))) << 16;
-    br->available_ -= 2;
-    br->src_ += 2;
-  }
-  if (!BRUNSLI_IS_CONSTANT(n_bits) || (n_bits > 16)) {
-    if (br->bit_pos_ >= 8) {
-      br->val_ >>= 8;
-      br->bit_pos_ ^= 8; /* here same as -= 8 because of the if condition */
-      br->val_ |= ((uint32_t)(*br->src_)) << 24;
-      --br->available_;
-      ++br->src_;
+/* Internal. */
+static BRUNSLI_INLINE void BrunsliBitReaderMaybeFetchByte(BrunsliBitReader* br,
+                                                          uint32_t n_bits) {
+  if (br->num_bits_ < n_bits) {
+    if (BRUNSLI_PREDICT_FALSE(br->next_ >= br->end_)) {
+      BrunsliBitReaderOweByte(br);
+    } else {
+      br->bits_ |= static_cast<uint32_t>(*br->next_) << br->num_bits_;
+      br->num_bits_ += 8;
+      br->next_++;
     }
   }
-#else
-  BrunsliShiftBytes32(br);
-#endif
 }
 
-/* Reads the specified number of bits from Read Buffer. */
-static BRUNSLI_INLINE uint32_t
-BrunsliBitReaderReadBits(BrunsliBitReader* const br, uint32_t n_bits) {
-  uint32_t val;
-  BrunsliBitReaderFillWindow(br, n_bits);
-  val = (uint32_t)(br->val_ >> br->bit_pos_) & BrunsliBitMask(n_bits);
-  BRUNSLI_LOG_DEBUG() << "[BrunsliReadBits]  " << br->bit_pos_ << " "
-                      << std::setw(2) << n_bits << "  val: " << std::setw(6)
-                      << std::hex << val << BRUNSLI_ENDL();
-  br->bit_pos_ += (uint32_t)n_bits;
-  return val;
+static BRUNSLI_INLINE void BrunsliBitReaderInit(BrunsliBitReader* br,
+                                                const uint8_t* buffer,
+                                                size_t length) {
+  br->next_ = buffer;
+  br->end_ = buffer + length;
+  br->num_bits_ = 0;
+  br->bits_ = 0;
+  br->num_debt_bytes_ = 0;
 }
 
-/* Returns the number of bytes available skipping bits. */
-static BRUNSLI_INLINE int BrunsliBitReaderJumpToByteBoundary(
-    BrunsliBitReader* br) {
-  uint32_t nbits = br->bit_pos_ & 7u;
-  if (nbits > 0) {
-    BrunsliBitReaderReadBits(br, 8 - nbits);
+static BRUNSLI_INLINE uint32_t BrunsliBitReaderGet(BrunsliBitReader* br,
+                                                   uint32_t n_bits) {
+  BRUNSLI_DCHECK(n_bits <= 24);
+  BrunsliBitReaderMaybeFetchByte(br, n_bits);
+  if (n_bits > 8) {
+    BrunsliBitReaderMaybeFetchByte(br, n_bits);
+    if (n_bits > 16) BrunsliBitReaderMaybeFetchByte(br, n_bits);
   }
-  return br->available_ + sizeof(br->val_) - (br->bit_pos_ >> 3u);
+  return br->bits_ & BrunsliBitReaderBitMask(n_bits);
+}
+
+static BRUNSLI_INLINE void BrunsliBitReaderDrop(BrunsliBitReader* br,
+                                                uint32_t n_bits) {
+  BRUNSLI_DCHECK(n_bits <= br->num_bits_);
+  br->bits_ >>= n_bits;
+  br->num_bits_ -= n_bits;
+}
+
+static BRUNSLI_INLINE uint32_t BrunsliBitReaderRead(BrunsliBitReader* br,
+                                                    uint32_t n_bits) {
+  uint32_t result = BrunsliBitReaderGet(br, n_bits);
+  BrunsliBitReaderDrop(br, n_bits);
+  return result;
+}
+
+/*
+   Internal.
+   Tries to return "debt" if any, and normalize the state.
+
+   Normal state means that less than 8 bits are held in bit buffer.
+   Peeking (BrunsliBitReaderGet) more bits than actually using
+   (BrunsliBitReaderDrop) could put bit reader into denormal state.
+*/
+static BRUNSLI_INLINE void BrunsliBitReaderUnload(BrunsliBitReader* br) {
+  // Cancel the overdraft.
+  while ((br->num_debt_bytes_ > 0) && (br->num_bits_ >= 8)) {
+    br->num_debt_bytes_--;
+    br->num_bits_ -= 8;
+  }
+  // Return unused bits.
+  while (br->num_bits_ >= 8) {
+    br->next_--;
+    br->num_bits_ -= 8;
+  }
+  br->bits_ &= BrunsliBitReaderBitMask(br->num_bits_);
+}
+
+/*
+   Returns the number of unused bytes.
+   Drops unused bits of the last used byte.
+ */
+static BRUNSLI_INLINE size_t BrunsliBitReaderFinish(BrunsliBitReader* br) {
+  // TODO: check the tail bits?
+  uint32_t n_bits = br->num_bits_ & 7u;
+  if (n_bits > 0) BrunsliBitReaderDrop(br, n_bits);
+  BrunsliBitReaderUnload(br);
+  return br->end_ - br->next_;
+}
+
+static BRUNSLI_INLINE size_t BrunsliBitReaderIsHealthy(BrunsliBitReader* br) {
+  BrunsliBitReaderUnload(br);
+  return br->num_debt_bytes_ == 0;
 }
 
 }  // namespace brunsli
