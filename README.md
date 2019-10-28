@@ -36,13 +36,13 @@ Run the following commands to clone and prepare brunsli:
     git clone --depth=1 https://github.com/google/brunsli.git
     cd brunsli
     git submodule update --init --recursive
-    mkdir build
-    cd build
+    mkdir bin
+    cd bin
     cmake ..
 
-### Linux
+### Linux & macOS
 
-On Linux, compile and install by running: 
+On Linux and macOS, compile and install by running: 
 
     make -j
     make -j install
