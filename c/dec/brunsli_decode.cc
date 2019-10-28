@@ -66,12 +66,12 @@ inline int DivCeil(int a, int b) { return (a + b - 1) / b; }
 
 // Decodes a number in the range [0..255], by reading 1 - 11 bits.
 inline uint32_t DecodeVarLenUint8(BrunsliBitReader* br) {
-  if (BrunsliBitReaderReadBits(br, 1)) {
-    uint32_t nbits = BrunsliBitReaderReadBits(br, 3);
+  if (BrunsliBitReaderRead(br, 1)) {
+    uint32_t nbits = BrunsliBitReaderRead(br, 3);
     if (nbits == 0) {
       return 1u;
     } else {
-      return BrunsliBitReaderReadBits(br, nbits) + (1u << nbits);
+      return BrunsliBitReaderRead(br, nbits) + (1u << nbits);
     }
   }
   return 0;
@@ -80,10 +80,10 @@ inline uint32_t DecodeVarLenUint8(BrunsliBitReader* br) {
 uint32_t DecodeVarint(BrunsliBitReader* br, size_t max_bits) {
   uint32_t result = 0;
   for (size_t b = 0; b < max_bits; ++b) {
-    if (b + 1 != max_bits && !BrunsliBitReaderReadBits(br, 1)) {
+    if (b + 1 != max_bits && !BrunsliBitReaderRead(br, 1)) {
       break;
     }
-    result |= BrunsliBitReaderReadBits(br, 1) << b;
+    result |= BrunsliBitReaderRead(br, 1) << b;
   }
   return result;
 }
@@ -91,8 +91,8 @@ uint32_t DecodeVarint(BrunsliBitReader* br, size_t max_bits) {
 size_t DecodeLimitedVarint(BrunsliBitReader* br, int nbits, int max_symbols) {
   size_t bits = 0;
   size_t shift = 0;
-  for (size_t b = 0; b < max_symbols && BrunsliBitReaderReadBits(br, 1); ++b) {
-    const size_t next_bits = BrunsliBitReaderReadBits(br, nbits);
+  for (size_t b = 0; b < max_symbols && BrunsliBitReaderRead(br, 1); ++b) {
+    const size_t next_bits = BrunsliBitReaderRead(br, nbits);
     bits |= next_bits << shift;
     shift += nbits;
   }
@@ -171,33 +171,27 @@ bool AddMetaData(const std::string& metadata, JPEGData* jpg) {
 }
 
 bool DecodeQuantTables(BrunsliBitReader* br, JPEGData* jpg) {
-  if (!BrunsliBitReaderReadMoreInput(br)) {
-    return false;
-  }
   bool have_internals_data = !jpg->quant.empty();
-  size_t num_quant_tables = BrunsliBitReaderReadBits(br, 2) + 1;
+  size_t num_quant_tables = BrunsliBitReaderRead(br, 2) + 1;
   if (jpg->quant.size() != num_quant_tables) {
     return false;
   }
   for (size_t i = 0; i < num_quant_tables; ++i) {
     JPEGQuantTable* q = &jpg->quant[i];
     int data_precision = 0;
-    if (!BrunsliBitReaderReadBits(br, 1)) {
-      const size_t short_code = BrunsliBitReaderReadBits(br, 3);
+    if (!BrunsliBitReaderRead(br, 1)) {
+      const size_t short_code = BrunsliBitReaderRead(br, 3);
       for (size_t k = 0; k < kDCTBlockSize; ++k) {
         q->values[k] = kStockQuantizationTables[(i > 0) ? 1 : 0][short_code][k];
       }
     } else {
-      const uint32_t q_factor = BrunsliBitReaderReadBits(br, 6);
+      const uint32_t q_factor = BrunsliBitReaderRead(br, 6);
       uint8_t predictor[kDCTBlockSize];
       FillQuantMatrix(i > 0, q_factor, predictor);
       int delta = 0;
       for (size_t k = 0; k < kDCTBlockSize; ++k) {
-        if (!BrunsliBitReaderReadMoreInput(br)) {
-          return false;
-        }
-        if (BrunsliBitReaderReadBits(br, 1)) {
-          const int sign = BrunsliBitReaderReadBits(br, 1);
+        if (BrunsliBitReaderRead(br, 1)) {
+          const int sign = BrunsliBitReaderRead(br, 1);
           const int diff = DecodeVarint(br, 16) + 1;
           if (sign) {
             delta -= diff;
@@ -229,44 +223,41 @@ bool DecodeQuantTables(BrunsliBitReader* br, JPEGData* jpg) {
   }
   for (size_t i = 0; i < jpg->components.size(); ++i) {
     JPEGComponent* c = &jpg->components[i];
-    c->quant_idx = BrunsliBitReaderReadBits(br, 2);
+    c->quant_idx = BrunsliBitReaderRead(br, 2);
     if (c->quant_idx >= jpg->quant.size()) {
       return false;
     }
   }
-  return true;
+  return BrunsliBitReaderIsHealthy(br);
 }
 
 bool DecodeHuffmanCode(BrunsliBitReader* br, JPEGHuffmanCode* huff,
                        bool is_known_last) {
-  if (!BrunsliBitReaderReadMoreInput(br)) {
-    return false;
-  }
-  huff->slot_id = BrunsliBitReaderReadBits(br, 2);
-  int is_dc_table = (BrunsliBitReaderReadBits(br, 1) == 0);
+  huff->slot_id = BrunsliBitReaderRead(br, 2);
+  int is_dc_table = (BrunsliBitReaderRead(br, 1) == 0);
   huff->slot_id += is_dc_table ? 0 : 0x10;
-  huff->is_last = is_known_last || BrunsliBitReaderReadBits(br, 1);
+  huff->is_last = is_known_last || BrunsliBitReaderRead(br, 1);
   huff->counts[0] = 0;
-  int found_match = BrunsliBitReaderReadBits(br, 1);
+  int found_match = BrunsliBitReaderRead(br, 1);
   if (found_match) {
     if (is_dc_table) {
-      int huff_table_idx = BrunsliBitReaderReadBits(br, 1);
+      int huff_table_idx = BrunsliBitReaderRead(br, 1);
       memcpy(&huff->counts[1], kStockDCHuffmanCodeCounts[huff_table_idx],
              sizeof(kStockDCHuffmanCodeCounts[0]));
       memcpy(&huff->values[0], kStockDCHuffmanCodeValues[huff_table_idx],
              sizeof(kStockDCHuffmanCodeValues[0]));
     } else {
-      int huff_table_idx = BrunsliBitReaderReadBits(br, 1);
+      int huff_table_idx = BrunsliBitReaderRead(br, 1);
       memcpy(&huff->counts[1], kStockACHuffmanCodeCounts[huff_table_idx],
              sizeof(kStockACHuffmanCodeCounts[0]));
       memcpy(&huff->values[0], kStockACHuffmanCodeValues[huff_table_idx],
              sizeof(kStockACHuffmanCodeValues[0]));
     }
-    return true;
+    return BrunsliBitReaderIsHealthy(br);
   }
   int total_count = 0;
   int space = 1u << kJpegHuffmanMaxBitLength;
-  int max_len = BrunsliBitReaderReadBits(br, 4) + 1;
+  int max_len = BrunsliBitReaderRead(br, 4) + 1;
   int max_count = is_dc_table ? kJpegDCAlphabetSize : kJpegHuffmanAlphabetSize;
   space -= 1u << (kJpegHuffmanMaxBitLength - max_len);
   for (int i = 1; i <= max_len; ++i) {
@@ -274,7 +265,7 @@ bool DecodeHuffmanCode(BrunsliBitReader* br, JPEGHuffmanCode* huff,
     int count_limit = std::min(max_count - total_count, space >> shift);
     if (count_limit > 0) {
       int nbits = Log2FloorNonZero(count_limit) + 1;
-      int count = BrunsliBitReaderReadBits(br, nbits);
+      int count = BrunsliBitReaderRead(br, nbits);
       if (count > count_limit) {
         return false;
       }
@@ -290,10 +281,6 @@ bool DecodeHuffmanCode(BrunsliBitReader* br, JPEGHuffmanCode* huff,
           ? std::vector<uint8_t>(kDefaultDCValues, std::end(kDefaultDCValues))
           : std::vector<uint8_t>(kDefaultACValues, std::end(kDefaultACValues)));
   for (int i = 0; i < total_count; ++i) {
-    if (!BrunsliBitReaderReadMoreInput(br)) {
-      return false;
-    }
-
     const int nbits = p.num_bits();
     const int code = DecodeLimitedVarint(br, 2, (nbits + 1) >> 1u);
     const int value = p.Remove(code);
@@ -303,28 +290,22 @@ bool DecodeHuffmanCode(BrunsliBitReader* br, JPEGHuffmanCode* huff,
     huff->values[i] = value;
   }
   huff->values[total_count] = kJpegHuffmanAlphabetSize;
-  return true;
+  return BrunsliBitReaderIsHealthy(br);
 }
 
 bool DecodeScanInfo(BrunsliBitReader* br, JPEGScanInfo* si) {
-  if (!BrunsliBitReaderReadMoreInput(br)) {
-    return false;
-  }
-  si->Ss = BrunsliBitReaderReadBits(br, 6);
-  si->Se = BrunsliBitReaderReadBits(br, 6);
-  si->Ah = BrunsliBitReaderReadBits(br, 4);
-  si->Al = BrunsliBitReaderReadBits(br, 4);
-  si->components.resize(BrunsliBitReaderReadBits(br, 2) + 1);
+  si->Ss = BrunsliBitReaderRead(br, 6);
+  si->Se = BrunsliBitReaderRead(br, 6);
+  si->Ah = BrunsliBitReaderRead(br, 4);
+  si->Al = BrunsliBitReaderRead(br, 4);
+  si->components.resize(BrunsliBitReaderRead(br, 2) + 1);
   for (size_t i = 0; i < si->components.size(); ++i) {
-    si->components[i].comp_idx = BrunsliBitReaderReadBits(br, 2);
-    si->components[i].dc_tbl_idx = BrunsliBitReaderReadBits(br, 2);
-    si->components[i].ac_tbl_idx = BrunsliBitReaderReadBits(br, 2);
+    si->components[i].comp_idx = BrunsliBitReaderRead(br, 2);
+    si->components[i].dc_tbl_idx = BrunsliBitReaderRead(br, 2);
+    si->components[i].ac_tbl_idx = BrunsliBitReaderRead(br, 2);
   }
   int last_block_idx = -1;
-  while (BrunsliBitReaderReadBits(br, 1)) {
-    if (!BrunsliBitReaderReadMoreInput(br)) {
-      return false;
-    }
+  while (BrunsliBitReaderRead(br, 1)) {
     int block_idx = last_block_idx + DecodeVarint(br, 28) + 1;
     si->reset_points.insert(block_idx);
     last_block_idx = block_idx;
@@ -336,10 +317,7 @@ bool DecodeScanInfo(BrunsliBitReader* br, JPEGScanInfo* si) {
   }
   last_block_idx = 0;
   int last_num = 0;
-  while (BrunsliBitReaderReadBits(br, 1)) {
-    if (!BrunsliBitReaderReadMoreInput(br)) {
-      return false;
-    }
+  while (BrunsliBitReaderRead(br, 1)) {
     int block_idx = last_block_idx + DecodeVarint(br, 28);
     if (block_idx > last_block_idx) {
       if (last_num > 0) {
@@ -364,7 +342,7 @@ bool DecodeScanInfo(BrunsliBitReader* br, JPEGScanInfo* si) {
     info.num_extra_zero_runs = last_num;
     si->extra_zero_runs.push_back(info);
   }
-  return true;
+  return BrunsliBitReaderIsHealthy(br);
 }
 
 bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
@@ -373,22 +351,20 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
   size_t dht_count = 0;
   uint8_t marker;
   do {
-    if (!BrunsliBitReaderReadMoreInput(br)) {
-      return false;
-    }
-    marker = 0xc0 + BrunsliBitReaderReadBits(br, 6);
+    if (!BrunsliBitReaderIsHealthy(br)) return false;
+    marker = 0xc0 + BrunsliBitReaderRead(br, 6);
     jpg->marker_order.push_back(marker);
     if (marker == 0xc4) ++dht_count;
     if (marker == 0xdd) have_dri = true;
     if (marker == 0xda) ++num_scans;
   } while (marker != 0xd9);
   if (have_dri) {
-    jpg->restart_interval = BrunsliBitReaderReadBits(br, 16);
+    jpg->restart_interval = BrunsliBitReaderRead(br, 16);
   }
 
   size_t terminal_huffman_code_count = 0;
   for (int i = 0;; ++i) {
-    const bool is_known_last = BrunsliBitReaderReadBits(br, 1);
+    const bool is_known_last = BrunsliBitReaderRead(br, 1);
     JPEGHuffmanCode huff;
     if (!DecodeHuffmanCode(br, &huff, is_known_last)) {
       return false;
@@ -416,13 +392,13 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
       return false;
     }
   }
-  int num_quant_tables = BrunsliBitReaderReadBits(br, 2) + 1;
+  int num_quant_tables = BrunsliBitReaderRead(br, 2) + 1;
   jpg->quant.resize(num_quant_tables);
   for (int i = 0; i < num_quant_tables; ++i) {
     JPEGQuantTable* q = &jpg->quant[i];
-    q->index = BrunsliBitReaderReadBits(br, 2);
-    q->is_last = (i == num_quant_tables - 1) || BrunsliBitReaderReadBits(br, 1);
-    q->precision = BrunsliBitReaderReadBits(br, 4);
+    q->index = BrunsliBitReaderRead(br, 2);
+    q->is_last = (i == num_quant_tables - 1) || BrunsliBitReaderRead(br, 1);
+    q->precision = BrunsliBitReaderRead(br, 4);
     if (q->precision > 1) {
       BRUNSLI_LOG_ERROR() << "Invalid quantization table precision: "
                           << q->precision << BRUNSLI_ENDL();
@@ -430,7 +406,7 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
     }
     // note that q->values[] are initialized to invalid 0 values.
   }
-  int comp_ids = BrunsliBitReaderReadBits(br, 2);
+  int comp_ids = BrunsliBitReaderRead(br, 2);
   static const size_t kMinRequiredComponents[4] = {
       3 /* Ids123*/, 1 /* IdsGray */, 3 /* IdsRGB */, 0 /* IdsCustom */
   };
@@ -452,7 +428,7 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
   } else {
     BRUNSLI_DCHECK(comp_ids == kComponentIdsCustom);
     for (size_t i = 0; i < jpg->components.size(); ++i) {
-      jpg->components[i].id = BrunsliBitReaderReadBits(br, 8);
+      jpg->components[i].id = BrunsliBitReaderRead(br, 8);
     }
   }
 
@@ -467,13 +443,10 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
     }
     jpg->padding_bits.resize(n_size);
     for (size_t i = 0; i < n_size; ++i) {
-      if (!BrunsliBitReaderReadMoreInput(br)) {
-        return false;
-      }
-      jpg->padding_bits[i] = BrunsliBitReaderReadBits(br, 1);
+      jpg->padding_bits[i] = BrunsliBitReaderRead(br, 1);
     }
   }
-  return true;
+  return BrunsliBitReaderIsHealthy(br);
 }
 
 bool DecodeCoeffOrder(int* order, BrunsliInput* in) {
@@ -1012,13 +985,8 @@ static bool DecodeJPEGInternalsSection(State* state, JPEGData* jpg) {
   size_t section_len = state->section_end - state->pos;
   BrunsliBitReader br;
   BrunsliBitReaderInit(&br, state->data + state->pos, section_len);
-  if (!DecodeAuxData(&br, jpg)) {
-    return false;
-  }
-  int tail_length = BrunsliBitReaderJumpToByteBoundary(&br);
-  // TODO: will become no-op / DCHECK after BitReader modernization.
-  if (tail_length < 0) return false;
-  BRUNSLI_DCHECK(static_cast<size_t>(tail_length) < section_len);
+  if (!DecodeAuxData(&br, jpg)) return false;
+  size_t tail_length = BrunsliBitReaderFinish(&br);
   size_t consumed = section_len - tail_length;
   state->pos += consumed;
 
@@ -1044,11 +1012,8 @@ static bool DecodeQuantDataSection(State* state, JPEGData* jpg) {
   size_t section_len = state->section_end - state->pos;
   BrunsliBitReader br;
   BrunsliBitReaderInit(&br, state->data + state->pos, section_len);
-  if (!DecodeQuantTables(&br, jpg)) {
-    return false;
-  }
-
-  int tail_length = BrunsliBitReaderJumpToByteBoundary(&br);
+  if (!DecodeQuantTables(&br, jpg)) return false;
+  size_t tail_length = BrunsliBitReaderFinish(&br);
   if (tail_length != 0) return false;
   state->pos += section_len;
   return true;
@@ -1069,7 +1034,7 @@ static bool DecodeHistogramDataSection(State* state, JPEGData* jpg) {
 
   size_t num_contexts = num_components;
   for (size_t i = 0; i < num_components; ++i) {
-    int scheme = BrunsliBitReaderReadBits(&br, 3);
+    int scheme = BrunsliBitReaderRead(&br, 3);
     if (scheme >= kNumSchemes) return false;
     meta[i].context_bits = scheme;
     meta[i].context_offset = num_contexts;
@@ -1078,6 +1043,7 @@ static bool DecodeHistogramDataSection(State* state, JPEGData* jpg) {
   state->num_contexts = num_contexts;
 
   state->num_histograms = DecodeVarLenUint8(&br) + 1;
+  if (!BrunsliBitReaderIsHealthy(&br)) return false;
 
   if (!state->shallow_histograms) {
     state->context_map_.resize(state->num_contexts * kNumAvrgContexts);
@@ -1096,7 +1062,7 @@ static bool DecodeHistogramDataSection(State* state, JPEGData* jpg) {
     }
     state->entropy_codes = state->entropy_codes_.data();
 
-    int tail_length = BrunsliBitReaderJumpToByteBoundary(&br);
+    int tail_length = BrunsliBitReaderFinish(&br);
     if (tail_length != 0) return false;
   }
 
