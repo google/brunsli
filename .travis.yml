@@ -1,11 +1,24 @@
 language: cpp
 dist: bionic
-
-arch:
- - amd64
- - arm64
+osx_image: xcode11.2
 
 script:
  - cmake ./
  - make -j
  - sudo make -j install
+
+jobs:
+  include:
+    - name: Default build (x64, GCC 7)
+    - name: Arm build
+      arch: arm64
+    - name: GCC 8 build
+      env: CFLAGS="-Werror" CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8
+      install: sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y; sudo apt-get install -qq gcc-8 g++-8
+    - name: GCC 9 build
+      env: CFLAGS="-Werror" CC=/usr/bin/gcc-9 CXX=/usr/bin/g++-9
+      install: sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y; sudo apt-get install -qq gcc-9 g++-9
+    - name: Clang build
+      compiler: clang
+    - name: macOS build
+      os: osx
