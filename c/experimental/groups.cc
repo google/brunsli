@@ -232,7 +232,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
     }
   }
 
-  EntropyCodes entropy_codes = PrepareEntropyCodes(&state);
+  std::unique_ptr<EntropyCodes> entropy_codes = PrepareEntropyCodes(&state);
 
   std::vector<std::vector<uint8_t>> output;
   output.resize(1 + dc_state.size() + ac_state.size());
@@ -240,7 +240,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
   // TODO: pull entropy codes serialization "side effect".
   {
     std::vector<uint8_t>& part = output[0];
-    state.entropy_codes = &entropy_codes;
+    state.entropy_codes = entropy_codes.get();
     size_t part_size = 20480;
     for (size_t i = 0; i < jpg.inter_marker_data.size(); ++i) {
       part_size += 5 + jpg.inter_marker_data[i].size();
@@ -268,7 +268,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
       // TODO: reduce for subsampled
       size_t part_size = 128 * (128 + 16) * jpg.components.size();
       part.resize(part_size);
-      s.entropy_codes = &entropy_codes;
+      s.entropy_codes = entropy_codes.get();
       uint32_t skip_flags = ~(1u << brunsli::kBrunsliDCDataTag);
       bool ok = BrunsliSerialize(&s, jpg, skip_flags, part.data(), &part_size);
       if (ok) {
@@ -284,7 +284,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
       // TODO: reduce for subsampled
       size_t part_size = 32 * 32 * 63 * jpg.components.size();
       part.resize(part_size);
-      s.entropy_codes = &entropy_codes;
+      s.entropy_codes = entropy_codes.get();
       uint32_t skip_flags = ~(1u << brunsli::kBrunsliACDataTag);
       bool ok = BrunsliSerialize(&s, jpg, skip_flags, part.data(), &part_size);
       if (ok) {

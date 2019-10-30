@@ -503,14 +503,14 @@ void Histogram::Clear() {
 }
 
 void Histogram::AddHistogram(const Histogram& other) {
-  for (int i = 0; i < ANS_MAX_SYMBOLS; ++i) {
+  for (int i = 0; i < BRUSNLI_ANS_MAX_SYMBOLS; ++i) {
     data_[i] += other.data_[i];
   }
   total_count_ += other.total_count_;
 }
 
 void Histogram::Add(int val) {
-  BRUNSLI_DCHECK(val < ANS_MAX_SYMBOLS);
+  BRUNSLI_DCHECK(val < BRUSNLI_ANS_MAX_SYMBOLS);
   ++data_[val];
   ++total_count_;
 }
@@ -518,7 +518,8 @@ void Histogram::Add(int val) {
 void Histogram::Merge(const Histogram& other) {
   if (other.total_count_ == 0) return;
   total_count_ += other.total_count_;
-  for (size_t i = 0; i < ANS_MAX_SYMBOLS; ++i) data_[i] += other.data_[i];
+  for (size_t i = 0; i < BRUSNLI_ANS_MAX_SYMBOLS; ++i)
+    data_[i] += other.data_[i];
 }
 
 void ComputeCoeffOrder(const BlockI32& num_zeros, int* order) {
@@ -546,10 +547,12 @@ void EntropySource::AddCode(int code, int histo_ix) {
   histograms_[histo_ix].Add(code);
 }
 
-EntropyCodes EntropySource::Finish(const std::vector<int>& offsets) {
+std::unique_ptr<EntropyCodes> EntropySource::Finish(
+    const std::vector<int>& offsets) {
   std::vector<Histogram> histograms;
   histograms.swap(histograms_);
-  return EntropyCodes(histograms, num_bands_, offsets);
+  return std::unique_ptr<EntropyCodes>(
+      new EntropyCodes(histograms, num_bands_, offsets));
 }
 
 void EntropySource::Merge(const EntropySource& other) {
@@ -1294,7 +1297,7 @@ void EncodeAC(State* state) {
   }
 }
 
-EntropyCodes PrepareEntropyCodes(State* state) {
+std::unique_ptr<EntropyCodes> PrepareEntropyCodes(State* state) {
   std::vector<ComponentMeta>& meta = state->meta;
   const size_t num_components = meta.size();
   // Prepend DC context group (starts at 0).
@@ -1416,8 +1419,8 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg, uint8_t* data, size_t* len) {
   EncodeAC(&state);
 
   // Groups workflow: merge histograms.
-  EntropyCodes entropy_codes = PrepareEntropyCodes(&state);
-  state.entropy_codes = &entropy_codes;
+  std::unique_ptr<EntropyCodes> entropy_codes = PrepareEntropyCodes(&state);
+  state.entropy_codes = entropy_codes.get();
   // Groups workflow: distribute codes.
 
   // Groups workflow: apply corresponding skip masks.
