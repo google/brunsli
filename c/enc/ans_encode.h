@@ -32,17 +32,17 @@ struct ANSEncSymbolInfo {
 };
 
 struct ANSTable {
-  ANSEncSymbolInfo info_[BRUSNLI_ANS_MAX_SYMBOLS];
+  ANSEncSymbolInfo info_[BRUNSLI_ANS_MAX_SYMBOLS];
 };
 
 class ANSCoder {
  public:
-  ANSCoder() : state_(BRUSNLI_ANS_SIGNATURE << 16) {}
+  ANSCoder() : state_(BRUNSLI_ANS_SIGNATURE << 16) {}
 
   uint32_t PutSymbol(const ANSEncSymbolInfo t, uint8_t* nbits) {
     uint32_t bits = 0;
     *nbits = 0;
-    if ((state_ >> (32 - BRUSNLI_ANS_LOG_TAB_SIZE)) >= t.freq_) {
+    if ((state_ >> (32 - BRUNSLI_ANS_LOG_TAB_SIZE)) >= t.freq_) {
       bits = state_ & 0xffff;
       state_ >>= 16;
       *nbits = 16;
@@ -51,9 +51,9 @@ class ANSCoder {
     // We use mult-by-reciprocal trick, but that requires 64b calc.
     const uint32_t v = (state_ * t.ifreq_) >> BRUNSLI_RECIPROCAL_PRECISION;
     const uint32_t offset = state_ - v * t.freq_ + t.start_;
-    state_ = (v << BRUSNLI_ANS_LOG_TAB_SIZE) + offset;
+    state_ = (v << BRUNSLI_ANS_LOG_TAB_SIZE) + offset;
 #else
-    state_ = ((state_ / t.freq_) << BRUSNLI_ANS_LOG_TAB_SIZE) +
+    state_ = ((state_ / t.freq_) << BRUNSLI_ANS_LOG_TAB_SIZE) +
              (state_ % t.freq_) + t.start_;
 #endif
     return bits;

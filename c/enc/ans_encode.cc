@@ -17,7 +17,7 @@ namespace brunsli {
 namespace {
 
 void ANSBuildInfoTable(const int* counts, int alphabet_size,
-                       ANSEncSymbolInfo info[BRUSNLI_ANS_MAX_SYMBOLS]) {
+                       ANSEncSymbolInfo info[BRUNSLI_ANS_MAX_SYMBOLS]) {
   int total = 0;
   for (int s = 0; s < alphabet_size; ++s) {
     const uint32_t freq = counts[s];
@@ -43,11 +43,11 @@ void BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
                                   Storage* storage) {
   int num_symbols;
   int symbols[kMaxNumSymbolsForSmallCode] = {0};
-  std::vector<int> counts(histogram, histogram + BRUSNLI_ANS_MAX_SYMBOLS);
+  std::vector<int> counts(histogram, histogram + BRUNSLI_ANS_MAX_SYMBOLS);
   int omit_pos;
-  NormalizeCounts(&counts[0], &omit_pos, BRUSNLI_ANS_MAX_SYMBOLS,
-                  BRUSNLI_ANS_LOG_TAB_SIZE, &num_symbols, symbols);
-  ANSBuildInfoTable(&counts[0], BRUSNLI_ANS_MAX_SYMBOLS, table->info_);
+  NormalizeCounts(&counts[0], &omit_pos, BRUNSLI_ANS_MAX_SYMBOLS,
+                  BRUNSLI_ANS_LOG_TAB_SIZE, &num_symbols, symbols);
+  ANSBuildInfoTable(&counts[0], BRUNSLI_ANS_MAX_SYMBOLS, table->info_);
   EncodeCounts(&counts[0], omit_pos, num_symbols, symbols, storage);
 }
 

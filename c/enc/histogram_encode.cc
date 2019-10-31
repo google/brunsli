@@ -18,18 +18,18 @@
 namespace brunsli {
 
 // Static Huffman code for encoding histogram length.
-static const uint8_t kHistogramLengthBitLengths[BRUSNLI_ANS_MAX_SYMBOLS - 2] = {
+static const uint8_t kHistogramLengthBitLengths[BRUNSLI_ANS_MAX_SYMBOLS - 2] = {
     8, 8, 6, 6, 6, 5, 4, 3, 3, 3, 3, 3, 3, 4, 5, 7,
 };
-static const uint16_t kHistogramLengthSymbols[BRUSNLI_ANS_MAX_SYMBOLS - 2] = {
+static const uint16_t kHistogramLengthSymbols[BRUNSLI_ANS_MAX_SYMBOLS - 2] = {
     127, 255, 15, 47, 31, 7, 3, 0, 4, 2, 6, 1, 5, 11, 23, 63,
 };
 
 // Static Huffman code for encoding logcounts.
-static const uint8_t kLogCountBitLengths[BRUSNLI_ANS_LOG_TAB_SIZE + 1] = {
+static const uint8_t kLogCountBitLengths[BRUNSLI_ANS_LOG_TAB_SIZE + 1] = {
     5, 4, 4, 4, 3, 3, 2, 3, 3, 6, 6,
 };
-static const uint16_t kLogCountSymbols[BRUSNLI_ANS_LOG_TAB_SIZE + 1] = {
+static const uint16_t kLogCountSymbols[BRUNSLI_ANS_LOG_TAB_SIZE + 1] = {
     15, 3, 11, 7, 2, 6, 0, 1, 5, 31, 63,
 };
 
@@ -112,7 +112,7 @@ void NormalizeCounts(int* counts, int* omit_pos, const int length,
   BRUNSLI_DCHECK(symbol_count <= table_size);
 
   const float norm = 1.f * table_size / total;
-  float targets[BRUSNLI_ANS_MAX_SYMBOLS];
+  float targets[BRUNSLI_ANS_MAX_SYMBOLS];
   for (int n = 0; n < max_symbol; ++n) {
     targets[n] = norm * counts[n];
   }
@@ -129,7 +129,7 @@ void NormalizeCounts(int* counts, int* omit_pos, const int length,
 
 void EncodeCounts(const int* counts, const int omit_pos, const int num_symbols,
                   const int* symbols, Storage* storage) {
-  int max_bits = 5;  // = 1 + Log2Floor(BRUSNLI_ANS_MAX_SYMBOLS - 1);
+  int max_bits = 5;  // = 1 + Log2Floor(BRUNSLI_ANS_MAX_SYMBOLS - 1);
   if (num_symbols <= 2) {
     // Small tree marker to encode 1-2 symbols.
     WriteBits(1, 1, storage);
@@ -142,17 +142,17 @@ void EncodeCounts(const int* counts, const int omit_pos, const int num_symbols,
       }
     }
     if (num_symbols == 2) {
-      WriteBits(BRUSNLI_ANS_LOG_TAB_SIZE, counts[symbols[0]], storage);
+      WriteBits(BRUNSLI_ANS_LOG_TAB_SIZE, counts[symbols[0]], storage);
     }
   } else {
     // Mark non-small tree.
     WriteBits(1, 0, storage);
 
     int length = 0;
-    int logcounts[BRUSNLI_ANS_MAX_SYMBOLS] = {0};
+    int logcounts[BRUNSLI_ANS_MAX_SYMBOLS] = {0};
     int omit_log = 0;
-    for (int i = 0; i < BRUSNLI_ANS_MAX_SYMBOLS; ++i) {
-      BRUNSLI_DCHECK(counts[i] <= BRUSNLI_ANS_TAB_SIZE);
+    for (int i = 0; i < BRUNSLI_ANS_MAX_SYMBOLS; ++i) {
+      BRUNSLI_DCHECK(counts[i] <= BRUNSLI_ANS_TAB_SIZE);
       BRUNSLI_DCHECK(counts[i] >= 0);
       if (i == omit_pos) {
         length = i + 1;
@@ -194,13 +194,13 @@ double PopulationCost(const int* data, int total_count) {
     return 7;
   }
 
-  double entropy_bits = total_count * BRUSNLI_ANS_LOG_TAB_SIZE;
+  double entropy_bits = total_count * BRUNSLI_ANS_LOG_TAB_SIZE;
   int histogram_bits = 0;
   int count = 0;
   int length = 0;
-  if (total_count > BRUSNLI_ANS_TAB_SIZE) {
+  if (total_count > BRUNSLI_ANS_TAB_SIZE) {
     uint64_t total = total_count;
-    for (int i = 0; i < BRUSNLI_ANS_MAX_SYMBOLS; ++i) {
+    for (int i = 0; i < BRUNSLI_ANS_MAX_SYMBOLS; ++i) {
       if (data[i] > 0) {
         ++count;
         length = i;
@@ -210,13 +210,13 @@ double PopulationCost(const int* data, int total_count) {
       return 7;
     }
     ++length;
-    const uint64_t max0 = (total * length) >> BRUSNLI_ANS_LOG_TAB_SIZE;
-    const uint64_t max1 = (max0 * length) >> BRUSNLI_ANS_LOG_TAB_SIZE;
-    const uint32_t min_base = (total + max0 + max1) >> BRUSNLI_ANS_LOG_TAB_SIZE;
+    const uint64_t max0 = (total * length) >> BRUNSLI_ANS_LOG_TAB_SIZE;
+    const uint64_t max1 = (max0 * length) >> BRUNSLI_ANS_LOG_TAB_SIZE;
+    const uint32_t min_base = (total + max0 + max1) >> BRUNSLI_ANS_LOG_TAB_SIZE;
     total += min_base * count;
     const int64_t kFixBits = 32;
     const int64_t kFixOne = 1LL << kFixBits;
-    const int64_t kDescaleBits = kFixBits - BRUSNLI_ANS_LOG_TAB_SIZE;
+    const int64_t kDescaleBits = kFixBits - BRUNSLI_ANS_LOG_TAB_SIZE;
     const int64_t kDescaleOne = 1LL << kDescaleBits;
     const int64_t kDescaleMask = kDescaleOne - 1;
     const uint32_t mult = kFixOne / total;
@@ -245,20 +245,20 @@ double PopulationCost(const int* data, int total_count) {
       }
     }
   } else {
-    double log2norm = BRUSNLI_ANS_LOG_TAB_SIZE - FastLog2(total_count);
+    double log2norm = BRUNSLI_ANS_LOG_TAB_SIZE - FastLog2(total_count);
     if (data[0] > 0) {
       double log2count = FastLog2(data[0]) + log2norm;
       entropy_bits -= data[0] * log2count;
       length = 0;
       ++count;
     }
-    for (int i = 1; i < BRUSNLI_ANS_MAX_SYMBOLS; ++i) {
+    for (int i = 1; i < BRUNSLI_ANS_MAX_SYMBOLS; ++i) {
       if (data[i] > 0) {
         double log2count = FastLog2(data[i]) + log2norm;
         int log2floor = static_cast<int>(log2count);
         entropy_bits -= data[i] * log2count;
-        if (log2floor >= BRUSNLI_ANS_LOG_TAB_SIZE) {
-          log2floor = BRUSNLI_ANS_LOG_TAB_SIZE - 1;
+        if (log2floor >= BRUNSLI_ANS_LOG_TAB_SIZE) {
+          log2floor = BRUNSLI_ANS_LOG_TAB_SIZE - 1;
         }
         histogram_bits += GetPopulationCountPrecision(log2floor);
         histogram_bits += kLogCountBitLengths[log2floor + 1];
@@ -276,7 +276,7 @@ double PopulationCost(const int* data, int total_count) {
   }
 
   if (count == 2) {
-    return static_cast<int>(entropy_bits) + 1 + 12 + BRUSNLI_ANS_LOG_TAB_SIZE;
+    return static_cast<int>(entropy_bits) + 1 + 12 + BRUNSLI_ANS_LOG_TAB_SIZE;
   }
 
   histogram_bits += kHistogramLengthBitLengths[length - 3];

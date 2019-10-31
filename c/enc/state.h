@@ -52,7 +52,7 @@ struct Histogram {
   void Add(int val);
   void Merge(const Histogram& other);
 
-  int data_[BRUSNLI_ANS_MAX_SYMBOLS];
+  int data_[BRUNSLI_ANS_MAX_SYMBOLS];
   int total_count_;
   double bit_cost_;
 };
