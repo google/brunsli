@@ -29,8 +29,8 @@ static const int kMaxNumSymbolsForSmallCode = 4;
 void NormalizeCounts(int* counts, int* omit_pos, const int length,
                      const int precision_bits, int* num_symbols, int* symbols);
 
-// Stores a histogram in counts[0 .. BRUSNLI_ANS_MAX_SYMBOLS) to the bit-stream
-// where the sum of all population counts is BRUSNLI_ANS_TAB_SIZE and the number
+// Stores a histogram in counts[0 .. BRUNSLI_ANS_MAX_SYMBOLS) to the bit-stream
+// where the sum of all population counts is BRUNSLI_ANS_TAB_SIZE and the number
 // of symbols with non-zero counts is num_symbols. symbols[0 ..
 // kMaxNumSymbolsForSmallCode) contains the first few symbols with non-zero
 // population counts. Each count must be rounded to a multiple of 1 <<

@@ -503,14 +503,14 @@ void Histogram::Clear() {
 }
 
 void Histogram::AddHistogram(const Histogram& other) {
-  for (int i = 0; i < BRUSNLI_ANS_MAX_SYMBOLS; ++i) {
+  for (int i = 0; i < BRUNSLI_ANS_MAX_SYMBOLS; ++i) {
     data_[i] += other.data_[i];
   }
   total_count_ += other.total_count_;
 }
 
 void Histogram::Add(int val) {
-  BRUNSLI_DCHECK(val < BRUSNLI_ANS_MAX_SYMBOLS);
+  BRUNSLI_DCHECK(val < BRUNSLI_ANS_MAX_SYMBOLS);
   ++data_[val];
   ++total_count_;
 }
@@ -518,7 +518,7 @@ void Histogram::Add(int val) {
 void Histogram::Merge(const Histogram& other) {
   if (other.total_count_ == 0) return;
   total_count_ += other.total_count_;
-  for (size_t i = 0; i < BRUSNLI_ANS_MAX_SYMBOLS; ++i)
+  for (size_t i = 0; i < BRUNSLI_ANS_MAX_SYMBOLS; ++i)
     data_[i] += other.data_[i];
 }
 
