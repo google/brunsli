@@ -12,10 +12,10 @@
 
 namespace brunsli {
 
-#define MAX_LENGTH 15
+#define BRUNSLI_MAX_LENGTH 15
 
 /* For current format this constant equals to kNumInsertAndCopyCodes */
-#define MAX_CODE_LENGTHS_SIZE 704
+#define BRUNSLI_MAX_CODE_LENGTHS_SIZE 704
 
 /* Returns reverse(reverse(key, len) + 1, len), where reverse(key, len) is the
    bit-wise reversal of the len least significant bits of key. */
@@ -43,7 +43,7 @@ static inline void ReplicateValue(HuffmanCode* table, int step, int end,
 static inline int NextTableBitSize(const uint16_t* const count, int len,
                                    int root_bits) {
   int left = 1u << (len - root_bits);
-  while (len < MAX_LENGTH) {
+  while (len < BRUNSLI_MAX_LENGTH) {
     left -= count[len];
     if (left <= 0) break;
     ++len;
@@ -67,19 +67,19 @@ int BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
   int table_size;      /* size of current table */
   int total_size;      /* sum of root table size and 2nd level table sizes */
   /* symbols sorted by code length */
-  int sorted[MAX_CODE_LENGTHS_SIZE];
+  int sorted[BRUNSLI_MAX_CODE_LENGTHS_SIZE];
   /* offsets in sorted table for each length */
-  uint16_t offset[MAX_LENGTH + 1];
+  uint16_t offset[BRUNSLI_MAX_LENGTH + 1];
   int max_length = 1;
 
-  if (code_lengths_size > MAX_CODE_LENGTHS_SIZE) {
+  if (code_lengths_size > BRUNSLI_MAX_CODE_LENGTHS_SIZE) {
     return 0;
   }
 
   /* generate offsets into sorted symbol table by code length */
   {
     uint16_t sum = 0;
-    for (len = 1; len <= MAX_LENGTH; len++) {
+    for (len = 1; len <= BRUNSLI_MAX_LENGTH; len++) {
       offset[len] = sum;
       if (count[len]) {
         sum = static_cast<uint16_t>(sum + count[len]);
@@ -101,7 +101,7 @@ int BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
   total_size = table_size;
 
   /* special case code with only one value */
-  if (offset[MAX_LENGTH] == 1) {
+  if (offset[BRUNSLI_MAX_LENGTH] == 1) {
     code.bits = 0;
     code.value = static_cast<uint16_t>(sorted[0]);
     for (key = 0; key < total_size; ++key) {

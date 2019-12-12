@@ -27,13 +27,28 @@ The currently planned/on-going integration work includes:
 
 Stay tuned!
 
-### Build instructions
+## Build instructions
 
-The basic commands to clone, build, and install brunsli are:
+### Clone and prepare
 
-    $ git clone https://github.com/google/brunsli.git
-    $ cd brunsli
-    $ git submodule update --init --recursive
-    $ cmake ./
-    $ make -j
-    $ make -j install
+Run the following commands to clone and prepare brunsli:
+
+    git clone --depth=1 https://github.com/google/brunsli.git
+    cd brunsli
+    git submodule update --init --recursive
+    mkdir bin
+    cd bin
+    cmake ..
+
+### Linux & macOS
+
+On Linux and macOS, compile and install by running: 
+
+    make -j
+    make -j install
+
+### Windows
+
+On Windows, compile with Visual Studio:
+
+    msbuild brunsli.sln

@@ -77,7 +77,7 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
         {2, 6}, {3, 7}, {3, 4}, {4, 1}, {2, 6}, {3, 8}, {3, 5}, {4, 3},
         {2, 6}, {3, 7}, {3, 4}, {4, 2}, {2, 6}, {3, 8}, {3, 5}, {6, 10},
     };
-    int log_counts[ANS_MAX_SYMBOLS];
+    int log_counts[BRUNSLI_ANS_MAX_SYMBOLS];
     int omit_log = -1;
     int omit_pos = -1;
     BRUNSLI_DCHECK(real_length > 2);
