@@ -535,7 +535,12 @@ bool EncodeScan(const JPEGData& jpg, const JPEGScanInfo& scan_info,
                 const std::vector<HuffmanCodeTable>& dc_huff_table,
                 const std::vector<HuffmanCodeTable>& ac_huff_table,
                 const int restart_interval, const int** pad_bits,
-                const int* pad_bits_end, JPEGOutput out) {
+                const int* pad_bits_end, JPEGOutput out,
+                int* write_scan_numbers) {
+  
+  (*write_scan_numbers)++;
+  BRUNSLI_LOG_DEBUG() << "------EncodeScan begin------" << BRUNSLI_ENDL();
+  
   if (!EncodeSOS(jpg, scan_info, out)) {
     return false;
   }
@@ -567,8 +572,21 @@ bool EncodeScan(const JPEGData& jpg, const JPEGScanInfo& scan_info,
   const int Se = is_progressive ? scan_info.Se : 63;
   const bool need_sequential =
       !is_progressive || (Ah == 0 && Al == 0 && Ss == 0 && Se == 63);
+  
+  bool has_end_encode = false;
+  int finish_mcu_y = 0;
+  BRUNSLI_LOG_DEBUG() << "MCU_rows: " << MCU_rows << "  MCUs_per_row: " << MCUs_per_row << BRUNSLI_ENDL();
+  for (int i = 0; i < jpg.components.size(); ++i) {
+    for (int j = 0; j < jpg.components[i].v_samp_factor; ++j) {
+        BRUNSLI_LOG_DEBUG() << "jpg->components[i].max_block_index[j]:" << jpg.components[i].max_block_index[j] << BRUNSLI_ENDL();
+    }
+  } 
+  
   for (int mcu_y = 0; mcu_y < MCU_rows; ++mcu_y) {
+    if (has_end_encode) break;
+    finish_mcu_y = mcu_y;
     for (int mcu_x = 0; mcu_x < MCUs_per_row; ++mcu_x) {
+      if (has_end_encode) break;
       // Possibly emit a restart marker.
       if (restart_interval > 0 && restarts_to_go == 0) {
         coding_state.Flush(&bw);
@@ -594,6 +612,14 @@ bool EncodeScan(const JPEGData& jpg, const JPEGScanInfo& scan_info,
         int n_blocks_y = is_interleaved ? c.v_samp_factor : 1;
         int n_blocks_x = is_interleaved ? c.h_samp_factor : 1;
         for (int iy = 0; iy < n_blocks_y; ++iy) {
+          // truncated!
+          int y_truncated_num = c.max_block_index[iy];
+          if (mcu_y * MCUs_per_row * n_blocks_x + (mcu_x + 1) * n_blocks_x > y_truncated_num && (*write_scan_numbers) == jpg.read_scan_numbers) {
+              has_end_encode = true;
+              BRUNSLI_LOG_DEBUG() << "y_truncated_num: " << y_truncated_num << " " << mcu_x << " " << mcu_y * MCUs_per_row * n_blocks_x << BRUNSLI_ENDL();
+              BRUNSLI_LOG_DEBUG() << "is_truncated1, the current rows: " << mcu_y + 1  << BRUNSLI_ENDL();
+              break;
+          }
           for (int ix = 0; ix < n_blocks_x; ++ix) {
             int block_y = mcu_y * n_blocks_y + iy;
             int block_x = mcu_x * n_blocks_x + ix;
@@ -635,15 +661,23 @@ bool EncodeScan(const JPEGData& jpg, const JPEGScanInfo& scan_info,
           }
         }
       }
-      --restarts_to_go;
       if (bw.pos > (1 << 16)) {
         if (!JPEGWrite(out, bw.data.get(), bw.pos)) {
           return false;
         }
         bw.pos = 0;
       }
+      --restarts_to_go;
     }
   }
+
+  BRUNSLI_LOG_DEBUG() << "finish mcu row " << finish_mcu_y + 1 << " scan numbers " << jpg.read_scan_numbers << BRUNSLI_ENDL();
+  for (int i = 0; i < jpg.components.size(); ++i) {
+    for (int j = 0; j < jpg.components[i].v_samp_factor; ++j) {
+        BRUNSLI_LOG_DEBUG() << "jpg->components[i].max_block_index[j]:" << jpg.components[i].max_block_index[j] << BRUNSLI_ENDL();
+    }
+  } 
+
   coding_state.Flush(&bw);
   const int n_pad_bits = bw.put_bits & 7u;
   uint8_t pad_pattern;
@@ -651,6 +685,7 @@ bool EncodeScan(const JPEGData& jpg, const JPEGScanInfo& scan_info,
     return false;
   }
   bw.JumpToByteBoundary(pad_pattern);
+  BRUNSLI_LOG_DEBUG() << "------EncodeScan end------" << BRUNSLI_ENDL();
   return !bw.overflow && !bw.invalid_write &&
          JPEGWrite(out, bw.data.get(), bw.pos);
 }
@@ -686,6 +721,7 @@ bool WriteJpeg(const JPEGData& jpg, JPEGOutput out) {
   int com_index = 0;
   int data_index = 0;
   int scan_index = 0;
+  int write_scan_numbers = 0;
   std::vector<HuffmanCodeTable> dc_huff_table(kMaxHuffmanTables);
   std::vector<HuffmanCodeTable> ac_huff_table(kMaxHuffmanTables);
 
@@ -737,7 +773,7 @@ bool WriteJpeg(const JPEGData& jpg, JPEGOutput out) {
         ok = EncodeScan(jpg, scan_info[scan_index++], is_progressive,
                         dc_huff_table, ac_huff_table,
                         seen_dri_marker ? jpg.restart_interval : 0, &pad_bits,
-                        pad_bits_end, out);
+                        pad_bits_end, out, &write_scan_numbers);
         break;
       case 0xdb:
         ok = EncodeDQT(jpg, &dqt_index, out);
@@ -781,6 +817,18 @@ bool WriteJpeg(const JPEGData& jpg, JPEGOutput out) {
       return false;
     }
   }
+
+  if (jpg.is_truncated) {
+    BRUNSLI_LOG_DEBUG() << "last_mcu_row_pos " << jpg.last_mcu_row_pos << BRUNSLI_ENDL();
+    BRUNSLI_LOG_DEBUG() << "out " << out.size() << BRUNSLI_ENDL();
+    if (out.size() > jpg.last_mcu_row_pos) {
+      size_t back_size = out.size() - jpg.last_mcu_row_pos;
+      out.back(back_size);
+    }
+    BRUNSLI_LOG_DEBUG() << "tail.size " << jpg.tail_data.size() << BRUNSLI_ENDL();
+    return JPEGWrite(out, jpg.tail_data);
+  }
+
   static const uint8_t kEOIMarker[2] = {0xff, 0xd9};
   return (JPEGWrite(out, kEOIMarker, sizeof(kEOIMarker)) &&
           JPEGWrite(out, jpg.tail_data));

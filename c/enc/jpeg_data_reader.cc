@@ -22,7 +22,7 @@ namespace {
 
 // Macros for commonly used error conditions.
 
-#define BRUNSLI_VERIFY_LEN(n)                                                  \
+#define VERIFY_LEN(n)                                                          \
   if (*pos + (n) > len) {                                                      \
     BRUNSLI_LOG_INFO() << "Unexpected end of input:"                           \
                        << " pos=" << *pos << " need=" << (n) << " len=" << len \
@@ -31,14 +31,14 @@ namespace {
     return false;                                                              \
   }
 
-#define BRUNSLI_VERIFY_INPUT(var, low, high, code)                             \
+#define VERIFY_INPUT(var, low, high, code)                                     \
   if (var < low || var > high) {                                               \
     BRUNSLI_LOG_INFO() << "Invalid " << #var << ": " << var << BRUNSLI_ENDL(); \
     jpg->error = JPEGReadError::INVALID_##code;                                \
     return false;                                                              \
   }
 
-#define BRUNSLI_VERIFY_MARKER_END()                                           \
+#define VERIFY_MARKER_END()                                                   \
   if (start_pos + marker_len != *pos) {                                       \
     BRUNSLI_LOG_INFO() << "Invalid marker length:"                            \
                        << " declared=" << marker_len                          \
@@ -47,7 +47,7 @@ namespace {
     return false;                                                             \
   }
 
-#define BRUNSLI_EXPECT_MARKER()                                               \
+#define EXPECT_MARKER()                                                       \
   if (pos + 2 > len || data[pos] != 0xff) {                                   \
     BRUNSLI_LOG_INFO() << "Marker byte (0xff) expected,"                      \
                        << " found: " << (pos < len ? data[pos] : 0)           \
@@ -57,7 +57,9 @@ namespace {
   }
 
 // Returns ceil(a/b).
-inline int DivCeil(int a, int b) { return (a + b - 1) / b; }
+inline int DivCeil(int a, int b) {
+  return (a + b - 1) / b;
+}
 
 inline int ReadUint8(const uint8_t* data, size_t* pos) {
   return data[(*pos)++];
@@ -71,25 +73,25 @@ inline int ReadUint16(const uint8_t* data, size_t* pos) {
 
 // Reads the Start of Frame (SOF) marker segment and fills in *jpg with the
 // parsed data.
-bool ProcessSOF(const uint8_t* data, const size_t len, JpegReadMode mode,
-                size_t* pos, JPEGData* jpg) {
+bool ProcessSOF(const uint8_t* data, const size_t len,
+                JpegReadMode mode, size_t* pos, JPEGData* jpg) {
   if (jpg->width != 0) {
     BRUNSLI_LOG_INFO() << "Duplicate SOF marker." << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::DUPLICATE_SOF;
     return false;
   }
   const size_t start_pos = *pos;
-  BRUNSLI_VERIFY_LEN(8);
+  VERIFY_LEN(8);
   size_t marker_len = ReadUint16(data, pos);
   int precision = ReadUint8(data, pos);
   int height = ReadUint16(data, pos);
   int width = ReadUint16(data, pos);
   int num_components = ReadUint8(data, pos);
-  BRUNSLI_VERIFY_INPUT(precision, 8, 8, PRECISION);
-  BRUNSLI_VERIFY_INPUT(height, 1, kMaxDimPixels, HEIGHT);
-  BRUNSLI_VERIFY_INPUT(width, 1, kMaxDimPixels, WIDTH);
-  BRUNSLI_VERIFY_INPUT(num_components, 1, kMaxComponents, NUMCOMP);
-  BRUNSLI_VERIFY_LEN(3 * num_components);
+  VERIFY_INPUT(precision, 8, 8, PRECISION);
+  VERIFY_INPUT(height, 1, kMaxDimPixels, HEIGHT);
+  VERIFY_INPUT(width, 1, kMaxDimPixels, WIDTH);
+  VERIFY_INPUT(num_components, 1, kMaxComponents, NUMCOMP);
+  VERIFY_LEN(3 * num_components);
   jpg->height = height;
   jpg->width = width;
   jpg->components.resize(num_components);
@@ -109,11 +111,12 @@ bool ProcessSOF(const uint8_t* data, const size_t len, JpegReadMode mode,
     int factor = ReadUint8(data, pos);
     int h_samp_factor = factor >> 4;
     int v_samp_factor = factor & 0xf;
-    BRUNSLI_VERIFY_INPUT(h_samp_factor, 1, kBrunsliMaxSampling, SAMP_FACTOR);
-    BRUNSLI_VERIFY_INPUT(v_samp_factor, 1, kBrunsliMaxSampling, SAMP_FACTOR);
+    VERIFY_INPUT(h_samp_factor, 1, kBrunsliMaxSampling, SAMP_FACTOR);
+    VERIFY_INPUT(v_samp_factor, 1, kBrunsliMaxSampling, SAMP_FACTOR);
     jpg->components[i].h_samp_factor = h_samp_factor;
     jpg->components[i].v_samp_factor = v_samp_factor;
     jpg->components[i].quant_idx = ReadUint8(data, pos);
+    jpg->components[i].max_block_index.resize(v_samp_factor);
     jpg->max_h_samp_factor = std::max(jpg->max_h_samp_factor, h_samp_factor);
     jpg->max_v_samp_factor = std::max(jpg->max_v_samp_factor, v_samp_factor);
   }
@@ -146,7 +149,7 @@ bool ProcessSOF(const uint8_t* data, const size_t len, JpegReadMode mode,
       c->coeffs.resize(c->num_blocks * kDCTBlockSize);
     }
   }
-  BRUNSLI_VERIFY_MARKER_END();
+  VERIFY_MARKER_END();
   return true;
 }
 
@@ -155,14 +158,14 @@ bool ProcessSOF(const uint8_t* data, const size_t len, JpegReadMode mode,
 bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
                 JPEGData* jpg) {
   const size_t start_pos = *pos;
-  BRUNSLI_VERIFY_LEN(3);
+  VERIFY_LEN(3);
   size_t marker_len = ReadUint16(data, pos);
   int comps_in_scan = ReadUint8(data, pos);
-  BRUNSLI_VERIFY_INPUT(comps_in_scan, 1, jpg->components.size(), COMPS_IN_SCAN);
+  VERIFY_INPUT(comps_in_scan, 1, jpg->components.size(), COMPS_IN_SCAN);
 
   JPEGScanInfo scan_info;
   scan_info.components.resize(comps_in_scan);
-  BRUNSLI_VERIFY_LEN(2 * comps_in_scan);
+  VERIFY_LEN(2 * comps_in_scan);
   std::vector<bool> ids_seen(256, false);
   for (int i = 0; i < comps_in_scan; ++i) {
     int id = ReadUint8(data, pos);
@@ -189,16 +192,16 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
     int c = ReadUint8(data, pos);
     int dc_tbl_idx = c >> 4;
     int ac_tbl_idx = c & 0xf;
-    BRUNSLI_VERIFY_INPUT(dc_tbl_idx, 0, 3, HUFFMAN_INDEX);
-    BRUNSLI_VERIFY_INPUT(ac_tbl_idx, 0, 3, HUFFMAN_INDEX);
+    VERIFY_INPUT(dc_tbl_idx, 0, 3, HUFFMAN_INDEX);
+    VERIFY_INPUT(ac_tbl_idx, 0, 3, HUFFMAN_INDEX);
     scan_info.components[i].dc_tbl_idx = dc_tbl_idx;
     scan_info.components[i].ac_tbl_idx = ac_tbl_idx;
   }
-  BRUNSLI_VERIFY_LEN(3);
+  VERIFY_LEN(3);
   scan_info.Ss = ReadUint8(data, pos);
   scan_info.Se = ReadUint8(data, pos);
-  BRUNSLI_VERIFY_INPUT(scan_info.Ss, 0, 63, START_OF_SCAN);
-  BRUNSLI_VERIFY_INPUT(scan_info.Se, scan_info.Ss, 63, END_OF_SCAN);
+  VERIFY_INPUT(scan_info.Ss, 0, 63, START_OF_SCAN);
+  VERIFY_INPUT(scan_info.Se, scan_info.Ss, 63, END_OF_SCAN);
   int c = ReadUint8(data, pos);
   scan_info.Ah = c >> 4;
   scan_info.Al = c & 0xf;
@@ -238,19 +241,21 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
     }
   }
   jpg->scan_info.push_back(scan_info);
-  BRUNSLI_VERIFY_MARKER_END();
+  VERIFY_MARKER_END();
   return true;
 }
 
 // Reads the Define Huffman Table (DHT) marker segment and fills in *jpg with
 // the parsed data. Builds the Huffman decoding table in either dc_huff_lut or
 // ac_huff_lut, depending on the type and solt_id of Huffman code being read.
-bool ProcessDHT(const uint8_t* data, const size_t len, JpegReadMode mode,
+bool ProcessDHT(const uint8_t* data, const size_t len,
+                JpegReadMode mode,
                 std::vector<HuffmanTableEntry>* dc_huff_lut,
-                std::vector<HuffmanTableEntry>* ac_huff_lut, size_t* pos,
+                std::vector<HuffmanTableEntry>* ac_huff_lut,
+                size_t* pos,
                 JPEGData* jpg) {
   const size_t start_pos = *pos;
-  BRUNSLI_VERIFY_LEN(2);
+  VERIFY_LEN(2);
   size_t marker_len = ReadUint16(data, pos);
   if (marker_len == 2) {
     BRUNSLI_LOG_INFO() << "DHT marker: no Huffman table found"
@@ -259,7 +264,7 @@ bool ProcessDHT(const uint8_t* data, const size_t len, JpegReadMode mode,
     return false;
   }
   while (*pos < start_pos + marker_len) {
-    BRUNSLI_VERIFY_LEN(1 + kJpegHuffmanMaxBitLength);
+    VERIFY_LEN(1 + kJpegHuffmanMaxBitLength);
     JPEGHuffmanCode huff;
     huff.slot_id = ReadUint8(data, pos);
     int huffman_index = huff.slot_id;
@@ -267,10 +272,10 @@ bool ProcessDHT(const uint8_t* data, const size_t len, JpegReadMode mode,
     HuffmanTableEntry* huff_lut;
     if (is_ac_table) {
       huffman_index -= 0x10;
-      BRUNSLI_VERIFY_INPUT(huffman_index, 0, 3, HUFFMAN_INDEX);
+      VERIFY_INPUT(huffman_index, 0, 3, HUFFMAN_INDEX);
       huff_lut = &(*ac_huff_lut)[huffman_index * kJpegHuffmanLutSize];
     } else {
-      BRUNSLI_VERIFY_INPUT(huffman_index, 0, 3, HUFFMAN_INDEX);
+      VERIFY_INPUT(huffman_index, 0, 3, HUFFMAN_INDEX);
       huff_lut = &(*dc_huff_lut)[huffman_index * kJpegHuffmanLutSize];
     }
     huff.counts[0] = 0;
@@ -287,17 +292,16 @@ bool ProcessDHT(const uint8_t* data, const size_t len, JpegReadMode mode,
       space -= count * (1 << (kJpegHuffmanMaxBitLength - i));
     }
     if (is_ac_table) {
-      BRUNSLI_VERIFY_INPUT(total_count, 0, kJpegHuffmanAlphabetSize,
-                           HUFFMAN_CODE);
+      VERIFY_INPUT(total_count, 0, kJpegHuffmanAlphabetSize, HUFFMAN_CODE);
     } else {
-      BRUNSLI_VERIFY_INPUT(total_count, 0, kJpegDCAlphabetSize, HUFFMAN_CODE);
+      VERIFY_INPUT(total_count, 0, kJpegDCAlphabetSize, HUFFMAN_CODE);
     }
-    BRUNSLI_VERIFY_LEN(total_count);
+    VERIFY_LEN(total_count);
     std::vector<bool> values_seen(256, false);
     for (int i = 0; i < total_count; ++i) {
       uint8_t value = ReadUint8(data, pos);
       if (!is_ac_table) {
-        BRUNSLI_VERIFY_INPUT(value, 0, kJpegDCAlphabetSize - 1, HUFFMAN_CODE);
+        VERIFY_INPUT(value, 0, kJpegDCAlphabetSize - 1, HUFFMAN_CODE);
       }
       if (values_seen[value]) {
         BRUNSLI_LOG_INFO() << "Duplicate Huffman code value " << value
@@ -330,7 +334,7 @@ bool ProcessDHT(const uint8_t* data, const size_t len, JpegReadMode mode,
     }
     jpg->huffman_code.push_back(huff);
   }
-  BRUNSLI_VERIFY_MARKER_END();
+  VERIFY_MARKER_END();
   return true;
 }
 
@@ -339,7 +343,7 @@ bool ProcessDHT(const uint8_t* data, const size_t len, JpegReadMode mode,
 bool ProcessDQT(const uint8_t* data, const size_t len, size_t* pos,
                 JPEGData* jpg) {
   const size_t start_pos = *pos;
-  BRUNSLI_VERIFY_LEN(2);
+  VERIFY_LEN(2);
   size_t marker_len = ReadUint16(data, pos);
   if (marker_len == 2) {
     BRUNSLI_LOG_INFO() << "DQT marker: no quantization table found"
@@ -348,26 +352,27 @@ bool ProcessDQT(const uint8_t* data, const size_t len, size_t* pos,
     return false;
   }
   while (*pos < start_pos + marker_len && jpg->quant.size() < kMaxQuantTables) {
-    BRUNSLI_VERIFY_LEN(1);
+    VERIFY_LEN(1);
     int quant_table_index = ReadUint8(data, pos);
     int quant_table_precision = quant_table_index >> 4;
-    BRUNSLI_VERIFY_INPUT(quant_table_precision, 0, 1, QUANT_TBL_PRECISION);
+    VERIFY_INPUT(quant_table_precision, 0, 1, QUANT_TBL_PRECISION);
     quant_table_index &= 0xf;
-    BRUNSLI_VERIFY_INPUT(quant_table_index, 0, 3, QUANT_TBL_INDEX);
-    BRUNSLI_VERIFY_LEN((quant_table_precision + 1) * kDCTBlockSize);
+    VERIFY_INPUT(quant_table_index, 0, 3, QUANT_TBL_INDEX);
+    VERIFY_LEN((quant_table_precision + 1) * kDCTBlockSize);
     JPEGQuantTable table;
     table.index = quant_table_index;
     table.precision = quant_table_precision;
     for (int i = 0; i < kDCTBlockSize; ++i) {
-      int quant_val =
-          quant_table_precision ? ReadUint16(data, pos) : ReadUint8(data, pos);
-      BRUNSLI_VERIFY_INPUT(quant_val, 1, 65535, QUANT_VAL);
+      int quant_val = quant_table_precision ?
+          ReadUint16(data, pos) :
+          ReadUint8(data, pos);
+      VERIFY_INPUT(quant_val, 1, 65535, QUANT_VAL);
       table.values[kJPEGNaturalOrder[i]] = quant_val;
     }
     table.is_last = (*pos == start_pos + marker_len);
     jpg->quant.push_back(table);
   }
-  BRUNSLI_VERIFY_MARKER_END();
+  VERIFY_MARKER_END();
   return true;
 }
 
@@ -381,21 +386,21 @@ bool ProcessDRI(const uint8_t* data, const size_t len, size_t* pos,
   }
   *found_dri = true;
   const size_t start_pos = *pos;
-  BRUNSLI_VERIFY_LEN(4);
+  VERIFY_LEN(4);
   size_t marker_len = ReadUint16(data, pos);
   int restart_interval = ReadUint16(data, pos);
   jpg->restart_interval = restart_interval;
-  BRUNSLI_VERIFY_MARKER_END();
+  VERIFY_MARKER_END();
   return true;
 }
 
 // Saves the APP marker segment as a string to *jpg.
 bool ProcessAPP(const uint8_t* data, const size_t len, size_t* pos,
                 JPEGData* jpg) {
-  BRUNSLI_VERIFY_LEN(2);
+  VERIFY_LEN(2);
   size_t marker_len = ReadUint16(data, pos);
-  BRUNSLI_VERIFY_INPUT(marker_len, 2, 65535, MARKER_LEN);
-  BRUNSLI_VERIFY_LEN(marker_len - 2);
+  VERIFY_INPUT(marker_len, 2, 65535, MARKER_LEN);
+  VERIFY_LEN(marker_len - 2);
   // Save the marker type together with the app data.
   std::string app_str(reinterpret_cast<const char*>(&data[*pos - 3]),
                       marker_len + 1);
@@ -407,10 +412,10 @@ bool ProcessAPP(const uint8_t* data, const size_t len, size_t* pos,
 // Saves the COM marker segment as a string to *jpg.
 bool ProcessCOM(const uint8_t* data, const size_t len, size_t* pos,
                 JPEGData* jpg) {
-  BRUNSLI_VERIFY_LEN(2);
+  VERIFY_LEN(2);
   size_t marker_len = ReadUint16(data, pos);
-  BRUNSLI_VERIFY_INPUT(marker_len, 2, 65535, MARKER_LEN);
-  BRUNSLI_VERIFY_LEN(marker_len - 2);
+  VERIFY_INPUT(marker_len, 2, 65535, MARKER_LEN);
+  VERIFY_LEN(marker_len - 2);
   std::string com_str(reinterpret_cast<const char*>(&data[*pos - 2]),
                       marker_len);
   *pos += marker_len - 2;
@@ -492,8 +497,8 @@ struct BitReaderState {
       --pos_;
       // If we give back a 0 byte, we need to check if it was a 0xff/0x00 escape
       // sequence, and if yes, we need to give back one more byte.
-      if (pos_ < next_marker_pos_ && data_[pos_] == 0 &&
-          data_[pos_ - 1] == 0xff) {
+      if (pos_ < next_marker_pos_ &&
+          data_[pos_] == 0 && data_[pos_ - 1] == 0xff) {
         --pos_;
       }
     }
@@ -503,6 +508,29 @@ struct BitReaderState {
       return false;
     }
     *pos = pos_;
+    return true;
+  }
+
+  // get truncated block position in bs
+  bool get_pos(JPEGData* jpg, size_t* pos) {
+    // Give back some bytes that we did not use.
+    int unused_bytes_left = bits_left_ >> 3;
+    uint64_t npos = pos_;
+    while (unused_bytes_left-- > 0) {
+      --npos;
+      // If we give back a 0 byte, we need to check if it was a 0xff/0x00 escape
+      // sequence, and if yes, we need to give back one more byte.
+      if (npos < next_marker_pos_ &&
+          data_[npos] == 0 && data_[npos - 1] == 0xff) {
+        --npos;
+      }
+    }
+    if (npos > next_marker_pos_) {
+      // Data ran out before the scan was complete.
+      //BRUNSLI_LOG_INFO() << "get pos Unexpected end of scan." << BRUNSLI_ENDL();
+      return false;
+    }
+    *pos = npos;
     return true;
   }
 
@@ -534,14 +562,19 @@ int ReadSymbol(const HuffmanTableEntry* table, BitReaderState* br) {
 // Returns the DC diff or AC value for extra bits value x and prefix code s.
 // See Tables F.1 and F.2 of the spec.
 int HuffExtend(int x, int s) {
-  return (x < (1 << (s - 1)) ? x + ((-1) << s) + 1 : x);
+  return (x < (1 << (s - 1)) ? x + ((-1) << s ) + 1 : x);
 }
 
 // Decodes one 8x8 block of DCT coefficients from the bit stream.
 bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
-                    const HuffmanTableEntry* ac_huff, int Ss, int Se, int Al,
-                    int* eobrun, bool* reset_state, int* num_zero_runs,
-                    BitReaderState* br, JPEGData* jpg, coeff_t* last_dc_coeff,
+                    const HuffmanTableEntry* ac_huff,
+                    int Ss, int Se, int Al,
+                    int* eobrun,
+                    bool* reset_state,
+                    int* num_zero_runs,
+                    BitReaderState* br,
+                    JPEGData* jpg,
+                    coeff_t* last_dc_coeff,
                     coeff_t* coeffs) {
   int s;
   int r;
@@ -632,9 +665,13 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
   return true;
 }
 
-bool RefineDCTBlock(const HuffmanTableEntry* ac_huff, int Ss, int Se, int Al,
-                    int* eobrun, bool* reset_state, BitReaderState* br,
-                    JPEGData* jpg, coeff_t* coeffs) {
+bool RefineDCTBlock(const HuffmanTableEntry* ac_huff,
+                    int Ss, int Se, int Al,
+                    int* eobrun,
+                    bool* reset_state,
+                    BitReaderState* br,
+                    JPEGData* jpg,
+                    coeff_t* coeffs) {
   bool eobrun_allowed = Ss > 0;
   if (Ss == 0) {
     int s = br->ReadBits(1);
@@ -760,7 +797,7 @@ bool ProcessRestart(const uint8_t* data, const size_t len,
     return false;
   }
   int expected_marker = 0xd0 + *next_restart_marker;
-  BRUNSLI_EXPECT_MARKER();
+  EXPECT_MARKER();
   int marker = data[pos + 1];
   if (marker != expected_marker) {
     BRUNSLI_LOG_INFO() << "Did not find expected restart"
@@ -779,7 +816,13 @@ bool ProcessScan(const uint8_t* data, const size_t len,
                  const std::vector<HuffmanTableEntry>& dc_huff_lut,
                  const std::vector<HuffmanTableEntry>& ac_huff_lut,
                  uint16_t scan_progression[kMaxComponents][kDCTBlockSize],
-                 bool is_progressive, size_t* pos, JPEGData* jpg) {
+                 bool is_progressive,
+                 size_t* pos,
+                 JPEGData* jpg,
+                 bool* is_truncated) {
+  jpg->read_scan_numbers++;
+  BRUNSLI_LOG_DEBUG() << "------ProcessScan begin------ " << BRUNSLI_ENDL();
+  
   if (!ProcessSOS(data, len, pos, jpg)) {
     return false;
   }
@@ -803,6 +846,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
   int next_restart_marker = 0;
   int eobrun = -1;
   int block_scan_index = 0;
+  size_t last_mcu_row = 0;
   const int Al = is_progressive ? scan_info->Al : 0;
   const int Ah = is_progressive ? scan_info->Ah : 0;
   const int Ss = is_progressive ? scan_info->Ss : 0;
@@ -838,12 +882,30 @@ bool ProcessScan(const uint8_t* data, const size_t len,
     jpg->error = JPEGReadError::NON_REPRESENTABLE_AC_COEFF;
     return false;
   }
+  BRUNSLI_LOG_DEBUG() << "MCU_rows: " << MCU_rows << "  MCUs_per_row: " << MCUs_per_row << BRUNSLI_ENDL();
   for (int mcu_y = 0; mcu_y < MCU_rows; ++mcu_y) {
-    for (int mcu_x = 0; mcu_x < MCUs_per_row; ++mcu_x) {
+    //for truncated jpeg pos
+    if (!br.get_pos(jpg, &jpg->last_mcu_row_pos)) {
+      *is_truncated = true;
+      BRUNSLI_LOG_DEBUG() << "is_truncated1, the current rows " << mcu_y + 1 << BRUNSLI_ENDL();
+      BRUNSLI_LOG_DEBUG() << "is_truncated1, the last rows " << last_mcu_row + 1 << BRUNSLI_ENDL();
+      goto READ_END;
+    }
+    last_mcu_row = mcu_y - 1;
+
+    for (int mcu_x = 0; mcu_x < MCUs_per_row; ++mcu_x) {      
+      //for truncated jpeg
+      if (!br.get_pos(jpg, &jpg->last_mcu_pos)) {
+        *is_truncated = true;
+        BRUNSLI_LOG_DEBUG() << "is_truncated2, the current rows " << mcu_y + 1 << BRUNSLI_ENDL();
+        BRUNSLI_LOG_DEBUG() << "is_truncated2, the last rows " << last_mcu_row + 1 << BRUNSLI_ENDL();
+        goto READ_END;
+      }
       // Handle the restart intervals.
       if (jpg->restart_interval > 0) {
         if (restarts_to_go == 0) {
-          if (ProcessRestart(data, len, &next_restart_marker, &br, jpg)) {
+          if (ProcessRestart(data, len,
+                             &next_restart_marker, &br, jpg)) {
             restarts_to_go = jpg->restart_interval;
             memset(last_dc_coeff, 0, sizeof(last_dc_coeff));
             if (eobrun > 0) {
@@ -854,7 +916,11 @@ bool ProcessScan(const uint8_t* data, const size_t len,
             }
             eobrun = -1;  // fresh start
           } else {
-            return false;
+            //for truncated jpeg
+            *is_truncated = true;
+            BRUNSLI_LOG_DEBUG() << "is_truncated3, the current rows " << mcu_y + 1 << BRUNSLI_ENDL();
+            BRUNSLI_LOG_DEBUG() << "is_truncated3, the last rows " << last_mcu_row + 1 << BRUNSLI_ENDL();
+            goto READ_END;
           }
         }
         --restarts_to_go;
@@ -870,7 +936,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
         int nblocks_y = is_interleaved ? c->v_samp_factor : 1;
         int nblocks_x = is_interleaved ? c->h_samp_factor : 1;
         for (int iy = 0; iy < nblocks_y; ++iy) {
-          for (int ix = 0; ix < nblocks_x; ++ix) {
+          for (int ix = 0; ix < nblocks_x; ++ix) {            
             int block_y = mcu_y * nblocks_y + iy;
             int block_x = mcu_x * nblocks_x + ix;
             int block_idx = block_y * c->width_in_blocks + block_x;
@@ -878,15 +944,26 @@ bool ProcessScan(const uint8_t* data, const size_t len,
             int num_zero_runs = 0;
             coeff_t* coeffs = &c->coeffs[block_idx * kDCTBlockSize];
             if (Ah == 0) {
-              if (!DecodeDCTBlock(dc_lut, ac_lut, Ss, Se, Al, &eobrun,
-                                  &reset_state, &num_zero_runs, &br, jpg,
-                                  &last_dc_coeff[si->comp_idx], coeffs)) {
-                return false;
+              if (!DecodeDCTBlock(dc_lut, ac_lut,
+                                  Ss, Se, Al,
+                                  &eobrun, &reset_state, &num_zero_runs,
+                                  &br, jpg, &last_dc_coeff[si->comp_idx],
+                                  coeffs)) {
+                //for truncated jpeg
+                *is_truncated = true;
+                BRUNSLI_LOG_DEBUG() << "is_truncated4, the current rows " << mcu_y + 1 << BRUNSLI_ENDL();
+                BRUNSLI_LOG_DEBUG() << "is_truncated4, the last rows " << last_mcu_row + 1 << BRUNSLI_ENDL();
+                goto READ_END;
               }
             } else {
-              if (!RefineDCTBlock(ac_lut, Ss, Se, Al, &eobrun, &reset_state,
+              if (!RefineDCTBlock(ac_lut, Ss, Se, Al,
+                                  &eobrun, &reset_state,
                                   &br, jpg, coeffs)) {
-                return false;
+                //for truncated jpeg
+                *is_truncated = true;
+                BRUNSLI_LOG_DEBUG() << "is_truncated5, the current rows " << mcu_y + 1 << BRUNSLI_ENDL();
+                BRUNSLI_LOG_DEBUG() << "is_truncated5, the last rows " << last_mcu_row + 1 << BRUNSLI_ENDL();
+                goto READ_END;
               }
             }
             if (reset_state) {
@@ -899,26 +976,56 @@ bool ProcessScan(const uint8_t* data, const size_t len,
               scan_info->extra_zero_runs.push_back(info);
             }
             ++block_scan_index;
+            // add the max block index for truncated jpeg
+            c->max_block_index[iy] ++;
           }
         }
       }
     }
   }
-  if (eobrun > 0) {
-    BRUNSLI_LOG_INFO() << "End-of-block run too long." << BRUNSLI_ENDL();
-    jpg->error = JPEGReadError::EOB_RUN_TOO_LONG;
-    return false;
+
+  READ_END:
+
+  for (int i = 0; i < jpg->components.size(); ++i) {
+    for (int j = 0; j < jpg->components[i].v_samp_factor; ++j) {
+        BRUNSLI_LOG_DEBUG() << "jpg->components[i].max_block_index[j]:" << jpg->components[i].max_block_index[j] << BRUNSLI_ENDL();
+    }
+  } 
+
+  if (!(*is_truncated)) {
+    BRUNSLI_LOG_DEBUG() << "finish mcu row " << last_mcu_row + 2 << " scan numbers " << jpg->read_scan_numbers << BRUNSLI_ENDL();
+    if (eobrun > 0) {
+      BRUNSLI_LOG_INFO() << "End-of-block run too long." << BRUNSLI_ENDL();
+      jpg->error = JPEGReadError::EOB_RUN_TOO_LONG;
+      return false;
+    }
+    if (!br.FinishStream(jpg, pos)) {
+      *is_truncated = true;
+      *pos = jpg->last_mcu_row_pos;
+      for (int i = 0; i < jpg->components.size(); ++i) {
+        for (int j = 0; j < jpg->components[i].v_samp_factor; ++j) {
+          jpg->components[i].max_block_index[j] = (last_mcu_row + 1) * jpg->components[i].h_samp_factor * MCUs_per_row;
+        }
+      }
+      return true;
+    }
+    if (*pos > len) {
+      BRUNSLI_LOG_INFO() << "Unexpected end of file during scan. pos=" << *pos
+                        << " len=" << len << BRUNSLI_ENDL();
+      jpg->error = JPEGReadError::UNEXPECTED_EOF;
+      return false;
+    }
+  } else {
+    BRUNSLI_LOG_DEBUG() << "last_mcu_row " << last_mcu_row + 1 << " scan numbers " << jpg->read_scan_numbers << BRUNSLI_ENDL();
+    *pos = jpg->last_mcu_row_pos;
+    for (int i = 0; i < jpg->components.size(); ++i) {
+      for (int j = 0; j < jpg->components[i].v_samp_factor; ++j) {
+        jpg->components[i].max_block_index[j] = (last_mcu_row + 1) * jpg->components[i].h_samp_factor * MCUs_per_row;
+        BRUNSLI_LOG_DEBUG() << "jpg->components[i].max_block_index[j]:" << jpg->components[i].max_block_index[j] << BRUNSLI_ENDL();
+      }
+    }
   }
-  if (!br.FinishStream(jpg, pos)) {
-    jpg->error = JPEGReadError::INVALID_SCAN;
-    return false;
-  }
-  if (*pos > len) {
-    BRUNSLI_LOG_INFO() << "Unexpected end of file during scan. pos=" << *pos
-                       << " len=" << len << BRUNSLI_ENDL();
-    jpg->error = JPEGReadError::UNEXPECTED_EOF;
-    return false;
-  }
+  BRUNSLI_LOG_DEBUG() << "------ProcessScan end------ " << BRUNSLI_ENDL();
   return true;
 }
 
@@ -948,13 +1055,15 @@ bool FixupIndexes(JPEGData* jpg) {
 size_t FindNextMarker(const uint8_t* data, const size_t len, size_t pos) {
   // kIsValidMarker[i] == 1 means (0xc0 + i) is a valid marker.
   static const uint8_t kIsValidMarker[] = {
-      1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1,
-      1, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-      1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
+    1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0,
   };
   size_t num_skipped = 0;
-  while (pos + 1 < len && (data[pos] != 0xff || data[pos + 1] < 0xc0 ||
-                           !kIsValidMarker[data[pos + 1] - 0xc0])) {
+  while (pos + 1 < len &&
+         (data[pos] != 0xff || data[pos + 1] < 0xc0 ||
+          !kIsValidMarker[data[pos + 1] - 0xc0])) {
     ++pos;
     ++num_skipped;
   }
@@ -967,7 +1076,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
               JPEGData* jpg) {
   size_t pos = 0;
   // Check SOI marker.
-  BRUNSLI_EXPECT_MARKER();
+  EXPECT_MARKER();
   int marker = data[pos + 1];
   pos += 2;
   if (marker != 0xd8) {
@@ -981,10 +1090,11 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
   std::vector<HuffmanTableEntry> ac_huff_lut(lut_size);
   bool found_sof = false;
   bool found_dri = false;
-  uint16_t scan_progression[kMaxComponents][kDCTBlockSize] = {{0}};
+  uint16_t scan_progression[kMaxComponents][kDCTBlockSize] = { { 0 } };
 
   jpg->padding_bits.resize(0);
   bool is_progressive = false;  // default
+  bool is_truncated = false;    // add for truncated jpeg
   do {
     // Read next marker.
     size_t num_skipped = FindNextMarker(data, len, pos);
@@ -995,7 +1105,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
           std::string(reinterpret_cast<const char*>(&data[pos]), num_skipped));
       pos += num_skipped;
     }
-    BRUNSLI_EXPECT_MARKER();
+    EXPECT_MARKER();
     marker = data[pos + 1];
     pos += 2;
     bool ok = true;
@@ -1026,7 +1136,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
       case 0xda:
         if (mode == JPEG_READ_ALL) {
           ok = ProcessScan(data, len, dc_huff_lut, ac_huff_lut,
-                           scan_progression, is_progressive, &pos, jpg);
+                           scan_progression, is_progressive, &pos, jpg, &is_truncated);
         }
         break;
       case 0xdb:
@@ -1074,19 +1184,34 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
     if (mode == JPEG_READ_HEADER && found_sof) {
       break;
     }
+    if (is_truncated) {
+      // dummy EOI marker for decode
+      jpg->marker_order.push_back(0xd9);              
+      break;
+    }
   } while (marker != 0xd9);
 
-  if (!found_sof) {
+  if (!is_truncated && !found_sof) {
     BRUNSLI_LOG_INFO() << "Missing SOF marker." << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::SOF_NOT_FOUND;
     return false;
   }
 
+  if (is_truncated) {
+    jpg->is_truncated = true;
+  }
+
   // Supplemental checks.
   if (mode == JPEG_READ_ALL) {
     if (pos < len) {
-      jpg->tail_data.assign(reinterpret_cast<const char*>(&data[pos]),
+      if (is_truncated) {
+        BRUNSLI_LOG_DEBUG() << "pos: " << jpg->last_mcu_row_pos - kDCTBlockSize << BRUNSLI_ENDL();
+        jpg->tail_data.assign(reinterpret_cast<const char*>(&data[jpg->last_mcu_row_pos - kDCTBlockSize]),
+                            len - jpg->last_mcu_row_pos + kDCTBlockSize);
+      } else {
+        jpg->tail_data.assign(reinterpret_cast<const char*>(&data[pos]),
                             len - pos);
+      }
     }
     if (!FixupIndexes(jpg)) {
       return false;

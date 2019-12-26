@@ -186,7 +186,7 @@ struct JPEGScanInfo {
   std::vector<ExtraZeroRunInfo> extra_zero_runs;
 };
 
-typedef int16_t coeff_t;
+typedef int32_t coeff_t;
 
 // Represents one component of a jpeg file.
 struct JPEGComponent {
@@ -195,7 +195,8 @@ struct JPEGComponent {
                     v_samp_factor(1),
                     quant_idx(0),
                     width_in_blocks(0),
-                    height_in_blocks(0) {}
+                    height_in_blocks(0),
+                    num_blocks(0) {}
 
   // One-byte id of the component.
   int id;
@@ -210,6 +211,8 @@ struct JPEGComponent {
   int width_in_blocks;
   int height_in_blocks;
   int num_blocks;
+  // the max block index for truncated jpeg
+  std::vector<int> max_block_index;
   // The DCT coefficients of this component, laid out block-by-block, divided
   // through the quantization matrix values.
   std::vector<coeff_t> coeffs;
@@ -228,7 +231,11 @@ struct JPEGData {
                original_jpg(NULL),
                original_jpg_size(0),
                error(JPEGReadError::OK),
-               has_zero_padding_bit(false) {}
+               has_zero_padding_bit(false),
+               is_truncated(false),
+               read_scan_numbers(0),
+               last_mcu_pos(0),
+               last_mcu_row_pos(0) {}
 
   int width;
   int height;
@@ -255,6 +262,12 @@ struct JPEGData {
 
   bool has_zero_padding_bit;
   std::vector<int> padding_bits;
+
+  // Extra information required for reconstructing truncated JPEG file
+  bool is_truncated; 
+  int read_scan_numbers;
+  size_t last_mcu_pos;
+  size_t last_mcu_row_pos;
 };
 
 inline bool JPEGDataIs420(const JPEGData& jpg) {

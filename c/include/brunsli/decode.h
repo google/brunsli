@@ -30,6 +30,8 @@ out_data to out_fun.
 int DecodeBrunsli(size_t in_size, const uint8_t* in, void* out_data,
                   DecodeBrunsliSink out_fun);
 
+size_t brunsli_decompress(const char* input, size_t input_size, std::string& output, size_t thread_nums);
+
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */
 #endif

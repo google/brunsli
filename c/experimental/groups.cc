@@ -232,7 +232,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
     }
   }
 
-  std::unique_ptr<EntropyCodes> entropy_codes = PrepareEntropyCodes(&state);
+  EntropyCodes entropy_codes = PrepareEntropyCodes(&state);
 
   std::vector<std::vector<uint8_t>> output;
   output.resize(1 + dc_state.size() + ac_state.size());
@@ -240,7 +240,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
   // TODO: pull entropy codes serialization "side effect".
   {
     std::vector<uint8_t>& part = output[0];
-    state.entropy_codes = entropy_codes.get();
+    state.entropy_codes = &entropy_codes;
     size_t part_size = 20480;
     for (size_t i = 0; i < jpg.inter_marker_data.size(); ++i) {
       part_size += 5 + jpg.inter_marker_data[i].size();
@@ -268,7 +268,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
       // TODO: reduce for subsampled
       size_t part_size = 128 * (128 + 16) * jpg.components.size();
       part.resize(part_size);
-      s.entropy_codes = entropy_codes.get();
+      s.entropy_codes = &entropy_codes;
       uint32_t skip_flags = ~(1u << brunsli::kBrunsliDCDataTag);
       bool ok = BrunsliSerialize(&s, jpg, skip_flags, part.data(), &part_size);
       if (ok) {
@@ -284,7 +284,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
       // TODO: reduce for subsampled
       size_t part_size = 32 * 32 * 63 * jpg.components.size();
       part.resize(part_size);
-      s.entropy_codes = entropy_codes.get();
+      s.entropy_codes = &entropy_codes;
       uint32_t skip_flags = ~(1u << brunsli::kBrunsliACDataTag);
       bool ok = BrunsliSerialize(&s, jpg, skip_flags, part.data(), &part_size);
       if (ok) {
@@ -331,7 +331,7 @@ bool DecodeGroups(const uint8_t* data, size_t len, brunsli::JPEGData* jpg,
   const uint8_t* data_end = data + len;
   const uint8_t* chunk_end = data;
   const uint8_t* chunk_start = chunk_end;
-  // Signature / Header / Meta / Internals / Quant / Histo.
+  // Signature / Header / Meta / Internals / Quant / Histo / External.
   for (size_t i = 0; i < 6; ++i) {
     if (!SkipSection(&chunk_end, data_end - chunk_end)) return false;
   }
@@ -340,10 +340,22 @@ bool DecodeGroups(const uint8_t* data, size_t len, brunsli::JPEGData* jpg,
   State state;
   state.data = chunk_start;
   state.len = chunk_end - chunk_start;
-  chunk_start = chunk_end;
-
   BrunsliStatus status = ProcessJpeg(&state, jpg);
   if (status != BrunsliStatus::BRUNSLI_NOT_ENOUGH_DATA) return false;
+  
+  // External
+  const uint8_t external_marker = state.data[state.pos];
+  const size_t external_tag = external_marker >> 3;
+  if (external_tag == kBrunsliExternalTag) {
+    BRUNSLI_LOG_DEBUG() << "has kBrunsliExternalTag" << BRUNSLI_ENDL();
+    if (!SkipSection(&chunk_end, data_end - chunk_end)) return false;
+    state.len = chunk_end - chunk_start;
+    state.stage = Stage::SECTION;
+    BrunsliStatus status = ProcessJpeg(&state, jpg);
+    if (status != BrunsliStatus::BRUNSLI_NOT_ENOUGH_DATA) return false;
+  }
+
+  chunk_start = chunk_end;
   WarmupMeta(jpg, &state);
 
   if ((ac_group_dim % jpg->max_h_samp_factor) != 0) return false;

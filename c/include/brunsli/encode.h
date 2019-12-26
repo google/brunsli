@@ -27,6 +27,8 @@ to outfun.
 int EncodeBrunsli(size_t insize, const unsigned char* in, void* outdata,
     size_t (*outfun)(void* outdata, const unsigned char* buf, size_t size));
 
+size_t brunsli_compress(const char* input, size_t input_size, std::string& output, size_t thread_nums);
+
 #if defined(__cplusplus) || defined(c_plusplus)
 }  /* extern "C" */
 #endif

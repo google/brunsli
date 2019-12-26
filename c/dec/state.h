@@ -96,6 +96,7 @@ void WarmupMeta(JPEGData* jpg, State* state);
 // Core decoding loop.
 BrunsliStatus ProcessJpeg(State* state, JPEGData* jpg);
 
+
 }  // namespace dec
 }  // namespace internal
 }  // namespace brunsli
