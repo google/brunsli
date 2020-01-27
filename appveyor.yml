@@ -1,0 +1,13 @@
+image: Visual Studio 2019
+configuration: Release
+
+install:
+  - git submodule update --init
+  - cmake .
+
+build:
+  project: brunsli.sln
+
+artifacts:
+  - path: \Release\**\*.*
+    name: $(APPVEYOR_PROJECT_NAME)
