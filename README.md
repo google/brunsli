@@ -1,5 +1,6 @@
 ### Introduction
-[![Travis Build Status](https://travis-ci.org/google/brunsli.svg?branch=master)](https://travis-ci.org/google/brunsli) [![AppVeyor Build Status](https://ci.appveyor.com/api/projects/status/github/eustas/brunsli?branch=master&svg=true)](https://ci.appveyor.com/project/eustas/brunsli)
+[![Travis Build Status](https://travis-ci.org/google/brunsli.svg?branch=master)](https://travis-ci.org/google/brunsli)
+[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/9cug8altp1yupwx0/branch/master?svg=true)](https://ci.appveyor.com/project/eustas/brunsli/branch/master)
 
 Brunsli is a lossless JPEG repacking library.
 
