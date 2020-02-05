@@ -52,7 +52,7 @@ struct Histogram {
   void Add(int val);
   void Merge(const Histogram& other);
 
-  int data_[BRUNSLI_ANS_MAX_SYMBOLS];
+  int data_[ANS_MAX_SYMBOLS];
   int total_count_;
   double bit_cost_;
 };
@@ -82,7 +82,7 @@ class EntropySource {
   void Resize(int num_bands);
   void AddCode(int code, int histo_ix);
   void Merge(const EntropySource& other);
-  std::unique_ptr<EntropyCodes> Finish(const std::vector<int>& offsets);
+  EntropyCodes Finish(const std::vector<int>& offsets);
 
  private:
   int num_bands_;
@@ -145,7 +145,7 @@ int SelectContextBits(size_t num_symbols);
 bool PredictDCCoeffs(State* state);
 void EncodeDC(State* state);
 void EncodeAC(State* state);
-std::unique_ptr<EntropyCodes> PrepareEntropyCodes(State* state);
+EntropyCodes PrepareEntropyCodes(State* state);
 bool BrunsliSerialize(State* state, const JPEGData& jpg, uint32_t skip_sections,
                       uint8_t* data, size_t* len);
 

@@ -28,7 +28,7 @@ struct ANSDecodingData {
 
   bool ReadFromBitStream(size_t alphabet_size, BrunsliBitReader* br);
 
-  ANSSymbolInfo map_[BRUNSLI_ANS_TAB_SIZE];
+  ANSSymbolInfo map_[ANS_TAB_SIZE];
 };
 
 class ANSDecoder {
@@ -41,15 +41,15 @@ class ANSDecoder {
   }
 
   int ReadSymbol(const ANSDecodingData& code, BrunsliInput* in) {
-    const uint32_t res = state_ & (BRUNSLI_ANS_TAB_SIZE - 1);
+    const uint32_t res = state_ & (ANS_TAB_SIZE - 1);
     const ANSSymbolInfo& s = code.map_[res];
-    state_ = s.freq_ * (state_ >> BRUNSLI_ANS_LOG_TAB_SIZE) + s.offset_;
+    state_ = s.freq_ * (state_ >> ANS_LOG_TAB_SIZE) + s.offset_;
     if (state_ < (1u << 16u)) {
       state_ = (state_ << 16u) | in->GetNextWord();
     }
     return s.symbol_;
   }
-  bool CheckCRC() const { return state_ == (BRUNSLI_ANS_SIGNATURE << 16u); }
+  bool CheckCRC() const { return state_ == (ANS_SIGNATURE << 16u); }
 
  private:
   uint32_t state_;

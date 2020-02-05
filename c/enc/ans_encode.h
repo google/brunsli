@@ -16,45 +16,45 @@
 
 namespace brunsli {
 
-// #define BRUNSLI_USE_MULT_BY_RECIPROCAL
+// #define USE_MULT_BY_RECIPROCAL
 
 // precision must be equal to: #bits(state_) + #bits(freq)
-#define BRUNSLI_RECIPROCAL_PRECISION 42
+#define RECIPROCAL_PRECISION 42
 
 // Data structure representing one element of the encoding table built
 // from a distribution.
 struct ANSEncSymbolInfo {
   uint16_t freq_;
   uint16_t start_;
-#ifdef BRUNSLI_USE_MULT_BY_RECIPROCAL
+#ifdef USE_MULT_BY_RECIPROCAL
   uint64_t ifreq_;
 #endif
 };
 
 struct ANSTable {
-  ANSEncSymbolInfo info_[BRUNSLI_ANS_MAX_SYMBOLS];
+  ANSEncSymbolInfo info_[ANS_MAX_SYMBOLS];
 };
 
 class ANSCoder {
  public:
-  ANSCoder() : state_(BRUNSLI_ANS_SIGNATURE << 16) {}
+  ANSCoder() : state_(ANS_SIGNATURE << 16) {}
 
   uint32_t PutSymbol(const ANSEncSymbolInfo t, uint8_t* nbits) {
     uint32_t bits = 0;
     *nbits = 0;
-    if ((state_ >> (32 - BRUNSLI_ANS_LOG_TAB_SIZE)) >= t.freq_) {
+    if ((state_ >> (32 - ANS_LOG_TAB_SIZE)) >= t.freq_) {
       bits = state_ & 0xffff;
       state_ >>= 16;
       *nbits = 16;
     }
-#ifdef BRUNSLI_USE_MULT_BY_RECIPROCAL
+#ifdef USE_MULT_BY_RECIPROCAL
     // We use mult-by-reciprocal trick, but that requires 64b calc.
-    const uint32_t v = (state_ * t.ifreq_) >> BRUNSLI_RECIPROCAL_PRECISION;
+    const uint32_t v = (state_ * t.ifreq_) >> RECIPROCAL_PRECISION;
     const uint32_t offset = state_ - v * t.freq_ + t.start_;
-    state_ = (v << BRUNSLI_ANS_LOG_TAB_SIZE) + offset;
+    state_ = (v << ANS_LOG_TAB_SIZE) + offset;
 #else
-    state_ = ((state_ / t.freq_) << BRUNSLI_ANS_LOG_TAB_SIZE) +
-             (state_ % t.freq_) + t.start_;
+    state_ = ((state_ / t.freq_) << ANS_LOG_TAB_SIZE) + (state_ % t.freq_) +
+             t.start_;
 #endif
     return bits;
   }

@@ -25,6 +25,21 @@ struct JPEGOutput {
     return (len == 0) || (cb(data, buf, len) == len);
   }
 
+  size_t size() {
+    std::string* output = reinterpret_cast<std::string*>(data);
+    return (*output).size();
+  }
+
+  bool back(size_t len) {
+    std::string* output = reinterpret_cast<std::string*>(data);
+    int i = 0;
+    while (i < len && !output->empty()) {
+      output->pop_back();
+      i++;
+    }
+    return (i == len);
+  }
+
  private:
   JPEGOutputHook cb;
   void* data;

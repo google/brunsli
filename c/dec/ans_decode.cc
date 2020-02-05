@@ -15,7 +15,7 @@ namespace brunsli {
 namespace {
 
 bool ANSBuildMapTable(const int counts[], int alphabet_size,
-                      ANSSymbolInfo map[BRUNSLI_ANS_TAB_SIZE]) {
+                      ANSSymbolInfo map[ANS_TAB_SIZE]) {
   int i;
   int pos = 0;
   for (i = 0; i < alphabet_size; ++i) {
@@ -26,7 +26,7 @@ bool ANSBuildMapTable(const int counts[], int alphabet_size,
       map[pos].offset_ = j;
     }
   }
-  return (pos == BRUNSLI_ANS_TAB_SIZE);
+  return (pos == ANS_TAB_SIZE);
 }
 
 }  // namespace
@@ -34,9 +34,8 @@ bool ANSBuildMapTable(const int counts[], int alphabet_size,
 bool ANSDecodingData::ReadFromBitStream(size_t alphabet_size,
                                         BrunsliBitReader* br) {
   std::vector<int> counts(alphabet_size);
-  return (
-      ReadHistogram(BRUNSLI_ANS_LOG_TAB_SIZE, alphabet_size, &counts[0], br) &&
-      ANSBuildMapTable(&counts[0], alphabet_size, map_));
+  return (ReadHistogram(ANS_LOG_TAB_SIZE, alphabet_size, &counts[0], br) &&
+          ANSBuildMapTable(&counts[0], alphabet_size, map_));
 }
 
 }  // namespace brunsli

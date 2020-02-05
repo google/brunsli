@@ -503,14 +503,14 @@ void Histogram::Clear() {
 }
 
 void Histogram::AddHistogram(const Histogram& other) {
-  for (int i = 0; i < BRUNSLI_ANS_MAX_SYMBOLS; ++i) {
+  for (int i = 0; i < ANS_MAX_SYMBOLS; ++i) {
     data_[i] += other.data_[i];
   }
   total_count_ += other.total_count_;
 }
 
 void Histogram::Add(int val) {
-  BRUNSLI_DCHECK(val < BRUNSLI_ANS_MAX_SYMBOLS);
+  BRUNSLI_DCHECK(val < ANS_MAX_SYMBOLS);
   ++data_[val];
   ++total_count_;
 }
@@ -518,8 +518,7 @@ void Histogram::Add(int val) {
 void Histogram::Merge(const Histogram& other) {
   if (other.total_count_ == 0) return;
   total_count_ += other.total_count_;
-  for (size_t i = 0; i < BRUNSLI_ANS_MAX_SYMBOLS; ++i)
-    data_[i] += other.data_[i];
+  for (size_t i = 0; i < ANS_MAX_SYMBOLS; ++i) data_[i] += other.data_[i];
 }
 
 void ComputeCoeffOrder(const BlockI32& num_zeros, int* order) {
@@ -547,12 +546,10 @@ void EntropySource::AddCode(int code, int histo_ix) {
   histograms_[histo_ix].Add(code);
 }
 
-std::unique_ptr<EntropyCodes> EntropySource::Finish(
-    const std::vector<int>& offsets) {
+EntropyCodes EntropySource::Finish(const std::vector<int>& offsets) {
   std::vector<Histogram> histograms;
   histograms.swap(histograms_);
-  return std::unique_ptr<EntropyCodes>(
-      new EntropyCodes(histograms, num_bands_, offsets));
+  return EntropyCodes(histograms, num_bands_, offsets);
 }
 
 void EntropySource::Merge(const EntropySource& other) {
@@ -801,6 +798,30 @@ bool EncodeHeader(const JPEGData& jpg, State* s, uint8_t* data, size_t* len) {
   EncodeValue(kBrunsliHeaderVersionCompTag, version_comp, data, &pos);
   EncodeValue(kBrunsliHeaderSubsamplingTag, subsampling, data, &pos);
 
+  *len = pos;
+  return true;
+}
+
+bool EncodeExternalData(const JPEGData& jpg, State* state,
+                         uint8_t* data, size_t* len) {
+  size_t pos = 0;
+  //encode max_block_index into data
+  for (int i = 0; i < jpg.components.size(); ++i) {
+    for (int j = 0; j < jpg.components[i].v_samp_factor; ++j) {
+      EncodeValue(kBrunsliExternalTruncatedTag, jpg.components[i].max_block_index[j], data, &pos);
+    }
+  }
+
+  size_t mark_truncate = 2;
+  if (jpg.is_truncated) {
+    mark_truncate = 1;
+  }
+
+  //encode read_scan_numbers and mark_truncate into data
+  EncodeValue(kBrunsliExternalScanNumTag, jpg.read_scan_numbers, data, &pos);
+  EncodeValue(kBrunsliExternalMarkTruncateTag, mark_truncate, data, &pos);
+  EncodeValue(kBrunsliExternalTruncatePosTag, jpg.last_mcu_row_pos - kDCTBlockSize, data, &pos);
+  
   *len = pos;
   return true;
 }
@@ -1297,7 +1318,7 @@ void EncodeAC(State* state) {
   }
 }
 
-std::unique_ptr<EntropyCodes> PrepareEntropyCodes(State* state) {
+EntropyCodes PrepareEntropyCodes(State* state) {
   std::vector<ComponentMeta>& meta = state->meta;
   const size_t num_components = meta.size();
   // Prepend DC context group (starts at 0).
@@ -1348,6 +1369,12 @@ bool BrunsliSerialize(State* state, const JPEGData& jpg, uint32_t skip_sections,
     ok =
         EncodeSection(jpg, state, kBrunsliHistogramDataTag, EncodeHistogramData,
                       Base128Size(*len - pos), *len, data, &pos);
+    if (!ok) return false;
+  }
+
+  if (!(skip_sections & (1u << kBrunsliExternalTag)) && jpg.is_truncated) {
+    ok = EncodeSection(jpg, NULL, kBrunsliExternalTag, EncodeExternalData, 1,
+                       *len, data, &pos);
     if (!ok) return false;
   }
 
@@ -1419,8 +1446,8 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg, uint8_t* data, size_t* len) {
   EncodeAC(&state);
 
   // Groups workflow: merge histograms.
-  std::unique_ptr<EntropyCodes> entropy_codes = PrepareEntropyCodes(&state);
-  state.entropy_codes = entropy_codes.get();
+  EntropyCodes entropy_codes = PrepareEntropyCodes(&state);
+  state.entropy_codes = &entropy_codes;
   // Groups workflow: distribute codes.
 
   // Groups workflow: apply corresponding skip masks.

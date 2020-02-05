@@ -13,10 +13,20 @@
 #include <brunsli/brunsli_encode.h>
 #include <brunsli/jpeg_data_reader.h>
 
-#if defined(BRUNSLI_EXPERIMENTAL_GROUPS)
-#include "../experimental/groups.h"
-#include <highwayhash/data_parallel.h>
-#endif
+#include <brunsli/jpeg_data.h>
+#include <brunsli/status.h>
+#include <brunsli/types.h>
+#include <brunsli/brunsli_decode.h>
+#include <brunsli/jpeg_data_writer.h>
+
+#include "groups.h"
+#include "highwayhash/data_parallel.h"
+
+int StringWriter(void* data, const uint8_t* buf, size_t count) {
+  std::string* output = reinterpret_cast<std::string*>(data);
+  output->append(reinterpret_cast<const char*>(buf), count);
+  return count;
+}
 
 bool ReadFileInternal(FILE* file, std::string* content) {
   if (fseek(file, 0, SEEK_END) != 0) {
@@ -115,19 +125,13 @@ bool ProcessFile(const std::string& file_name,
     output.resize(output_size);
     uint8_t* output_data = reinterpret_cast<uint8_t*>(&output[0]);
 
-#if defined(BRUNSLI_EXPERIMENTAL_GROUPS)
-    {
-      highwayhash::ThreadPool thread_pool(4);
-      brunsli::Executor executor = [&](const brunsli::Runnable& runnable,
-                                       size_t num_tasks) {
-        thread_pool.Run(0, num_tasks, runnable);
-      };
-      ok = brunsli::EncodeGroups(jpg, output_data, &output_size, 32, 128,
-                                 &executor);
-    }
-#else
-    ok = brunsli::BrunsliEncodeJpeg(jpg, output_data, &output_size);
-#endif
+    highwayhash::ThreadPool thread_pool(4);
+    brunsli::Executor executor = [&](const brunsli::Runnable& runnable,
+                                      size_t num_tasks) {
+      thread_pool.Run(0, num_tasks, runnable);
+    };
+    ok = brunsli::EncodeGroups(jpg, output_data, &output_size, 32, 128,
+                                &executor);
 
     if (!ok) {
       // TODO: use fallback?
@@ -138,6 +142,7 @@ bool ProcessFile(const std::string& file_name,
   }
 
   ok = WriteFile(outfile_name, output);
+
   return ok;
 }
 

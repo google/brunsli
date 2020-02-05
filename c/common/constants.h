@@ -57,12 +57,19 @@ static const uint8_t kBrunsliHistogramDataTag = 0x6;
 static const uint8_t kBrunsliDCDataTag = 0x7;
 static const uint8_t kBrunsliACDataTag = 0x8;
 static const uint8_t kBrunsliOriginalJpgTag = 0x9;
+static const uint8_t kBrunsliExternalTag = 0xa;
 
 // Header section. All fields are varints.
 static const uint8_t kBrunsliHeaderWidthTag = 0x1;
 static const uint8_t kBrunsliHeaderHeightTag = 0x2;
 static const uint8_t kBrunsliHeaderVersionCompTag = 0x3;
 static const uint8_t kBrunsliHeaderSubsamplingTag = 0x4;
+
+// External section, need for truncated jpeg
+static const uint8_t kBrunsliExternalTruncatedTag = 0x5;
+static const uint8_t kBrunsliExternalScanNumTag = 0x6;
+static const uint8_t kBrunsliExternalMarkTruncateTag = 0x7;
+static const uint8_t kBrunsliExternalTruncatePosTag = 0x8;
 
 static const uint8_t kBrunsliSignature[] = {
   SectionMarker(kBrunsliSignatureTag), 0x04, 'B', 0xd2, 0xd5, 'N'

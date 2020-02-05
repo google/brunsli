@@ -46,7 +46,7 @@ static const int32_t kKnownSectionTags =
     (1u << kBrunsliMetaDataTag) | (1u << kBrunsliJPEGInternalsTag) |
     (1u << kBrunsliQuantDataTag) | (1u << kBrunsliHistogramDataTag) |
     (1u << kBrunsliDCDataTag) | (1u << kBrunsliACDataTag) |
-    (1u << kBrunsliOriginalJpgTag);
+    (1u << kBrunsliOriginalJpgTag) | (1u << kBrunsliExternalTag);
 
 static const int32_t kKnownHeaderVarintTags =
     (1u << kBrunsliHeaderWidthTag) | (1u << kBrunsliHeaderHeightTag) |
@@ -886,6 +886,67 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
   return Stage::SECTION;
 }
 
+//decode for some metadata about truncated jpeg
+static bool DecodeExternalSection(State* state, JPEGData* jpg) {
+  if (state->pos == state->section_end) return false;
+  bool known_varint_tags[16] = {false};
+  for (size_t tag :
+       {kBrunsliExternalTruncatedTag,
+       kBrunsliExternalScanNumTag,
+       kBrunsliExternalMarkTruncateTag,
+       kBrunsliExternalTruncatePosTag
+       }) {
+    known_varint_tags[tag] = true;
+  }
+  int component_index = 0;
+  int samptor_index = 0;
+  while (state->pos < state->section_end) {
+    const uint8_t marker = ReadByte(state);
+    const size_t tag = marker >> 3;
+    if (tag == 0 || tag > 15) return false;
+    const size_t wiring_type = marker & 0x7;
+    if (wiring_type != kBrunsliWiringTypeVarint &&
+      wiring_type != kBrunsliWiringTypeLengthDelimited) {
+      return false;
+    }
+
+    const bool is_varint = (wiring_type == kBrunsliWiringTypeVarint);
+    if (known_varint_tags[tag] && !is_varint) return false;
+    size_t value = 0;
+    if (!DecodeBase128(state, &value))  return false;
+    if (is_varint) {
+      if (tag == kBrunsliExternalMarkTruncateTag) {
+        if (value == 2) {
+          jpg->is_truncated = false;
+        } else if (value == 1) {
+          jpg->is_truncated = true;
+        }
+      } 
+      else if (tag == kBrunsliExternalScanNumTag){
+        jpg->read_scan_numbers = value;
+      }
+      else if (tag == kBrunsliExternalTruncatePosTag) {
+        jpg->last_mcu_row_pos = value;
+      }
+      else if (tag == kBrunsliExternalTruncatedTag) {
+        if (samptor_index < jpg->components[component_index].v_samp_factor) {
+          jpg->components[component_index].max_block_index[samptor_index++] = value;
+        } else {
+          samptor_index = 0;
+          component_index++;
+          jpg->components[component_index].max_block_index[samptor_index++] = value;
+        }
+      }
+    } else {
+      // Skip section; current version of Brunsli does not use any.
+      if (!CheckCanRead(state, value))  return false; 
+      state->pos += value;
+    }
+  }
+  if (state->pos != state->section_end) return false;
+  return true;
+}
+
 // Decompress Brotli stream and discard output.
 // Returns true IFF stream is valid, and contains exactly |expected_output_size|
 // bytes.
@@ -1076,7 +1137,6 @@ static bool DecodeDCDataSection(State* state) {
   BrunsliInput in(state->data + state->pos, section_len);
 
   if (!DecodeDC(state, &in)) return false;
-
   if (in.len_ != in.pos_) return false;
   state->pos += section_len;
   return true;
@@ -1121,7 +1181,6 @@ static Stage ParseSection(State* state) {
     return Stage::DONE;
   }
   const uint8_t marker = ReadByte(state);
-
   const size_t tag = marker >> 3;
   if (tag == 0 || tag > 15) return Fail(state, BRUNSLI_INVALID_BRN);
   const int32_t tag_bit = 1u << tag;
@@ -1214,6 +1273,13 @@ static Stage ProcessSection(State* state, JPEGData* jpg) {
       }
       break;
 
+    case kBrunsliExternalTag:
+    //BRUNSLI_LOG_INFO() << "kBrunsliExternalTag111" << BRUNSLI_ENDL();
+      if (!DecodeExternalSection(state, jpg)) {
+        return Fail(state, BRUNSLI_INVALID_BRN);
+      }
+      break;
+
     case kBrunsliDCDataTag:
       if (!HasSection(state, kBrunsliHistogramDataTag)) {
         return Fail(state, BRUNSLI_INVALID_BRN);
@@ -1270,6 +1336,7 @@ bool UpdateSubsamplingDerivatives(JPEGData* jpg) {
       return false;
     }
     c->num_blocks = num_blocks;
+    c->max_block_index.resize(c->v_samp_factor);
   }
   return true;
 }
@@ -1333,10 +1400,12 @@ BrunsliStatus ProcessJpeg(State* state, JPEGData* jpg) {
         break;
 
       case Stage::SECTION:
+        //BRUNSLI_LOG_INFO() << "SECTION" << BRUNSLI_ENDL();
         state->stage = ParseSection(state);
         break;
 
       case Stage::SECTION_BODY:
+        //BRUNSLI_LOG_INFO() << "SECTION_BODY" << BRUNSLI_ENDL();
         state->stage = ProcessSection(state, jpg);
         break;
 
