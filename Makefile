@@ -15,7 +15,7 @@ DIRS = $(OBJDIR)/c/common $(OBJDIR)/c/dec $(OBJDIR)/c/enc \
        $(OBJDIR)/c/tools
 LIBBROTLI=brotli
 CFLAGS += -O2 -std=c++11 -ffunction-sections
-LDFLAGS += -Wl,-gc-sections
+LDFLAGS += -Wl,-dead_strip
 ifeq ($(os), Darwin)
   CPPFLAGS += -DOS_MACOSX
 endif
