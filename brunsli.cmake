@@ -22,6 +22,7 @@ set(BRUNSLI_DEC_SOURCES
   c/dec/huffman_decode.cc
   c/dec/huffman_table.cc
   c/dec/jpeg_data_writer.cc
+  c/dec/state.cc
 )
 
 # TODO(eustas): split public/private headers.

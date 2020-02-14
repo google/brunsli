@@ -33,14 +33,14 @@ struct ANSDecodingData {
 
 class ANSDecoder {
  public:
-  ANSDecoder() : state_(0) {}
+  ANSDecoder() {}
 
-  void Init(BrunsliInput* in) {
+  void Init(WordSource* in) {
     state_ = in->GetNextWord();
     state_ = (state_ << 16u) | in->GetNextWord();
   }
 
-  int ReadSymbol(const ANSDecodingData& code, BrunsliInput* in) {
+  int ReadSymbol(const ANSDecodingData& code, WordSource* in) {
     const uint32_t res = state_ & (BRUNSLI_ANS_TAB_SIZE - 1);
     const ANSSymbolInfo& s = code.map_[res];
     state_ = s.freq_ * (state_ >> BRUNSLI_ANS_LOG_TAB_SIZE) + s.offset_;

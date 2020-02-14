@@ -11,14 +11,18 @@
 #define BRUNSLI_DEC_STATE_H_
 
 #include <array>
+#include <memory>
 #include <vector>
 
+// TODO: cut - used only for "coeff_t*" and "JPEGData*"
 #include <brunsli/jpeg_data.h>
 #include <brunsli/status.h>
 #include <brunsli/types.h>
-#include "./ans_decode.h"
 
 namespace brunsli {
+
+struct ANSDecodingData;
+
 namespace internal {
 namespace dec {
 
@@ -49,38 +53,34 @@ enum struct Stage {
   ERROR
 };
 
-struct State {
-  Stage stage = Stage::SIGNATURE;
-  BrunsliStatus result = BRUNSLI_OK;
-  int32_t tags_met = 0;
-  int32_t skip_tags = 0;
+struct InternalState;
 
-  // "JPEGDecodingState" storage.
-  std::vector<uint8_t> context_map_;
-  std::vector<ANSDecodingData> entropy_codes_;
-  std::vector<std::vector<uint8_t>> block_state_;
+class State {
+ public:
+  State();
+  State(State&&);
+  ~State();
+
+  // Public workflow knobs.
+  Stage stage = Stage::SIGNATURE;
+  // NB: this |tags_met| is not updated by decoder.
+  uint32_t tags_met = 0;
+  uint32_t skip_tags = 0;
+
+  // Public input knobs.
+  const uint8_t* data = nullptr;
+  size_t len = 0;
+  size_t pos = 0;
 
   // "JPEGDecodingState" view.
   const uint8_t* context_map;
   const ANSDecodingData* entropy_codes;
 
-  bool is_meta_warm = false;
   bool is_storage_allocated = false;
   std::vector<ComponentMeta> meta;
 
-  // That is not exactly state, but very convenient for passing the input.
-  const uint8_t* data = nullptr;
-  size_t len = 0;
-  size_t pos = 0;
-
-  // Section
-  size_t tag = 0;
-  size_t section_end = 0;
-
-  // For "estimate peak memory".
-  bool shallow_histograms = false;
-  size_t num_contexts = 0;
-  size_t num_histograms = 0;
+  // Private state parts.
+  std::unique_ptr<InternalState> internal;
 };
 
 // Use in "headerless" mode, after jpg is filled, but before decoding.
