@@ -839,9 +839,13 @@ static void SkipBytes(State* state, size_t len) {
   state->pos += len;
 }
 
-static size_t SkipAvailableBytes(State* state, size_t len) {
+static size_t GetBytesAvailable(State* state) {
   // TODO: dcheck len > pos
-  size_t available = state->len - state->pos;
+  return state->len - state->pos;
+}
+
+static size_t SkipAvailableBytes(State* state, size_t len) {
+  size_t available = GetBytesAvailable(state);
   size_t skip_bytes = std::min(available, len);
   state->pos += skip_bytes;
   return skip_bytes;
@@ -1359,6 +1363,11 @@ static Stage ParseSection(State* state) {
 
 static Stage ProcessSection(State* state, JPEGData* jpg) {
   InternalState& s = *state->internal;
+
+  // TODO: push down when some sections start to support streaming.
+  if (GetBytesAvailable(state) < RemainingSectionLength(state)) {
+    return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
+  }
 
   const int32_t tag_bit = 1u << s.section.tag;
   const bool is_known_section_tag = kKnownSectionTags & tag_bit;
