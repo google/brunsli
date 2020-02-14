@@ -31,6 +31,7 @@ typedef struct {
      BrunsliBitReaderUnload returns debt, if possible.
    */
   uint32_t num_debt_bytes_;
+  bool is_healthy;
 } BrunsliBitReader;
 
 static BRUNSLI_INLINE uint32_t BrunsliBitReaderBitMask(uint32_t n) {
@@ -65,6 +66,7 @@ static BRUNSLI_INLINE void BrunsliBitReaderInit(BrunsliBitReader* br,
   br->num_bits_ = 0;
   br->bits_ = 0;
   br->num_debt_bytes_ = 0;
+  br->is_healthy = true;
 }
 
 static BRUNSLI_INLINE uint32_t BrunsliBitReaderGet(BrunsliBitReader* br,
@@ -121,14 +123,17 @@ static BRUNSLI_INLINE void BrunsliBitReaderUnload(BrunsliBitReader* br) {
 static BRUNSLI_INLINE size_t BrunsliBitReaderFinish(BrunsliBitReader* br) {
   // TODO: check the tail bits?
   uint32_t n_bits = br->num_bits_ & 7u;
-  if (n_bits > 0) BrunsliBitReaderDrop(br, n_bits);
+  if (n_bits > 0) {
+    uint32_t padding_bits = BrunsliBitReaderRead(br, n_bits);
+    if (padding_bits != 0) br->is_healthy = false;
+  }
   BrunsliBitReaderUnload(br);
   return br->end_ - br->next_;
 }
 
 static BRUNSLI_INLINE size_t BrunsliBitReaderIsHealthy(BrunsliBitReader* br) {
   BrunsliBitReaderUnload(br);
-  return br->num_debt_bytes_ == 0;
+  return (br->num_debt_bytes_ == 0) && (br->is_healthy);
 }
 
 }  // namespace brunsli

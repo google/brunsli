@@ -17,9 +17,11 @@ namespace brunsli {
 // skal@ wrote the original version, szabadka@ ported it for brunsli.
 class BinaryArithmeticDecoder {
  public:
-  BinaryArithmeticDecoder() : low_(0), high_(~0u), value_(0) {}
+  BinaryArithmeticDecoder() {}
 
-  void Init(BrunsliInput* in) {
+  void Init(WordSource* in) {
+    low_ = 0;
+    high_ = ~0u;
     value_ = in->GetNextWord();
     value_ = (value_ << 16u) | in->GetNextWord();
   }
@@ -27,7 +29,7 @@ class BinaryArithmeticDecoder {
   // Returns the next bit decoded from the bit stream, based on the given 8-bit
   // precision probability, i.e. P(bit = 0) = prob / 256. This probability must
   // be the same as the one used by the encoder.
-  int ReadBit(int prob, BrunsliInput* in) {
+  int ReadBit(int prob, WordSource* in) {
     const uint32_t diff = high_ - low_;
     const uint32_t split = low_ + (((uint64_t)diff * prob) >> 8u);
     int bit;

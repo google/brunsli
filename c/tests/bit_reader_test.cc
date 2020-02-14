@@ -31,4 +31,24 @@ TEST(BitReader, ReadOneByte) {
   ASSERT_FALSE(BrunsliBitReaderIsHealthy(&br));
 }
 
+TEST(BitReader, CheckPadding) {
+  uint8_t data[2] = {1, 2};
+  // i == padding bit
+  for (size_t i = 0; i < 2; ++i) {
+    data[0] = 1 | (i << 7);
+    BrunsliBitReader br;
+    BrunsliBitReaderInit(&br, data, 2);
+
+    uint32_t firstByte = BrunsliBitReaderRead(&br, 7);
+    ASSERT_EQ(1u, firstByte);
+    ASSERT_TRUE(BrunsliBitReaderIsHealthy(&br));
+
+    size_t unused_bytes = BrunsliBitReaderFinish(&br);
+    ASSERT_EQ(1u, unused_bytes);
+
+    // OK iff padding bit is 0
+    ASSERT_TRUE((!i) == BrunsliBitReaderIsHealthy(&br));
+  }
+}
+
 }  // namespace brunsli

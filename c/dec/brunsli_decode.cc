@@ -27,11 +27,17 @@
 #include "./context_map_decode.h"
 #include <brunsli/jpeg_data_writer.h>
 #include "./state.h"
+#include "./state_internal.h"
 
 namespace brunsli {
 
+using ::brunsli::internal::dec::AcDcState;
 using ::brunsli::internal::dec::BlockI32;
 using ::brunsli::internal::dec::ComponentMeta;
+using ::brunsli::internal::dec::State;
+using ::brunsli::internal::dec::InternalState;
+using ::brunsli::internal::dec::HeaderState;
+using ::brunsli::internal::dec::SectionState;
 using ::brunsli::internal::dec::Stage;
 using ::brunsli::internal::dec::State;
 
@@ -41,14 +47,14 @@ using ::brunsli::internal::dec::UpdateSubsamplingDerivatives;
 static const int kNumDirectCodes = 8;
 static const int kCoeffAlphabetSize = kNumDirectCodes + 10;
 
-static const int32_t kKnownSectionTags =
+static const uint32_t kKnownSectionTags =
     (1u << kBrunsliSignatureTag) | (1u << kBrunsliHeaderTag) |
     (1u << kBrunsliMetaDataTag) | (1u << kBrunsliJPEGInternalsTag) |
     (1u << kBrunsliQuantDataTag) | (1u << kBrunsliHistogramDataTag) |
     (1u << kBrunsliDCDataTag) | (1u << kBrunsliACDataTag) |
     (1u << kBrunsliOriginalJpgTag);
 
-static const int32_t kKnownHeaderVarintTags =
+static const uint32_t kKnownHeaderVarintTags =
     (1u << kBrunsliHeaderWidthTag) | (1u << kBrunsliHeaderHeightTag) |
     (1u << kBrunsliHeaderVersionCompTag) | (1u << kBrunsliHeaderSubsamplingTag);
 
@@ -449,17 +455,17 @@ bool DecodeAuxData(BrunsliBitReader* br, JPEGData* jpg) {
   return BrunsliBitReaderIsHealthy(br);
 }
 
-bool DecodeCoeffOrder(int* order, BrunsliInput* in) {
+bool DecodeCoeffOrder(int* order, BitSource* br, WordSource* in) {
   int lehmer[kDCTBlockSize] = {0};
   static const int kSpan = 16;
   for (int i = 0; i < kDCTBlockSize; i += kSpan) {
-    if (!in->ReadBits(1)) continue;  // span is all-zero
+    if (!br->ReadBits(1, in)) continue;  // span is all-zero
     const int start = (i > 0) ? i : 1;
     const int end = i + kSpan;
     for (int j = start; j < end; ++j) {
       int v = 0;
       while (v <= kDCTBlockSize) {
-        const int bits = in->ReadBits(3);
+        const int bits = br->ReadBits(3, in);
         v += bits;
         if (bits < 7) break;
       }
@@ -484,7 +490,7 @@ bool DecodeCoeffOrder(int* order, BrunsliInput* in) {
 }
 
 int DecodeNumNonzeros(Prob* const p, BinaryArithmeticDecoder* ac,
-                      BrunsliInput* in) {
+                      WordSource* in) {
   const size_t kMaxBits = 6;
   int val = 1;
   for (size_t b = 0; b < kMaxBits; ++b) {
@@ -495,21 +501,39 @@ int DecodeNumNonzeros(Prob* const p, BinaryArithmeticDecoder* ac,
   return val - (1u << kMaxBits);
 }
 
-bool DecodeDC(State* state, BrunsliInput* in) {
+bool DecodeDC(State* state, WordSource* in) {
   const std::vector<ComponentMeta>& meta = state->meta;
   const size_t num_components = meta.size();
   const int mcu_rows = meta[0].height_in_blocks / meta[0].v_samp;
+  InternalState& s = *state->internal;
+  AcDcState& ac_dc_state = s.ac_dc;
 
-  std::vector<ComponentStateDC> comps(num_components);
-  for (int c = 0; c < num_components; ++c) {
-    comps[c].SetWidth(meta[c].width_in_blocks);
+  std::vector<ComponentStateDC>& comps = ac_dc_state.dc;
+  if (comps.empty()) {
+    comps.resize(num_components);
+    for (int c = 0; c < num_components; ++c) {
+      comps[c].SetWidth(meta[c].width_in_blocks);
+    }
   }
 
-  BinaryArithmeticDecoder ac;
-  ANSDecoder ans;
-  ans.Init(in);
-  in->InitBitReader();
-  ac.Init(in);
+  ANSDecoder& ans = s.ans_decoder;
+  BitSource& br = s.bit_reader;
+  BinaryArithmeticDecoder& ac = s.arith_decoder;
+
+  if (!s.subdecoders_initialized) {
+    ans.Init(in);
+    br.Init(in);
+    ac.Init(in);
+    s.subdecoders_initialized = true;
+  }
+
+  Prob sink;
+
+  // Read next block position.
+  int next_mcu_y = ac_dc_state.next_mcu_y;
+  size_t next_component = ac_dc_state.next_component;
+  int next_iy = ac_dc_state.next_iy;
+  int next_x = ac_dc_state.next_x;
 
   // We decode DC components in the following interleaved manner:
   //   v_samp[0] rows from component 0
@@ -519,97 +543,145 @@ bool DecodeDC(State* state, BrunsliInput* in) {
   //
   // E.g. in a YUV420 image, we decode 2 rows of DC components from Y and then
   // 1 row of DC components from U and 1 row of DC components from V.
-  for (int mcu_y = 0; mcu_y < mcu_rows; ++mcu_y) {
-    for (size_t i = 0; i < num_components; ++i) {
+  for (int mcu_y = next_mcu_y; mcu_y < mcu_rows; ++mcu_y) {
+    for (size_t i = next_component; i < num_components; ++i) {
       ComponentStateDC* c = &comps[i];
       const ComponentMeta& m = meta[i];
       const uint8_t* context_map = state->context_map + i * kNumAvrgContexts;
       const size_t ac_stride = m.ac_stride;
       const size_t b_stride = m.b_stride;
       const int width = m.width_in_blocks;
-      int y = mcu_y * m.v_samp;
+      int y = mcu_y * m.v_samp + next_iy;
       int* const prev_sgn = &c->prev_sign[1];
       int* const prev_abs = &c->prev_abs_coeff[2];
-      for (int iy = 0; iy < m.v_samp; ++iy, ++y) {
-        coeff_t* coeffs = m.ac_coeffs + y * ac_stride;
-        uint8_t* block_state = m.block_state + y * b_stride;
-        for (int x = 0; x < width; ++x) {
+      for (int iy = next_iy; iy < m.v_samp; ++iy, ++y) {
+        coeff_t* coeffs = m.ac_coeffs + y * ac_stride + next_x * kDCTBlockSize;
+        uint8_t* block_state = m.block_state + y * b_stride + next_x;
+        for (int x = next_x; x < width; ++x) {
+          // Each iteration uses up to 4 words.
           const int is_empty_ctx =
               IsEmptyBlockContext(&c->prev_is_nonempty[1], x);
-          Prob* const is_empty_p = &c->is_empty_block_prob[is_empty_ctx];
+          Prob* BRUNSLI_RESTRICT is_empty_p =
+              &c->is_empty_block_prob[is_empty_ctx];
           const bool is_empty_block = !ac.ReadBit(is_empty_p->get_proba(), in);
-          is_empty_p->Add(!is_empty_block);
-          c->prev_is_nonempty[x + 1] = !is_empty_block;
-          *block_state = is_empty_block;
           int abs_val = 0;
+          int is_zero = 0;
           int sign = 0;
+          int first_extra_bit = 0;
+          // Though addresses might be the same, we don't care about "sink".
+          Prob* BRUNSLI_RESTRICT p_is_zero = &sink;
+          Prob* BRUNSLI_RESTRICT sign_p = &sink;
+          Prob* BRUNSLI_RESTRICT p_first_extra_bit = &sink;
           if (!is_empty_block) {
-            int is_zero = 0;
-            Prob* const p_is_zero = &c->is_zero_prob;
+            p_is_zero = &c->is_zero_prob;
             is_zero = ac.ReadBit(p_is_zero->get_proba(), in);
-            p_is_zero->Add(is_zero);
             if (!is_zero) {
               const int avg_ctx = WeightedAverageContextDC(prev_abs, x);
               const int sign_ctx = prev_sgn[x] * 3 + prev_sgn[x - 1];
-              Prob* const sign_p = &c->sign_prob[sign_ctx];
+              sign_p = &c->sign_prob[sign_ctx];
               sign = ac.ReadBit(sign_p->get_proba(), in);
-              sign_p->Add(sign);
               const int entropy_ix = context_map[avg_ctx];
               int code = ans.ReadSymbol(state->entropy_codes[entropy_ix], in);
               if (code < kNumDirectCodes) {
                 abs_val = code + 1;
               } else {
                 const size_t nbits = code - kNumDirectCodes;
-                Prob* const p_first_extra_bit = &c->first_extra_bit_prob[nbits];
-                const int first_extra_bit =
+                p_first_extra_bit = &c->first_extra_bit_prob[nbits];
+                first_extra_bit =
                     ac.ReadBit(p_first_extra_bit->get_proba(), in);
-                p_first_extra_bit->Add(first_extra_bit);
                 int extra_bits_val = first_extra_bit << nbits;
                 if (nbits > 0) {
-                  extra_bits_val |= in->ReadBits(nbits);
+                  extra_bits_val |= br.ReadBits(nbits, in);
                 }
                 abs_val = kNumDirectCodes - 1 + (2 << nbits) + extra_bits_val;
               }
             }
           }
+          is_empty_p->Add(!is_empty_block);
+          p_is_zero->Add(is_zero);
+          sign_p->Add(sign);
+          p_first_extra_bit->Add(first_extra_bit);
           prev_abs[x] = abs_val;
           prev_sgn[x] = abs_val ? sign + 1 : 0;
           coeffs[0] = ((1 - 2 * sign) * abs_val +
                        PredictWithAdaptiveMedian(coeffs, x, y, ac_stride));
-          ++block_state;
+          *(block_state++) = is_empty_block;
           coeffs += kDCTBlockSize;
+          c->prev_is_nonempty[x + 1] = !is_empty_block;
         }
+        next_x = 0;
       }
+      next_iy = 0;
     }
+    next_component = 0;
   }
+  // next_mcu_y = 0;
+
+  // Prepare for AC decoding.
+  ac_dc_state.next_mcu_y = 0;
+  ac_dc_state.next_component = 0;
+  ac_dc_state.next_iy = 0;
+  ac_dc_state.next_x = 0;
+
+  comps.clear();
+  comps.shrink_to_fit();
+
   if (!ans.CheckCRC()) return false;
+  if (!br.Finish()) return false;
+
+  s.subdecoders_initialized = false;
+
   return (in->error_ == 0);
 }
 
-bool DecodeAC(State* state, BrunsliInput* in) {
+bool DecodeAC(State* state, WordSource* in) {
   const std::vector<ComponentMeta>& meta = state->meta;
   const size_t num_components = meta.size();
   const int mcu_rows = meta[0].height_in_blocks / meta[0].v_samp;
+  InternalState& s = *state->internal;
+  AcDcState& ac_dc_state = s.ac_dc;
 
-  std::vector<ComponentState> comps(num_components);
-  for (size_t c = 0; c < num_components; ++c) {
-    comps[c].SetWidth(meta[c].width_in_blocks);
-    ComputeACPredictMultipliers(&meta[c].quant[0], comps[c].mult_row,
-                                comps[c].mult_col);
+  std::vector<ComponentState>& comps = ac_dc_state.ac;
+  if (comps.empty()) {
+    comps.resize(num_components);
+    for (size_t c = 0; c < num_components; ++c) {
+      comps[c].SetWidth(meta[c].width_in_blocks);
+      ComputeACPredictMultipliers(&meta[c].quant[0], comps[c].mult_row,
+                                  comps[c].mult_col);
+    }
   }
 
-  BinaryArithmeticDecoder ac;
-  ANSDecoder ans;
-  ans.Init(in);
-  in->InitBitReader();
-  ac.Init(in);
+  ANSDecoder& ans = s.ans_decoder;
+  BitSource& br = s.bit_reader;
+  BinaryArithmeticDecoder& ac = s.arith_decoder;
 
-  for (int i = 0; i < num_components; ++i) {
-    if (!DecodeCoeffOrder(comps[i].order, in)) return false;
+  if (!s.subdecoders_initialized) {
+    ans.Init(in);
+    br.Init(in);
+    ac.Init(in);
+    s.subdecoders_initialized = true;
   }
 
-  for (int mcu_y = 0; mcu_y < mcu_rows; ++mcu_y) {
-    for (int i = 0; i < num_components; ++i) {
+  if (!ac_dc_state.ac_coeffs_order_decoded) {
+    while (ac_dc_state.next_component < num_components) {
+      // Uses up to 121 word.
+      if (!DecodeCoeffOrder(comps[ac_dc_state.next_component].order, &br, in)) {
+        return false;
+      }
+      ac_dc_state.next_component++;
+    }
+    ac_dc_state.next_component = 0;
+    ac_dc_state.ac_coeffs_order_decoded = true;
+  }
+
+  // Read next block position.
+  int next_mcu_y = ac_dc_state.next_mcu_y;
+  size_t next_component = ac_dc_state.next_component;
+  int next_iy = ac_dc_state.next_iy;
+  int next_x = ac_dc_state.next_x;
+
+  for (int mcu_y = next_mcu_y; mcu_y < mcu_rows; ++mcu_y) {
+    for (size_t i = next_component; i < num_components; ++i) {
       ComponentState& c = comps[i];
       const ComponentMeta& m = meta[i];
       const uint8_t* context_map =
@@ -618,18 +690,21 @@ bool DecodeAC(State* state, BrunsliInput* in) {
       const int width = m.width_in_blocks;
       const size_t ac_stride = m.ac_stride;
       const size_t b_stride = m.b_stride;
-      int y = mcu_y * m.v_samp;
+      int y = mcu_y * m.v_samp + next_iy;
       int prev_row_delta = (1 - 2 * (y & 1u)) * (width + 3) * kDCTBlockSize;
-      for (int iy = 0; iy < m.v_samp; ++iy, ++y) {
-        coeff_t* coeffs = m.ac_coeffs + y * ac_stride;
-        const coeff_t* prev_row_coeffs = coeffs - ac_stride;
-        const coeff_t* prev_col_coeffs = coeffs - kDCTBlockSize;
-        const uint8_t* block_state = m.block_state + y * b_stride;
+      for (int iy = next_iy; iy < m.v_samp; ++iy, ++y) {
+        const size_t block_offset = next_x * kDCTBlockSize;
+        coeff_t* coeffs = m.ac_coeffs + y * ac_stride + block_offset;
+        const coeff_t* prev_row_coeffs = coeffs - ac_stride + block_offset;
+        const coeff_t* prev_col_coeffs = coeffs - kDCTBlockSize + block_offset;
+        const uint8_t* block_state = m.block_state + y * b_stride + next_x;
 
-        int* prev_sgn = &c.prev_sign[kDCTBlockSize];
+        int* prev_sgn = &c.prev_sign[kDCTBlockSize] + block_offset;
         int* prev_abs =
-            &c.prev_abs_coeff[((y & 1u) * (width + 3) + 2) * kDCTBlockSize];
-        for (int x = 0; x < width; ++x) {
+            &c.prev_abs_coeff[((y & 1u) * (width + 3) + 2) * kDCTBlockSize] +
+            block_offset;
+        for (int x = next_x; x < width; ++x) {
+          // Each iteration uses up to 179 words.
           const bool is_empty_block = *block_state;
           int last_nz = 0;
           if (!is_empty_block) {
@@ -698,7 +773,7 @@ bool DecodeAC(State* state, BrunsliInput* in) {
                 p->Add(first_extra_bit);
                 int extra_bits_val = first_extra_bit << nbits;
                 if (nbits > 0) {
-                  extra_bits_val |= in->ReadBits(nbits);
+                  extra_bits_val |= br.ReadBits(nbits, in);
                 }
                 abs_val = kNumDirectCodes - 1 + (2u << nbits) + extra_bits_val;
               }
@@ -719,44 +794,139 @@ bool DecodeAC(State* state, BrunsliInput* in) {
           prev_col_coeffs += kDCTBlockSize;
         }
         prev_row_delta *= -1;
+        next_x = 0;
       }
+      next_iy = 0;
     }
+    next_component = 0;
   }
+  // next_mcu_y = 0;
+
+  comps.clear();
+  comps.shrink_to_fit();
+
   if (!ans.CheckCRC()) return false;
+  if (!br.Finish()) return false;
+
+  s.subdecoders_initialized = false;
+
   return (in->error_ == 0);
 }
 
 static bool CheckCanRead(State* state, size_t required) {
-  if (state->len < required) return false;
-  return (state->pos <= state->len - required);
+  // TODO: dcheck len > pos
+  size_t available = state->len - state->pos;
+  return required <= available;
 }
 
-static bool CheckCanReadByte(State* state) { return (state->pos < state->len); }
+static bool CheckCanReadByte(State* state) {
+  // TODO: dcheck len > pos
+  return state->pos != state->len;
+}
 
-static uint8_t ReadByte(State* state) { return state->data[state->pos++]; }
+static uint8_t ReadByte(State* state) {
+  // TODO: dcheck len > pos
+  return state->data[state->pos++];
+}
 
-static bool DecodeBase128(State* state, size_t* val) {
+static uint8_t PeekByte(State* state, size_t offset) {
+  // TODO: dcheck overflow.
+  return state->data[state->pos + offset];
+}
+
+static void SkipBytes(State* state, size_t len) {
+  // TODO: dcheck overflow.
+  state->pos += len;
+}
+
+static size_t SkipAvailableBytes(State* state, size_t len) {
+  // TODO: dcheck len > pos
+  size_t available = state->len - state->pos;
+  size_t skip_bytes = std::min(available, len);
+  state->pos += skip_bytes;
+  return skip_bytes;
+}
+
+static BrunsliStatus DecodeBase128(State* state, size_t* val) {
   *val = 0;
   uint64_t b = 0x80;
-  for (size_t i = 0; (i < 9) && (b & 0x80u); ++i) {
-    if (!CheckCanReadByte(state)) return false;
-    b = ReadByte(state);
+  size_t i = 0;
+  while ((i < 9) && (b & 0x80u)) {
+    if (!CheckCanRead(state, i + 1)) return BRUNSLI_NOT_ENOUGH_DATA;
+    b = PeekByte(state, i);
     *val |= (b & 0x7Fu) << (i * 7);
+    ++i;
   }
-  return ((b & 0x80u) == 0);
+  SkipBytes(state, i);
+  return ((b & 0x80u) == 0) ? BRUNSLI_OK : BRUNSLI_INVALID_BRN;
 }
 
 static bool DecodeDataLength(State* state, size_t* data_len) {
-  if (!DecodeBase128(state, data_len)) return false;
+  if (DecodeBase128(state, data_len) != BRUNSLI_OK) return false;
   return CheckCanRead(state, *data_len);
 }
 
 static Stage Fail(State* state, BrunsliStatus result) {
-  state->result = result;
+  InternalState& s = *state->internal;
+  s.result = result;
+  // Preserve current stage for continuation / error reporting.
+  s.last_stage = state->stage;
   return Stage::ERROR;
 }
 
+static BrunsliStatus ReadTag(State* state, SectionState* section) {
+  if (!CheckCanReadByte(state)) return BRUNSLI_NOT_ENOUGH_DATA;
+  const uint8_t marker = ReadByte(state);
+
+  const size_t tag = marker >> 3u;
+  if (tag == 0 || tag > 15) return BRUNSLI_INVALID_BRN;
+  section->tag = tag;
+
+  const size_t wiring_type = marker & 0x7u;
+  if (wiring_type != kBrunsliWiringTypeVarint &&
+      wiring_type != kBrunsliWiringTypeLengthDelimited) {
+    return BRUNSLI_INVALID_BRN;
+  }
+  section->is_section = (wiring_type == kBrunsliWiringTypeLengthDelimited);
+
+  const uint32_t tag_bit = 1u << tag;
+  if (section->tags_met & tag_bit) {
+    BRUNSLI_LOG_ERROR() << "Duplicate marker " << std::hex
+                        << static_cast<int>(marker) << BRUNSLI_ENDL();
+    return BRUNSLI_INVALID_BRN;
+  }
+  section->tags_met |= tag_bit;
+
+  return BRUNSLI_OK;
+}
+
+static BrunsliStatus EnterSection(State* state, SectionState* section) {
+  size_t section_size;
+  BrunsliStatus status = DecodeBase128(state, &section_size);
+  if (status != BRUNSLI_OK) return status;
+  section->milestone = state->pos;
+  section->remaining = section_size;
+  section->projected_end = state->pos + section_size;
+  return BRUNSLI_OK;
+}
+
+static bool IsOutOfSectionBounds(State* state) {
+  return state->pos > state->internal->section.projected_end;
+}
+
+static size_t RemainingSectionLength(State* state) {
+  // TODO: remove this check?
+  if (IsOutOfSectionBounds(state)) return 0;
+  return state->internal->section.projected_end - state->pos;
+}
+
+static bool IsAtSectionBoundary(State* state) {
+  return state->pos == state->internal->section.projected_end;
+}
+
 Stage VerifySignature(State* state) {
+  InternalState& s = *state->internal;
+
   if (!CheckCanRead(state, kBrunsliSignatureSize)) {
     return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
   }
@@ -764,7 +934,7 @@ Stage VerifySignature(State* state) {
       (memcmp(state->data + state->pos, kBrunsliSignature,
               kBrunsliSignatureSize) != 0);
   state->pos += kBrunsliSignatureSize;
-  state->tags_met |= 1u << kBrunsliSignatureTag;
+  s.section.tags_met |= 1u << kBrunsliSignatureTag;
   if (is_signature_ok) return Fail(state, BRUNSLI_INVALID_BRN);
   return Stage::HEADER;
 }
@@ -774,116 +944,157 @@ Stage VerifySignature(State* state) {
 // Returns BRUNSLI_OK, unless the data is not valid brunsli byte stream
 // or is truncated.
 Stage DecodeHeader(State* state, JPEGData* jpg) {
-  if (!CheckCanReadByte(state)) return Fail(state, BRUNSLI_INVALID_BRN);
-  const uint8_t section_tag = ReadByte(state);
-  if (section_tag != SectionMarker(kBrunsliHeaderTag)) {
-    return Fail(state, BRUNSLI_INVALID_BRN);
-  }
-  state->tags_met |= 1u << kBrunsliHeaderTag;
+  InternalState& s = *state->internal;
 
-  size_t marker_len = 0;
-  if (!DecodeDataLength(state, &marker_len)) {
-    return Fail(state, BRUNSLI_INVALID_BRN);
-  }
-  const size_t marker_end = state->pos + marker_len;
-  int32_t tags_met = 0;
-  size_t varint_values[16] = {0};
+  if (!s.header) s.header.reset(new HeaderState());
+  HeaderState& hs = *s.header;
 
-  while (state->pos < marker_end) {
-    const uint8_t marker = ReadByte(state);
-    const size_t tag = marker >> 3u;
-    if (tag == 0 || tag > 15) return Fail(state, BRUNSLI_INVALID_BRN);
-    const int32_t tag_bit = 1u << tag;
-    const size_t wiring_type = marker & 0x7u;
-    if (wiring_type != kBrunsliWiringTypeVarint &&
-        wiring_type != kBrunsliWiringTypeLengthDelimited) {
-      return Fail(state, BRUNSLI_INVALID_BRN);
+  while (hs.stage != HeaderState::DONE) {
+    switch (hs.stage) {
+      case HeaderState::READ_TAG: {
+        BrunsliStatus status = ReadTag(state, &s.section);
+        if (status != BRUNSLI_OK) return Fail(state, status);
+        if (s.section.tag != kBrunsliHeaderTag || !s.section.is_section) {
+          return Fail(state, BRUNSLI_INVALID_BRN);
+        }
+        hs.stage = HeaderState::ENTER_SECTION;
+        break;
+      }
+
+      case HeaderState::ENTER_SECTION: {
+        BrunsliStatus status = EnterSection(state, &s.section);
+        if (status != BRUNSLI_OK) return Fail(state, status);
+        hs.stage = HeaderState::ITEM_READ_TAG;
+        break;
+      }
+
+      case HeaderState::ITEM_READ_TAG: {
+        if (IsAtSectionBoundary(state)) {
+          hs.stage = HeaderState::FINALE;
+          break;
+        }
+        BrunsliStatus status = ReadTag(state, &hs.section);
+        if (status != BRUNSLI_OK) return Fail(state, status);
+        const uint32_t tag_bit = 1u << hs.section.tag;
+        if (hs.section.is_section) {
+          if (kKnownHeaderVarintTags & tag_bit) {
+            Fail(state, BRUNSLI_INVALID_BRN);
+          }
+          hs.stage = HeaderState::ITEM_ENTER_SECTION;
+          break;
+        }
+        hs.stage = HeaderState::ITEM_READ_VALUE;
+        break;
+      }
+
+      case HeaderState::ITEM_ENTER_SECTION: {
+        BrunsliStatus status = DecodeBase128(state, &hs.remaining_skip_length);
+        if (status != BRUNSLI_OK) return Fail(state, status);
+        hs.stage = HeaderState::ITEM_SKIP_CONTENTS;
+        break;
+      }
+
+      case HeaderState::ITEM_SKIP_CONTENTS: {
+        size_t bytes_skipped =
+            SkipAvailableBytes(state, hs.remaining_skip_length);
+        hs.remaining_skip_length -= bytes_skipped;
+        if (hs.remaining_skip_length > 0) {
+          return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
+        }
+        hs.stage = HeaderState::ITEM_READ_TAG;
+        break;
+      }
+
+      case HeaderState::ITEM_READ_VALUE: {
+        size_t value;
+        BrunsliStatus status = DecodeBase128(state, &value);
+        if (status != BRUNSLI_OK) return Fail(state, status);
+        hs.varint_values[hs.section.tag] = value;
+        hs.stage = HeaderState::ITEM_READ_TAG;
+        break;
+      }
+
+      case HeaderState::FINALE: {
+        const bool has_version =
+            hs.section.tags_met & (1u << kBrunsliHeaderVersionCompTag);
+        if (!has_version) return Fail(state, BRUNSLI_INVALID_BRN);
+        const size_t version_and_comp_count =
+            hs.varint_values[kBrunsliHeaderVersionCompTag];
+
+        const int version = version_and_comp_count >> 2u;
+        jpg->version = version;
+
+        if (version == 1) {  // fallback mode
+          // TODO: do we need this?
+          jpg->width = 0;
+          jpg->height = 0;
+          hs.stage = HeaderState::DONE;
+          break;
+        }
+
+        if (version != 0) {  // unknown mode
+          return Fail(state, BRUNSLI_INVALID_BRN);
+        }
+
+        // Otherwise version == 0 i.e. regular brunsli.
+
+        // Do not allow "original_jpg" for regular Brunsli files.
+        s.section.tags_met |= 1u << kBrunsliOriginalJpgTag;
+
+        const bool has_width =
+            hs.section.tags_met & (1u << kBrunsliHeaderWidthTag);
+        if (!has_width) return Fail(state, BRUNSLI_INVALID_BRN);
+        const size_t width = hs.varint_values[kBrunsliHeaderWidthTag];
+        const bool has_height =
+            hs.section.tags_met & (1u << kBrunsliHeaderHeightTag);
+        if (!has_height) return Fail(state, BRUNSLI_INVALID_BRN);
+        const size_t height = hs.varint_values[kBrunsliHeaderHeightTag];
+
+        if (width == 0 || height == 0) return Fail(state, BRUNSLI_INVALID_BRN);
+        if (width > kMaxDimPixels || height > kMaxDimPixels) {
+          return Fail(state, BRUNSLI_INVALID_BRN);
+        }
+        jpg->width = width;
+        jpg->height = height;
+
+        const size_t num_components = (version_and_comp_count & 3u) + 1u;
+        jpg->components.resize(num_components);
+
+        const bool has_subsampling =
+            hs.section.tags_met & (1u << kBrunsliHeaderSubsamplingTag);
+        if (!has_subsampling) return Fail(state, BRUNSLI_INVALID_BRN);
+        size_t subsampling_code =
+            hs.varint_values[kBrunsliHeaderSubsamplingTag];
+
+        for (size_t i = 0; i < jpg->components.size(); ++i) {
+          JPEGComponent* c = &jpg->components[i];
+          c->v_samp_factor = (subsampling_code & 0xFu) + 1;
+          subsampling_code >>= 4u;
+          c->h_samp_factor = (subsampling_code & 0xFu) + 1;
+          subsampling_code >>= 4u;
+          if (c->v_samp_factor > kBrunsliMaxSampling) {
+            return Fail(state, BRUNSLI_INVALID_BRN);
+          }
+          if (c->h_samp_factor > kBrunsliMaxSampling) {
+            return Fail(state, BRUNSLI_INVALID_BRN);
+          }
+        }
+        if (!UpdateSubsamplingDerivatives(jpg)) {
+          return Fail(state, BRUNSLI_INVALID_BRN);
+        }
+
+        PrepareMeta(jpg, state);
+
+        hs.stage = HeaderState::DONE;
+        break;
+      }
+
+      default: return Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
     }
-    if (tags_met & tag_bit) return Fail(state, BRUNSLI_INVALID_BRN);
-    tags_met |= tag_bit;
-
-    const bool is_varint = (wiring_type == kBrunsliWiringTypeVarint);
-    if (kKnownHeaderVarintTags & tag_bit) {
-      if (!is_varint) return Fail(state, BRUNSLI_INVALID_BRN);
-    }
-
-    size_t value = 0;
-    if (!DecodeBase128(state, &value)) return Fail(state, BRUNSLI_INVALID_BRN);
-    if (is_varint) {
-      varint_values[tag] = value;
-    } else {
-      if (!CheckCanRead(state, value)) return Fail(state, BRUNSLI_INVALID_BRN);
-      // Skip section; current version of Brunsli does not use any.
-      state->pos += value;
-    }
-  }
-  if (state->pos != marker_end) return Fail(state, BRUNSLI_INVALID_BRN);
-
-  const bool has_version = tags_met & (1 << kBrunsliHeaderVersionCompTag);
-  if (!has_version) return Fail(state, BRUNSLI_INVALID_BRN);
-  const size_t version_and_comp_count =
-      varint_values[kBrunsliHeaderVersionCompTag];
-
-  const int version = version_and_comp_count >> 2;
-  jpg->version = version;
-
-  if (version == 1) {  // fallback mode
-    // TODO: do we need this?
-    jpg->width = 0;
-    jpg->height = 0;
-    return Stage::FALLBACK;
   }
 
-  if (version != 0) {  // unknown mode
-    return Fail(state, BRUNSLI_INVALID_BRN);
-  }
-
-  // Otherwise version == 0 i.e. regular brunsli.
-
-  // Do not allow "original_jpg" for regular Brunsli files.
-  state->tags_met |= 1 << kBrunsliOriginalJpgTag;
-
-  const bool has_width = tags_met & (1 << kBrunsliHeaderWidthTag);
-  if (!has_width) return Fail(state, BRUNSLI_INVALID_BRN);
-  const size_t width = varint_values[kBrunsliHeaderWidthTag];
-  const bool has_height = tags_met & (1 << kBrunsliHeaderHeightTag);
-  if (!has_height) return Fail(state, BRUNSLI_INVALID_BRN);
-  const size_t height = varint_values[kBrunsliHeaderHeightTag];
-
-  if (width == 0 || height == 0) return Fail(state, BRUNSLI_INVALID_BRN);
-  if (width > kMaxDimPixels || height > kMaxDimPixels) {
-    return Fail(state, BRUNSLI_INVALID_BRN);
-  }
-  jpg->width = width;
-  jpg->height = height;
-
-  const size_t num_components = (version_and_comp_count & 3) + 1;
-  jpg->components.resize(num_components);
-
-  const bool has_subsampling = tags_met & (1 << kBrunsliHeaderSubsamplingTag);
-  if (!has_subsampling) return Fail(state, BRUNSLI_INVALID_BRN);
-  size_t subsampling_code = varint_values[kBrunsliHeaderSubsamplingTag];
-
-  for (size_t i = 0; i < jpg->components.size(); ++i) {
-    JPEGComponent* c = &jpg->components[i];
-    c->v_samp_factor = (subsampling_code & 0xF) + 1;
-    subsampling_code >>= 4;
-    c->h_samp_factor = (subsampling_code & 0xF) + 1;
-    subsampling_code >>= 4;
-    if (c->v_samp_factor > kBrunsliMaxSampling) {
-      return Fail(state, BRUNSLI_INVALID_BRN);
-    }
-    if (c->h_samp_factor > kBrunsliMaxSampling) {
-      return Fail(state, BRUNSLI_INVALID_BRN);
-    }
-  }
-  if (!UpdateSubsamplingDerivatives(jpg)) {
-    return Fail(state, BRUNSLI_INVALID_BRN);
-  }
-
-  PrepareMeta(jpg, state);
-
-  return Stage::SECTION;
+  s.header.reset(nullptr);
+  return jpg->version == 1 ? Stage::FALLBACK : Stage::SECTION;
 }
 
 // Decompress Brotli stream and discard output.
@@ -934,17 +1145,18 @@ bool ValidateBrotliStream(const uint8_t* data, const size_t len,
 }
 
 static bool DecodeMetaDataSection(State* state, JPEGData* jpg) {
-  if (state->pos == state->section_end) return true;
-  if (state->pos + 1 == state->section_end) {
+  if (IsAtSectionBoundary(state)) return true;
+  if (RemainingSectionLength(state) == 1) {
     return AddMetaData(std::string(1, ReadByte(state)), jpg);
   }
 
   size_t metadata_size = 0;
-  if (!DecodeBase128(state, &metadata_size)) return false;
+  if (DecodeBase128(state, &metadata_size) != BRUNSLI_OK) return false;
 
   const uint8_t* compressed_data = state->data + state->pos;
-  if (state->section_end <= state->pos) return false;
-  const size_t compressed_size = state->section_end - state->pos;
+  if (IsOutOfSectionBounds(state)) return false;
+  const size_t compressed_size = RemainingSectionLength(state);
+  if (compressed_size == 0) return false;
 
   // Make additional check if compressed data is suspicious,
   // i.e. expected output is larger than 1GiB, or compression ratio is larger
@@ -979,10 +1191,10 @@ static bool DecodeMetaDataSection(State* state, JPEGData* jpg) {
 }
 
 static bool DecodeJPEGInternalsSection(State* state, JPEGData* jpg) {
-  if (state->pos == state->section_end) return false;
+  if (IsAtSectionBoundary(state)) return false;
 
   // TODO: merge BitReader into State
-  size_t section_len = state->section_end - state->pos;
+  size_t section_len = RemainingSectionLength(state);
   BrunsliBitReader br;
   BrunsliBitReaderInit(&br, state->data + state->pos, section_len);
   if (!DecodeAuxData(&br, jpg)) return false;
@@ -1006,10 +1218,10 @@ static bool DecodeJPEGInternalsSection(State* state, JPEGData* jpg) {
 }
 
 static bool DecodeQuantDataSection(State* state, JPEGData* jpg) {
-  if (state->pos == state->section_end) return false;
+  if (IsAtSectionBoundary(state)) return false;
 
   // TODO: merge BitReader into State
-  size_t section_len = state->section_end - state->pos;
+  size_t section_len = RemainingSectionLength(state);
   BrunsliBitReader br;
   BrunsliBitReaderInit(&br, state->data + state->pos, section_len);
   if (!DecodeQuantTables(&br, jpg)) return false;
@@ -1020,7 +1232,9 @@ static bool DecodeQuantDataSection(State* state, JPEGData* jpg) {
 }
 
 static bool DecodeHistogramDataSection(State* state, JPEGData* jpg) {
-  if (state->pos == state->section_end) return false;
+  InternalState& s = *state->internal;
+
+  if (IsAtSectionBoundary(state)) return false;
 
   size_t num_components = jpg->components.size();
   BRUNSLI_DCHECK(num_components != 0);
@@ -1028,7 +1242,7 @@ static bool DecodeHistogramDataSection(State* state, JPEGData* jpg) {
   std::vector<ComponentMeta>& meta = state->meta;
 
   // TODO: merge BitReader into State
-  size_t section_len = state->section_end - state->pos;
+  size_t section_len = RemainingSectionLength(state);
   BrunsliBitReader br;
   BrunsliBitReaderInit(&br, state->data + state->pos, section_len);
 
@@ -1040,27 +1254,26 @@ static bool DecodeHistogramDataSection(State* state, JPEGData* jpg) {
     meta[i].context_offset = num_contexts;
     num_contexts += kNumNonzeroContextSkip[scheme];
   }
-  state->num_contexts = num_contexts;
+  s.num_contexts = num_contexts;
 
-  state->num_histograms = DecodeVarLenUint8(&br) + 1;
+  s.num_histograms = DecodeVarLenUint8(&br) + 1;
   if (!BrunsliBitReaderIsHealthy(&br)) return false;
 
-  if (!state->shallow_histograms) {
-    state->context_map_.resize(state->num_contexts * kNumAvrgContexts);
-    if (!DecodeContextMap(state->num_histograms, state->context_map_.size(),
-                          state->context_map_.data(), &br)) {
+  if (!s.shallow_histograms) {
+    s.context_map_.resize(s.num_contexts * kNumAvrgContexts);
+    if (!DecodeContextMap(s.num_histograms, s.context_map_.size(),
+                          s.context_map_.data(), &br)) {
       return false;
     }
-    state->context_map = state->context_map_.data();
+    state->context_map = s.context_map_.data();
 
-    state->entropy_codes_.resize(state->num_histograms);
-    for (size_t i = 0; i < state->num_histograms; ++i) {
-      if (!state->entropy_codes_[i].ReadFromBitStream(kCoeffAlphabetSize,
-                                                      &br)) {
+    s.entropy_codes_.resize(s.num_histograms);
+    for (size_t i = 0; i < s.num_histograms; ++i) {
+      if (!s.entropy_codes_[i].ReadFromBitStream(kCoeffAlphabetSize, &br)) {
         return false;
       }
     }
-    state->entropy_codes = state->entropy_codes_.data();
+    state->entropy_codes = s.entropy_codes_.data();
 
     int tail_length = BrunsliBitReaderFinish(&br);
     if (tail_length != 0) return false;
@@ -1072,8 +1285,8 @@ static bool DecodeHistogramDataSection(State* state, JPEGData* jpg) {
 
 static bool DecodeDCDataSection(State* state) {
   // TODO: merge BrunsliInput into State
-  size_t section_len = state->section_end - state->pos;
-  BrunsliInput in(state->data + state->pos, section_len);
+  size_t section_len = RemainingSectionLength(state);
+  WordSource in(state->data + state->pos, section_len);
 
   if (!DecodeDC(state, &in)) return false;
 
@@ -1084,8 +1297,8 @@ static bool DecodeDCDataSection(State* state) {
 
 bool DecodeACDataSection(State* state) {
   // TODO: merge BrunsliInput into State
-  size_t section_len = state->section_end - state->pos;
-  BrunsliInput in(state->data + state->pos, section_len);
+  size_t section_len = RemainingSectionLength(state);
+  WordSource in(state->data + state->pos, section_len);
 
   if (!DecodeAC(state, &in)) return false;
 
@@ -1107,83 +1320,63 @@ static Stage DecodeOriginalJpg(State* state, JPEGData* jpg) {
   jpg->original_jpg = state->data + state->pos;
   jpg->original_jpg_size = jpg_len;
 
-  state->pos += jpg_len;
+  SkipBytes(state, jpg_len);
   return Stage::DONE;
 }
 
+static bool HasSection(State* state, uint32_t tag) {
+  return state->internal->section.tags_met & (1u << tag);
+}
+
 static Stage ParseSection(State* state) {
-  if (!CheckCanReadByte(state)) {
-    // End of input.
-    const bool has_ac = state->tags_met & (1 << kBrunsliACDataTag);
-    if (!has_ac) {
-      return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
-    }
-    return Stage::DONE;
+  InternalState& s = *state->internal;
+
+  BrunsliStatus status = ReadTag(state, &s.section);
+  if (status == BRUNSLI_NOT_ENOUGH_DATA) {
+    if (HasSection(state, kBrunsliACDataTag)) return Stage::DONE;
   }
-  const uint8_t marker = ReadByte(state);
+  if (status != BRUNSLI_OK) return Fail(state, status);
 
-  const size_t tag = marker >> 3;
-  if (tag == 0 || tag > 15) return Fail(state, BRUNSLI_INVALID_BRN);
-  const int32_t tag_bit = 1u << tag;
-
-  const size_t wiring_type = marker & 0x7u;
-  const bool is_section = (wiring_type == kBrunsliWiringTypeLengthDelimited);
-  if (wiring_type != kBrunsliWiringTypeVarint &&
-      wiring_type != kBrunsliWiringTypeLengthDelimited) {
-    return Fail(state, BRUNSLI_INVALID_BRN);
-  }
-
-  if (state->tags_met & tag_bit) {
-    BRUNSLI_LOG_ERROR() << "Duplicate marker " << std::hex
-                        << static_cast<int>(marker) << BRUNSLI_ENDL();
-    return Fail(state, BRUNSLI_INVALID_BRN);
-  }
-  state->tags_met |= tag_bit;
-
+  const uint32_t tag_bit = 1u << s.section.tag;
   const bool is_known_section_tag = kKnownSectionTags & tag_bit;
-  if (!is_section) {
+  if (!s.section.is_section) {
     if (is_known_section_tag) {
       return Fail(state, BRUNSLI_INVALID_BRN);
     } else {
       // No known varint tags on top level.
       size_t dummy;
-      if (!DecodeBase128(state, &dummy)) {
+      if (DecodeBase128(state, &dummy) != BRUNSLI_OK) {
         return Fail(state, BRUNSLI_INVALID_BRN);
       }
       return Stage::SECTION;
     }
   }
 
-  size_t marker_len = 0;
-  if (!DecodeDataLength(state, &marker_len)) {
-    return Fail(state, BRUNSLI_INVALID_BRN);
-  }
-
-  state->tag = tag;
-  state->section_end = state->pos + marker_len;
+  status = EnterSection(state, &s.section);
+  if (status != BRUNSLI_OK) return Fail(state, status);
   return Stage::SECTION_BODY;
 }
 
-static bool HasSection(State* state, int32_t tag) {
-  return state->tags_met & (1 << tag);
-}
-
 static Stage ProcessSection(State* state, JPEGData* jpg) {
-  const int32_t tag_bit = 1 << state->tag;
+  InternalState& s = *state->internal;
+
+  const int32_t tag_bit = 1u << s.section.tag;
   const bool is_known_section_tag = kKnownSectionTags & tag_bit;
   if (!is_known_section_tag) {
     // Skip section content.
-    state->pos = state->section_end;
+    // TODO: check there is enough input.
+    state->pos += RemainingSectionLength(state);
     return Stage::SECTION;
   }
 
   if (state->skip_tags & tag_bit) {
     // Skip section content.
-    state->pos = state->section_end;
+    // TODO: check there is enough input.
+    state->pos += RemainingSectionLength(state);
     return Stage::SECTION;
   }
 
-  switch (state->tag) {
+  switch (s.section.tag) {
     case kBrunsliMetaDataTag:
       if (!DecodeMetaDataSection(state, jpg)) {
         return Fail(state, BRUNSLI_INVALID_BRN);
@@ -1242,7 +1435,7 @@ static Stage ProcessSection(State* state, JPEGData* jpg) {
       return Fail(state, BRUNSLI_INVALID_BRN);
   }
 
-  if (state->pos != state->section_end) {
+  if (!IsAtSectionBoundary(state)) {
     return Fail(state, BRUNSLI_INVALID_BRN);
   }
 
@@ -1275,8 +1468,10 @@ bool UpdateSubsamplingDerivatives(JPEGData* jpg) {
 }
 
 void PrepareMeta(const JPEGData* jpg, State* state) {
+  InternalState& s = *state->internal;
+
   size_t num_components = jpg->components.size();
-  state->block_state_.resize(num_components);
+  s.block_state_.resize(num_components);
   std::vector<ComponentMeta>& meta = state->meta;
   meta.resize(num_components);
   for (size_t i = 0; i < num_components; ++i) {
@@ -1290,6 +1485,7 @@ void PrepareMeta(const JPEGData* jpg, State* state) {
 }
 
 void WarmupMeta(JPEGData* jpg, State* state) {
+  InternalState& s = *state->internal;
   std::vector<ComponentMeta>& meta = state->meta;
   const size_t num_components = meta.size();
 
@@ -1298,13 +1494,13 @@ void WarmupMeta(JPEGData* jpg, State* state) {
     for (size_t i = 0; i < num_components; ++i) {
       size_t num_blocks = meta[i].width_in_blocks * meta[i].height_in_blocks;
       jpg->components[i].coeffs.resize(num_blocks * kDCTBlockSize);
-      state->block_state_[i].resize(num_blocks);
-      meta[i].block_state = state->block_state_[i].data();
+      s.block_state_[i].resize(num_blocks);
+      meta[i].block_state = s.block_state_[i].data();
     }
   }
 
-  if (!state->is_meta_warm) {
-    state->is_meta_warm = true;
+  if (!s.is_meta_warm) {
+    s.is_meta_warm = true;
     for (size_t c = 0; c < num_components; ++c) {
       ComponentMeta& m = meta[c];
       const JPEGQuantTable& q = jpg->quant[jpg->components[c].quant_idx];
@@ -1317,7 +1513,7 @@ void WarmupMeta(JPEGData* jpg, State* state) {
   }
 }
 
-BrunsliStatus ProcessJpeg(State* state, JPEGData* jpg) {
+BrunsliStatus DoProcessJpeg(State* state, JPEGData* jpg) {
   while (true) {
     switch (state->stage) {
       case Stage::SIGNATURE:
@@ -1343,17 +1539,39 @@ BrunsliStatus ProcessJpeg(State* state, JPEGData* jpg) {
       case Stage::DONE:
         // It is expected that there is no garbage after the valid brunsli
         // stream.
-        if (state->pos != state->len) return BRUNSLI_INVALID_BRN;
+        if (state->pos != state->len) {
+          state->stage = Fail(state, BRUNSLI_INVALID_BRN);
+          break;
+        }
         return BRUNSLI_OK;
 
       case Stage::ERROR:
-        return state->result;
+        return state->internal->result;
 
       default:
         /* Unreachable */
-        return BRUNSLI_DECOMPRESSION_ERROR;
+        state->stage = Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
+        break;
     }
   }
+}
+
+BrunsliStatus ProcessJpeg(State* state, JPEGData* jpg) {
+  InternalState& s = *state->internal;
+
+  if (state->stage == Stage::ERROR) {
+    // General error -> no recovery.
+    if (s.result != BRUNSLI_NOT_ENOUGH_DATA) {
+      return s.result;
+    }
+    // Continue parsing.
+    s.result = BRUNSLI_OK;
+    state->stage = s.last_stage;
+    s.last_stage = Stage::ERROR;
+  }
+
+  s.section.tags_met |= state->tags_met;
+  return DoProcessJpeg(state, jpg);
 }
 
 }  // namespace dec
@@ -1378,7 +1596,8 @@ size_t BrunsliEstimateDecoderPeakMemoryUsage(const uint8_t* data,
   state.data = data;
   state.len = len;
   state.skip_tags = ~(1u << kBrunsliHistogramDataTag);
-  state.shallow_histograms = true;
+  InternalState& s = *state.internal;
+  s.shallow_histograms = true;
 
   JPEGData jpg;
   BrunsliStatus status = internal::dec::ProcessJpeg(&state, &jpg);
@@ -1394,11 +1613,10 @@ size_t BrunsliEstimateDecoderPeakMemoryUsage(const uint8_t* data,
     component_state_size += ComponentState::SizeInBytes(c.width_in_blocks);
   }
   size_t jpeg_data_size = total_num_blocks * kDCTBlockSize * sizeof(coeff_t);
-  size_t context_map_size =
-      state.num_contexts * kNumAvrgContexts * sizeof(int32_t);
-  size_t histogram_size = state.num_histograms * sizeof(ANSDecodingData);
+  size_t context_map_size = s.num_contexts * kNumAvrgContexts * sizeof(int32_t);
+  size_t histogram_size = s.num_histograms * sizeof(ANSDecodingData);
   size_t decode_peak = context_map_size + histogram_size + component_state_size;
-  size_t jpeg_writer_size = (1 << 17) + (1 << 16) * sizeof(int32_t);
+  size_t jpeg_writer_size = (1u << 17u) + (1u << 16u) * sizeof(int32_t);
   return (out_size + jpeg_data_size + std::max(decode_peak, jpeg_writer_size));
 }
 
