@@ -110,7 +110,16 @@ foreach(module IN LISTS WASM_MODULES)
 add_executable(${module} wasm/codec.cc)
 target_link_libraries(${module} PRIVATE brunslidec-static brunslienc-static)
 endforeach()
-set(WASM_LINK_FLAGS "-O3 --closure 1 -s ALLOW_MEMORY_GROWTH=1 -s MODULARIZE=1")
+set(WASM_LINK_FLAGS "\
+  -O3 \
+  --closure 1 \
+  -s ALLOW_MEMORY_GROWTH=1 \
+  -s MODULARIZE=1 \
+  -s FILESYSTEM=0 \
+  -flto \
+  --llvm-lto 1 \
+  -s DISABLE_EXCEPTION_CATCHING=1 \
+")
 set(WASM_COMMON_EXPORT "\"_malloc\",\"_free\"")
 set(WASM_DEC_EXPORT "\"_BrunsliToJpeg\",\"_GetJpegData\",\"_GetJpegLength\",\"_FreeJpeg\"")
 set(WASM_ENC_EXPORT "\"_JpegToBrunsli\",\"_GetBrunsliData\",\"_GetBrunsliLength\",\"_FreeBrunsli\"")
