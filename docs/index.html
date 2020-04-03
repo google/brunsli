@@ -228,7 +228,9 @@ function logDownloadLink(fileName, fileContent) {
 function processJpeg(fileName, jpegData, jpegSize) {
   log('w3-text-gray', [text("Processing " + fileName + " as JPEG")]);
   log('w3-text-gray', [text("Input size: " + jpegSize)]);
+  let t0 = performance.now();
   let brunsli = brunsliModule._JpegToBrunsli(jpegData, jpegSize);
+  let t1 = performance.now();
   if (!brunsli) {
     log('w3-text-red', text("JXL Recompression failed"));
     return;
@@ -240,12 +242,15 @@ function processJpeg(fileName, jpegData, jpegSize) {
   output.set(brunsliDataView);
   brunsliModule._FreeBrunsli(brunsli);
   log('w3-text-gray', [text("Output size: " + brunsliSize)]);
+  log('w3-text-gray', [text("Processing time: " + (((t1 - t0)|0) / 1000.0) + "s")]);
   logDownloadLink(fileName + '.jxl', output);
 }
 function processBrunsli(fileName, brunsliData, brunsliSize) {
   log('w3-text-gray', [text("Processing " + fileName + " as JXL")]);
   log('w3-text-gray', [text("Input size: " + brunsliSize)]);
+  let t0 = performance.now();
   let jpeg = brunsliModule._BrunsliToJpeg(brunsliData, brunsliSize);
+  let t1 = performance.now();
   if (!jpeg) {
     log('w3-text-red', [text("Reconstuction failed")]);
     return;
@@ -257,6 +262,7 @@ function processBrunsli(fileName, brunsliData, brunsliSize) {
   output.set(jpegDataView);
   brunsliModule._FreeBrunsli(jpeg);
   log('w3-text-gray', [text("Output size: " + jpegSize)]);
+  log('w3-text-gray', [text("Processing time: " + (((t1 - t0)|0) / 1000.0) + "s")]);
   logImage(output);
   logDownloadLink(fileName + '.jpg', output);
 }

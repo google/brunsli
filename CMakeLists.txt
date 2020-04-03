@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.1)
 
 project(BRUNSLI C CXX)
 
-# Force build with optimizations in release mode.
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
-
 include(CheckCSourceCompiles)
 check_c_source_compiles(
   "#if defined(__EMSCRIPTEN__)
@@ -14,6 +11,8 @@ check_c_source_compiles(
 )
 if (BRUNSLI_EMSCRIPTEN)
   message("-- Compiler is EMSCRIPTEN")
+  set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -fno-exceptions -fno-rtti")
+  set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -flto -fno-exceptions -fno-rtti")
   set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
   set(CMAKE_EXECUTABLE_SUFFIX ".js")
 else()
