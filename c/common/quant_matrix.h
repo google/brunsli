@@ -14,6 +14,9 @@
 
 namespace brunsli {
 
+static const size_t kQFactorBits = 6;
+static const size_t kQFactorLimit = 1u << kQFactorBits;
+
 void FillQuantMatrix(bool is_chroma, uint32_t q, uint8_t dst[kDCTBlockSize]);
 uint32_t FindBestMatrix(const int* src, bool is_chroma,
                         uint8_t dst[kDCTBlockSize]);

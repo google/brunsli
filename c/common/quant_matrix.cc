@@ -12,12 +12,10 @@
 
 namespace brunsli {
 
-static const int kMaxQFactor = 64;
-
 // TODO: consider high-precision (16-bit) tables in Brunsli v3.
 void FillQuantMatrix(bool is_chroma, uint32_t q,
                      uint8_t dst[kDCTBlockSize]) {
-  BRUNSLI_DCHECK(q >= 0 && q < kMaxQFactor);
+  BRUNSLI_DCHECK(q >= 0 && q < kQFactorLimit);
   const uint8_t* const in = kDefaultQuantMatrix[is_chroma];
   for (int i = 0; i < kDCTBlockSize; ++i) {
     const uint32_t v = (in[i] * q + 32) >> 6;
@@ -30,18 +28,37 @@ void FillQuantMatrix(bool is_chroma, uint32_t q,
 uint32_t FindBestMatrix(const int* src, bool is_chroma,
                         uint8_t dst[kDCTBlockSize]) {
   uint32_t best_q = 0;
-  float best_err = 274877906944.0f;  // == 64 * 65536 * 65536
-  for (uint32_t q = 0; q < kMaxQFactor; ++q) {
+  const size_t kMaxDiffCost = 33;
+  const size_t kWorstLen = (kDCTBlockSize + 1) * (kMaxDiffCost + 1);
+  size_t best_len = kWorstLen;
+  for (uint32_t q = 0; q < kQFactorLimit; ++q) {
     FillQuantMatrix(is_chroma, q, dst);
-    float err = 0.0f;
-    for (size_t k = 0; k < kDCTBlockSize; ++k) {
-      // TODO: is it possible to replace L2 with Linf?
-      float delta = src[k] - dst[k];
-      err += delta * delta;
-      if (err >= best_err) break;
+    // Copycat encoder behavior.
+    int last_diff = 0;  // difference predictor
+    size_t len = 0;
+    for (int k = 0; k < kDCTBlockSize; ++k) {
+      const int j = kJPEGNaturalOrder[k];
+      const int new_diff = src[j] - dst[j];
+      int diff = new_diff - last_diff;
+      last_diff = new_diff;
+      if (diff != 0) {
+        len += 1;
+        if (diff < 0) diff = -diff;
+        diff -= 1;
+        if (diff == 0) {
+          len++;
+        } else if (diff > 65535) {
+          len = kWorstLen;
+          break;
+        } else {
+          uint32_t diff_len = Log2FloorNonZero(diff) + 1;
+          if (diff_len == 16) diff_len--;
+          len += 2 * diff_len + 1;
+        }
+      }
     }
-    if (err < best_err) {
-      best_err = err;
+    if (len < best_len) {
+      best_len = len;
       best_q = q;
     }
   }
