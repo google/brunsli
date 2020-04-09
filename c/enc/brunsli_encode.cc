@@ -241,22 +241,27 @@ bool EncodeQuantTables(const JPEGData& jpg, Storage* storage) {
   WriteBits(2, jpg.quant.size() - 1, storage);
   for (size_t i = 0; i < jpg.quant.size(); ++i) {
     const JPEGQuantTable& q = jpg.quant[i];
-    uint8_t predictor[kDCTBlockSize];
-    const int code = GetQuantTableId(q, i > 0, predictor);
+    for (int k = 0; k < kDCTBlockSize; ++k) {
+      const int j = kJPEGNaturalOrder[k];
+      if (q.values[j] == 0) {
+        // Note: ReadJpeg() checks this case and discards such JPEG files.
+        return false;
+      }
+    }
+
+    uint8_t quant_approx[kDCTBlockSize];
+    const int code = GetQuantTableId(q, i > 0, quant_approx);
     WriteBits(1, (code >= kNumStockQuantTables), storage);
     if (code < kNumStockQuantTables) {
       WriteBits(3, code, storage);
     } else {
-      BRUNSLI_DCHECK(code - kNumStockQuantTables < (1 << 6));
-      WriteBits(6, code - kNumStockQuantTables, storage);
+      int q_factor = code - kNumStockQuantTables;
+      BRUNSLI_DCHECK(q_factor < kQFactorLimit);
+      WriteBits(kQFactorBits, q_factor, storage);
       int last_diff = 0;  // difference predictor
       for (int k = 0; k < kDCTBlockSize; ++k) {
         const int j = kJPEGNaturalOrder[k];
-        if (q.values[j] == 0) {
-          // Note: ReadJpeg() checks this case and discards such jpeg files.
-          return false;
-        }
-        const int new_diff = q.values[j] - predictor[j];
+        const int new_diff = q.values[j] - quant_approx[j];
         int diff = new_diff - last_diff;
         last_diff = new_diff;
         WriteBits(1, diff != 0, storage);

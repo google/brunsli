@@ -7,6 +7,7 @@
 #ifndef BRUNSLI_DEC_BRUNSLI_INPUT_H_
 #define BRUNSLI_DEC_BRUNSLI_INPUT_H_
 
+#include "../common/platform.h"
 #include <brunsli/types.h>
 
 namespace brunsli {
@@ -17,23 +18,20 @@ static const int kBitMask[] = {0,    1,    3,     7,     15,   31,
 
 struct WordSource {
   WordSource(const uint8_t* data, size_t len)
-      : data_(reinterpret_cast<const uint16_t*>(data)),
-        len_(len >> 1),
-        pos_(0),
-        error_(len & 1) {}
+      : data_(data), len_(len & ~1), pos_(0), error_(len & 1) {}
 
   uint16_t GetNextWord() {
     uint16_t val = 0;
     if (pos_ < len_) {
-      val = data_[pos_];
+      val = BRUNSLI_UNALIGNED_LOAD16LE(data_ + pos_);
     } else {
       error_ = 1;
     }
-    ++pos_;
+    pos_ += 2;
     return val;
   }
 
-  const uint16_t* data_;
+  const uint8_t* data_;
   size_t len_;
   size_t pos_;
   int error_;

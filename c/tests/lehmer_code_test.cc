@@ -22,7 +22,7 @@ uint32_t LehmerRng(uint32_t* state) {
   return *state;
 }
 
-TEST(CommonTest, TestPermutation) {
+TEST(LehmerCodeTest, TestPermutation) {
   const size_t kSize = 1000;
   const size_t kNumIterations = 10;
   for (int nbits = 0; nbits < 8; ++nbits) {

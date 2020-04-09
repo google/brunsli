@@ -8,7 +8,6 @@
 #define BRUNSLI_DEC_STATE_INTERNAL_H_
 
 #include <array>
-#include <memory>
 #include <vector>
 
 #include "../common/context.h"
@@ -34,9 +33,13 @@ struct AcDcState {
   std::vector<ComponentStateDC> dc;
 };
 
+// Aid for section / subsection parsing.
 struct SectionState {
   // Current value tag and type.
   size_t tag = 0;
+  // True, if section is entered.
+  bool is_active = false;
+  // True, if "message" is actually "section", not a primitive value.
   bool is_section = false;
 
   // Encountered tags tracker.
@@ -53,33 +56,64 @@ struct SectionState {
   size_t projected_end = 0;
 };
 
+// Fields used for "Header" section parsing.
 struct HeaderState {
   enum Stage {
+    // Check section tag.
     READ_TAG,
+    // Read section length.
     ENTER_SECTION,
+    // Read value marker.
     ITEM_READ_TAG,
+    // Read subsection length.
     ITEM_ENTER_SECTION,
+    // Skip subsection payload.
     ITEM_SKIP_CONTENTS,
+    // Read value.
     ITEM_READ_VALUE,
+    // Verify values and apply to decoder state
     FINALE,
+    // Finish section decoding.
     DONE
   };
 
-  // Workflow.
   size_t stage = READ_TAG;
 
-  // Value parsing.
+  // Subsection properties.
   SectionState section;
+  // Length of subsection remaining to skip.
   size_t remaining_skip_length = 0;
 
-  // Collected data.
+  // Collected data (values).
   std::array<size_t, 16> varint_values;
+};
+
+// Fields used for "Fallback" section parsing.
+struct FallbackState {
+  enum Stage {
+    // Check section tag.
+    READ_TAG,
+    // Read section length.
+    ENTER_SECTION,
+    // Copy "original JPEG" contents to internal storage (if necessary).
+    READ_CONTENTS,
+    // Finish section decoding.
+    DONE
+  };
+
+  size_t stage = READ_TAG;
+
+  // Storage for original JPEG contents.
+  std::vector<uint8_t> storage;
 };
 
 struct InternalState {
   AcDcState ac_dc;
   SectionState section;
-  std::unique_ptr<HeaderState> header;
+
+  // Sections.
+  HeaderState header;
+  FallbackState fallback;
 
   // "JPEGDecodingState" storage.
   std::vector<uint8_t> context_map_;
