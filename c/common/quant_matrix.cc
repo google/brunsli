@@ -12,7 +12,7 @@
 
 namespace brunsli {
 
-// TODO: consider high-precision (16-bit) tables in Brunsli v3.
+// TODO(eustas): consider high-precision (16-bit) tables in Brunsli v3.
 void FillQuantMatrix(bool is_chroma, uint32_t q,
                      uint8_t dst[kDCTBlockSize]) {
   BRUNSLI_DCHECK(q >= 0 && q < kQFactorLimit);
@@ -24,7 +24,7 @@ void FillQuantMatrix(bool is_chroma, uint32_t q,
   }
 }
 
-// TODO: consider high-precision (16-bit) tables in Brunsli v3.
+// TODO(eustas): consider high-precision (16-bit) tables in Brunsli v3.
 uint32_t FindBestMatrix(const int* src, bool is_chroma,
                         uint8_t dst[kDCTBlockSize]) {
   uint32_t best_q = 0;

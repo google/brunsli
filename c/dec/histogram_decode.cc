@@ -19,7 +19,7 @@ namespace brunsli {
 namespace {
 
 int ReadHistogramLength(BrunsliBitReader* br) {
-  // TODO: direct prefix code decoding would be faster / more readable.
+  // TODO(eustas): direct prefix code decoding would be faster / more readable.
   static const uint8_t kHistogramLengthBitLengths[16] = {
       8, 8, 6, 6, 6, 5, 4, 3, 3, 3, 3, 3, 3, 4, 5, 7,
   };

@@ -694,7 +694,7 @@ void DataStream::EncodeCodeWords(EntropyCodes* s, Storage* storage) {
     }
   }
   const uint32_t state = ans.GetState();
-  // TODO: what about alignment and endianness?
+  // TODO(eustas): what about alignment and endianness?
   uint16_t* out = reinterpret_cast<uint16_t*>(storage->data);
   const uint16_t* out_start = out;
   *(out++) = (state >> 16) & 0xffff;
@@ -1153,9 +1153,9 @@ void EncodeAC(State* state) {
     num_code_words += 2 * m.approx_total_nonzeros + 1024 + 3 * num_blocks;
     total_num_blocks += num_blocks;
 
-    // TODO: what is better - use shared order or "group" order?
+    // TODO(eustas): what is better - use shared order or "group" order?
     ComputeCoeffOrder(m.num_zeros, &comps[i].order[0]);
-    // TODO: this computation could be shared between "groups".
+    // TODO(eustas): this computation could be shared between "groups".
     ComputeACPredictMultipliers(m.quant.data(), &comps[i].mult_row[0],
                                 &comps[i].mult_col[0]);
     comps[i].SetWidth(m.width_in_blocks);
@@ -1317,7 +1317,7 @@ bool BrunsliSerialize(State* state, const JPEGData& jpg, uint32_t skip_sections,
                       uint8_t* data, size_t* len) {
   size_t pos = 0;
 
-  // TODO: refactor to remove repetitive params.
+  // TODO(eustas): refactor to remove repetitive params.
   bool ok = true;
 
   if (!(skip_sections & (1u << kBrunsliSignatureTag))) {
@@ -1431,7 +1431,6 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg, uint8_t* data, size_t* len) {
   // Groups workflow: apply corresponding skip masks.
   return BrunsliSerialize(&state, jpg, 0, data, len);
 }
-
 
 // bypass mode
 const size_t kMaxBypassHeaderSize = 5 * 6;  // = 5x tag + EncodeBase128() call.

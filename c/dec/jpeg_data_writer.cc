@@ -509,20 +509,20 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
 
 bool GetNextPadPattern(const int** pad_bits, const int* pad_bits_end, int nbits,
                        uint8_t* pad_pattern) {
-  // TODO: DCHECK pad_bits < 8
+  // TODO(eustas): DCHECK pad_bits < 8
   if (*pad_bits == nullptr) {
     *pad_pattern = (1u << nbits) - 1;
     return true;
   }
   uint8_t p = 0;
   const int* src = *pad_bits;
-  // TODO: bitwise reading looks insanely ineffective...
+  // TODO(eustas): bitwise reading looks insanely ineffective...
   while (nbits--) {
     p <<= 1;
     if (src >= pad_bits_end) {
       return false;
     }
-    // TODO: DCHECK *src == {0, 1}
+    // TODO(eustas): DCHECK *src == {0, 1}
     p |= *(src++);
   }
   *pad_bits = src;
@@ -762,7 +762,7 @@ bool WriteJpeg(const JPEGData& jpg, JPEGOutput out) {
       case 0xed:
       case 0xee:
       case 0xef:
-        // TODO: check that marker corresponds to payload?
+        // TODO(eustas): check that marker corresponds to payload?
         ok = EncodeAPP(jpg, app_index++, out);
         break;
       case 0xfe:

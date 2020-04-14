@@ -14,7 +14,7 @@ namespace brunsli {
 
 // Refuse to allocate more than 1 GB of memory for the coefficients,
 // that is 2M blocks x 64 coeffs x 2 bytes per coeff x max 4 components.
-// TODO: this should be the minimal guaranteed limit, rather than
+// TODO(eustas): this should be the minimal guaranteed limit, rather than
 //               hard limit; 4GPx images should be eligible, if users would
 //               want them.
 static const size_t kBrunsliMaxNumBlocks = 1ull << 21;
@@ -74,7 +74,7 @@ static const uint16_t kApp0Densities[kMaxApp0Densities] = {
   1, 72, 96, 100, 150, 180, 240, 300
 };
 
-// TODO: reintroduce as a bit-length constant.
+// TODO(eustas): reintroduce as a bit-length constant.
 static const int kNumStockQuantTables = 8;
 static const uint8_t
     kStockQuantizationTables[2][kNumStockQuantTables][64] = {
@@ -212,27 +212,27 @@ static const uint8_t
   }
 };
 
-// TODO: reintroduce with bit-length.
+// TODO(eustas): reintroduce with bit-length.
 static const int kComponentIds123 = 0;
 static const int kComponentIdsGray = 1;
 static const int kComponentIdsRGB = 2;
 static const int kComponentIdsCustom = 3;
 
-// TODO: reintroduce as bit-length
+// TODO(eustas): reintroduce as bit-length
 static const int kNumStockDCHuffmanCodes = 2;
 static const int kStockDCHuffmanCodeCounts[kNumStockDCHuffmanCodes][
     kJpegHuffmanMaxBitLength] = {
   { 0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 2, 0, 0, 0, 0, 0, },
   { 0, 1, 5, 1, 1, 1, 1, 1, 2, 0, 0, 0, 0, 0, 0, 0, },
 };
-// TODO: replace the final "256" with marker constant.
+// TODO(eustas): replace the final "256" with marker constant.
 static const int kStockDCHuffmanCodeValues[kNumStockDCHuffmanCodes][
     kJpegDCAlphabetSize + 1] = {
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 256 },
   { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 256 },
 };
 
-// TODO: reintroduce as bit-length
+// TODO(eustas): reintroduce as bit-length
 static const int kNumStockACHuffmanCodes = 2;
 static const int kStockACHuffmanCodeCounts[kNumStockACHuffmanCodes][
     kJpegHuffmanMaxBitLength] = {
@@ -240,7 +240,7 @@ static const int kStockACHuffmanCodeCounts[kNumStockACHuffmanCodes][
   { 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 120, },
 };
 static const int kStockACHuffmanCodeTotalCount = 163;
-// TODO: replace the final "256" with marker constant.
+// TODO(eustas): replace the final "256" with marker constant.
 static const int kStockACHuffmanCodeValues[kNumStockACHuffmanCodes][
     kStockACHuffmanCodeTotalCount] = {
   {

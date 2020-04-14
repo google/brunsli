@@ -39,7 +39,7 @@ struct ComponentMeta {
   int32_t height_in_blocks;
   const coeff_t* ac_coeffs;
   coeff_t* dc_prediction_errors;
-  // TODO: investigate bit fields.
+  // TODO(eustas): investigate bit fields.
   uint8_t* block_state;
   BlockI32 num_zeros;
   BlockI32 quant;

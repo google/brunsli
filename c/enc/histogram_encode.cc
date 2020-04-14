@@ -120,8 +120,8 @@ void NormalizeCounts(int* counts, int* omit_pos, const int length,
                                  counts)) {
     // Use an alternative rebalancing mechanism if the one above failed
     // to create a histogram that is positive wherever the original one was.
-    // TODO: it is better to report failure than crash here.
-    // TODO: fuzz RebalanceHistogram<true>(...).
+    // TODO(eustas): it is better to report failure than crash here.
+    // TODO(eustas): fuzz RebalanceHistogram<true>(...).
     BRUNSLI_CHECK(RebalanceHistogram<true>(targets, max_symbol, table_size,
                                            omit_pos, counts));
   }

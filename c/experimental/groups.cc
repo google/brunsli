@@ -219,7 +219,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
   (*executor)(encode_ac, ac_state.size());
 
   // Groups workflow: merge histograms.
-  // TODO: SIMDify.
+  // TODO(eustas): SIMDify.
   state.entropy_source.Resize(num_contexts);
   for (size_t y = 0; y < h_dc; ++y) {
     for (size_t x = 0; x < w_dc; ++x) {
@@ -237,7 +237,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
   std::vector<std::vector<uint8_t>> output;
   output.resize(1 + dc_state.size() + ac_state.size());
 
-  // TODO: pull entropy codes serialization "side effect".
+  // TODO(eustas): pull entropy codes serialization "side effect".
   {
     std::vector<uint8_t>& part = output[0];
     state.entropy_codes = entropy_codes.get();
@@ -248,7 +248,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
     for (const std::string& chunk : jpg.app_data) part_size += chunk.size();
     for (const std::string& chunk : jpg.com_data) part_size += chunk.size();
     part_size += jpg.tail_data.size();
-    // TODO: take into account histograms.
+    // TODO(eustas): take into account histograms.
     part.resize(part_size);
     uint32_t skip_flags =
         (1u << brunsli::kBrunsliDCDataTag) | (1u << brunsli::kBrunsliACDataTag);
@@ -265,7 +265,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
     idx--;
     if (idx < dc_state.size()) {
       State& s = dc_state[idx];
-      // TODO: reduce for subsampled
+      // TODO(eustas): reduce for subsampled
       size_t part_size = 128 * (128 + 16) * jpg.components.size();
       part.resize(part_size);
       s.entropy_codes = entropy_codes.get();
@@ -281,7 +281,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
     idx -= dc_state.size();
     if (idx < ac_state.size()) {
       State& s = ac_state[idx];
-      // TODO: reduce for subsampled
+      // TODO(eustas): reduce for subsampled
       size_t part_size = 32 * 32 * 63 * jpg.components.size();
       part.resize(part_size);
       s.entropy_codes = entropy_codes.get();

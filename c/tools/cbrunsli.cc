@@ -130,7 +130,7 @@ bool ProcessFile(const std::string& file_name,
 #endif
 
     if (!ok) {
-      // TODO: use fallback?
+      // TODO(eustas): use fallback?
       fprintf(stderr, "Failed to transform JPEG to Brunsli\n");
       return false;
     }

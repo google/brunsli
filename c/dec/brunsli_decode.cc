@@ -136,7 +136,7 @@ std::string GenerateAppMarker(uint8_t marker, uint8_t code) {
   return s;
 }
 
-// TODO: avoid string input.
+// TODO(eustas): avoid string input.
 bool AddMetaData(const std::string& metadata, JPEGData* jpg) {
   size_t pos = 0;
   size_t short_marker_count = 0;
@@ -807,33 +807,33 @@ bool DecodeAC(State* state, WordSource* in) {
 }
 
 static bool CheckCanRead(State* state, size_t required) {
-  // TODO: dcheck len > pos
+  // TODO(eustas): dcheck len > pos
   size_t available = state->len - state->pos;
   return required <= available;
 }
 
 static bool CheckCanReadByte(State* state) {
-  // TODO: dcheck len > pos
+  // TODO(eustas): dcheck len > pos
   return state->pos != state->len;
 }
 
 static uint8_t ReadByte(State* state) {
-  // TODO: dcheck len > pos
+  // TODO(eustas): dcheck len > pos
   return state->data[state->pos++];
 }
 
 static uint8_t PeekByte(State* state, size_t offset) {
-  // TODO: dcheck overflow.
+  // TODO(eustas): dcheck overflow.
   return state->data[state->pos + offset];
 }
 
 static void SkipBytes(State* state, size_t len) {
-  // TODO: dcheck overflow.
+  // TODO(eustas): dcheck overflow.
   state->pos += len;
 }
 
 static size_t GetBytesAvailable(State* state) {
-  // TODO: dcheck len > pos
+  // TODO(eustas): dcheck len > pos
   return state->len - state->pos;
 }
 
@@ -917,7 +917,7 @@ static bool IsOutOfSectionBounds(State* state) {
 }
 
 static size_t RemainingSectionLength(State* state) {
-  // TODO: remove this check?
+  // TODO(eustas): remove this check?
   if (IsOutOfSectionBounds(state)) return 0;
   return state->internal->section.projected_end - state->pos;
 }
@@ -1025,7 +1025,7 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
         jpg->version = version;
 
         if (version == 1) {  // fallback mode
-          // TODO: do we need this?
+          // TODO(eustas): do we need this?
           jpg->width = 0;
           jpg->height = 0;
           hs.stage = HeaderState::DONE;
@@ -1163,7 +1163,7 @@ static bool DecodeMetaDataSection(State* state, JPEGData* jpg) {
   // than 4K.
   // This will protect from broken streams that would require allocating
   // gigantic chunk of memory.
-  // TODO: make AddMetaData more stream-friendly; in this case temporary
+  // TODO(eustas): make AddMetaData more stream-friendly; in this case temporary
   //               "metadata" string does not have to be allocated at all.
   bool is_suspicious = (metadata_size >= (1u << 30)) ||
                        ((metadata_size >> 12) > compressed_size);
@@ -1193,7 +1193,7 @@ static bool DecodeMetaDataSection(State* state, JPEGData* jpg) {
 static bool DecodeJPEGInternalsSection(State* state, JPEGData* jpg) {
   if (IsAtSectionBoundary(state)) return false;
 
-  // TODO: merge BitReader into State
+  // TODO(eustas): merge BitReader into State
   size_t section_len = RemainingSectionLength(state);
   BrunsliBitReader br;
   BrunsliBitReaderInit(&br, state->data + state->pos, section_len);
@@ -1220,7 +1220,7 @@ static bool DecodeJPEGInternalsSection(State* state, JPEGData* jpg) {
 static bool DecodeQuantDataSection(State* state, JPEGData* jpg) {
   if (IsAtSectionBoundary(state)) return false;
 
-  // TODO: merge BitReader into State
+  // TODO(eustas): merge BitReader into State
   size_t section_len = RemainingSectionLength(state);
   BrunsliBitReader br;
   BrunsliBitReaderInit(&br, state->data + state->pos, section_len);
@@ -1241,7 +1241,7 @@ static bool DecodeHistogramDataSection(State* state, JPEGData* jpg) {
 
   std::vector<ComponentMeta>& meta = state->meta;
 
-  // TODO: merge BitReader into State
+  // TODO(eustas): merge BitReader into State
   size_t section_len = RemainingSectionLength(state);
   BrunsliBitReader br;
   BrunsliBitReaderInit(&br, state->data + state->pos, section_len);
@@ -1338,7 +1338,7 @@ static Stage DecodeOriginalJpg(State* state, JPEGData* jpg) {
       case FallbackState::READ_CONTENTS: {
         size_t chunk_size = GetBytesAvailable(state);
         if (chunk_size == 0) {
-          // TODO: dcheck s.section.remaining != 0
+          // TODO(eustas): dcheck s.section.remaining != 0
           return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
         }
         // Check if it is possible to avoid copy.
@@ -1361,7 +1361,7 @@ static Stage DecodeOriginalJpg(State* state, JPEGData* jpg) {
           fs.stage = FallbackState::DONE;
           break;
         }
-        // TODO: dcheck GetBytesAvailable(state) == 0
+        // TODO(eustas): dcheck GetBytesAvailable(state) == 0
         return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
       }
 
@@ -1409,7 +1409,7 @@ static Stage ParseSection(State* state) {
 static Stage ProcessSection(State* state, JPEGData* jpg) {
   InternalState& s = *state->internal;
 
-  // TODO: push down when some sections start to support streaming.
+  // TODO(eustas): push down when some sections start to support streaming.
   if (GetBytesAvailable(state) < RemainingSectionLength(state)) {
     return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
   }
@@ -1418,14 +1418,14 @@ static Stage ProcessSection(State* state, JPEGData* jpg) {
   const bool is_known_section_tag = kKnownSectionTags & tag_bit;
   if (!is_known_section_tag) {
     // Skip section content.
-    // TODO: check there is enough input.
+    // TODO(eustas): check there is enough input.
     state->pos += RemainingSectionLength(state);
     return Stage::SECTION;
   }
 
   if (state->skip_tags & tag_bit) {
     // Skip section content.
-    // TODO: check there is enough input.
+    // TODO(eustas): check there is enough input.
     state->pos += RemainingSectionLength(state);
     return Stage::SECTION;
   }
@@ -1633,9 +1633,9 @@ BrunsliStatus ProcessJpeg(State* state, JPEGData* jpg) {
   BrunsliStatus result = DoProcessJpeg(state, jpg);
 
   if (s.section.is_active) {
-    // TODO: dcheck state->pos > s.section.milestone
+    // TODO(eustas): dcheck state->pos > s.section.milestone
     size_t processed_len = state->pos - s.section.milestone;
-    // TODO: dcheck processed_len < s.section.remaining
+    // TODO(eustas): dcheck processed_len < s.section.remaining
     s.section.remaining -= processed_len;
   }
 

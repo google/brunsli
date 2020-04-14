@@ -30,7 +30,7 @@ bool DecodeLehmerCode(const int* code, int len, int* sigma);
 
 // This class is an optimized Lehmer-like coder that takes the remaining
 // number of possible values into account to reduce the bit usage.
-// TODO: in worst case (always removing the first element), O(N^2)
+// TODO(eustas): in worst case (always removing the first element), O(N^2)
 // elements are moved; "Fenwick tree" is simple to implement and could reduce
 // the complexity to O(N * log(N)).
 class PermutationCoder {

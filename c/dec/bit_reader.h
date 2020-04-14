@@ -121,7 +121,7 @@ static BRUNSLI_INLINE void BrunsliBitReaderUnload(BrunsliBitReader* br) {
    Drops unused bits of the last used byte.
  */
 static BRUNSLI_INLINE size_t BrunsliBitReaderFinish(BrunsliBitReader* br) {
-  // TODO: check the tail bits?
+  // TODO(eustas): check the tail bits?
   uint32_t n_bits = br->num_bits_ & 7u;
   if (n_bits > 0) {
     uint32_t padding_bits = BrunsliBitReaderRead(br, n_bits);

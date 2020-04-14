@@ -19,7 +19,6 @@ namespace brunsli {
 // jpg data in brunsli format.
 size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg);
 
-
 // Encodes the given jpg to the buffer data[0 ... *len) in brunsli format and
 // sets *len to the encoded size. Returns false on buffer overflow or invalid
 // jpg data.

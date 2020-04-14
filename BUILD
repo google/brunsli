@@ -1,6 +1,8 @@
 # Description:
 #   Brunsli is an compact JPEG data format.
 
+load(":compiler_config_setting.bzl", "create_msvc_config")
+
 package(
     default_visibility = ["//visibility:public"],
 )
@@ -39,25 +41,28 @@ config_setting(
     visibility = ["//visibility:public"],
 )
 
-load(":compiler_config_setting.bzl", "create_msvc_config")
+create_msvc_config()
 
-STRICT_C_OPTIONS = [
-    "-Wno-sign-compare",  # everywhere
-]
+STRICT_C_OPTIONS = select({
+    ":msvc": [],
+    "//conditions:default": [
+        "-Wno-sign-compare",
+    ],
+})
 
 # Real strict options:
-STRICT_C_OPTIONS_ = [
-    "--pedantic-errors",
-    "-Wall",
-    "-Wconversion",
-    "-Werror",
-    "-Wextra",
-    "-Wlong-long",
-    "-Wmissing-declarations",
-    "-Wno-strict-aliasing",
-    "-Wshadow",
-    "-Wsign-compare",
-]
+# STRICT_C_OPTIONS = [
+#    "--pedantic-errors",
+#    "-Wall",
+#    "-Wconversion",
+#    "-Werror",
+#    "-Wextra",
+#    "-Wlong-long",
+#    "-Wmissing-declarations",
+#    "-Wno-strict-aliasing",
+#    "-Wshadow",
+#    "-Wsign-compare",
+#]
 
 filegroup(
     name = "public_headers",

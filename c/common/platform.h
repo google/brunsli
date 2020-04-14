@@ -477,7 +477,7 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 #define BRUNSLI_LOG_WARNING() BRUNSLI_VOID_LOG()
 #define BRUNSLI_LOG_ERROR() BRUNSLI_VOID_LOG()
 #else  // defined(BRUNSLI_DISABLE_LOG)
-// TODO: get rid of base/logging.h dependency
+// TODO(eustas): get rid of base/logging.h dependency
 #if defined(BRUNSLI_ENABLE_LOG)
 #define BRUNSLI_LOG_DEBUG() BRUNSLI_LOG_(INFO)
 #else  //  defined(BRUNSLI_ENABLE_LOG)
@@ -492,7 +492,7 @@ namespace brunsli {
 void BrunsliDumpAndAbort(const char* f, int l, const char* fn);
 }  // namespace brunsli
 
-// TODO: use "predict false" to move the code out of hot path.
+// TODO(eustas): use "predict false" to move the code out of hot path.
 #define BRUNSLI_CHECK(V) \
   if (!(V)) {                                                         \
     ::brunsli::BrunsliDumpAndAbort(__FILE__, __LINE__, __FUNCTION__); \
@@ -506,7 +506,7 @@ void BrunsliDumpAndAbort(const char* f, int l, const char* fn);
 #define BRUNSLI_DCHECK(V)
 #endif
 
-// TODO: Pick up upgrade after https://github.com/google/brotli/pull/636
+// TODO(eustas): Pick up upgrade after https://github.com/google/brotli/pull/636
 //               is landed and merged.
 inline int Log2FloorNonZero(uint32_t n) {
 #ifdef __GNUC__

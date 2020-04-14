@@ -25,3 +25,8 @@ jobs:
       compiler: clang
     - name: macOS build
       os: osx
+
+branches:
+  except:
+  # Skip copybara branches.
+  - /^test\/cl.*$/

@@ -14,7 +14,7 @@
 #include <memory>
 #include <vector>
 
-// TODO: cut - used only for "coeff_t*" and "JPEGData*"
+// TODO(eustas): cut - used only for "coeff_t*" and "JPEGData*"
 #include <brunsli/jpeg_data.h>
 #include <brunsli/status.h>
 #include <brunsli/types.h>
@@ -38,7 +38,7 @@ struct ComponentMeta {
   int32_t width_in_blocks;
   int32_t height_in_blocks;
   coeff_t* ac_coeffs;
-  // TODO: investigate bit fields.
+  // TODO(eustas): investigate bit fields.
   uint8_t* block_state;
   BlockI32 quant;
 };
