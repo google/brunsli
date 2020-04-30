@@ -19,7 +19,7 @@ std::string* BrunsliToJpeg(const uint8_t* data, size_t length) {
   }
 
   result = new std::string();
-  auto write = [](void* data, const uint8_t* buf, size_t count) -> int {
+  auto write = [](void* data, const uint8_t* buf, size_t count) -> size_t {
     std::string* result = reinterpret_cast<std::string*>(data);
     result->append(reinterpret_cast<const char*>(buf), count);
     return count;
