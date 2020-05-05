@@ -1,7 +1,6 @@
 ### Introduction
-![C/C++ CI](https://github.com/google/brunsli/workflows/C/C++%20CI/badge.svg?branch=master)
-[![Travis Build Status](https://travis-ci.org/google/brunsli.svg?branch=master)](https://travis-ci.org/google/brunsli)
-[![AppVeyor Build status](https://ci.appveyor.com/api/projects/status/9cug8altp1yupwx0/branch/master?svg=true)](https://ci.appveyor.com/project/eustas/brunsli/branch/master)
+![CMake build](https://github.com/google/brunsli/workflows/CMake%20build/badge.svg?branch=master)
+
 
 Brunsli is a lossless JPEG repacking library.
 
