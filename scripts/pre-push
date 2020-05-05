@@ -1,0 +1,33 @@
+#!/bin/sh
+
+function validateOne() {
+  FAILURE=1
+  local FILE="$1"
+  case "${FILE##*.}" in
+    "br")
+      local ORIG=${FILE%.br}
+      local TEMP_FILE=$(mktemp)
+      brotli -dfk "${FILE}" -o "${TEMP_FILE}"
+      cmp -s $ORIG $TEMP_FILE && FAILURE=0
+      rm -f "${TEMP_FILE}"
+      return
+    ;;
+    "gz")
+      local ORIG=${FILE%.gz}
+      local TEMP_FILE=$(mktemp)
+      gzip -cdf "${FILE}" > "${TEMP_FILE}"
+      cmp -s $ORIG $TEMP_FILE && FAILURE=0
+      rm -f "${TEMP_FILE}"
+      return
+    ;;
+  esac
+  FAILURE=0
+}
+
+SUCCESS=1
+for F in $(ls docs/*)
+do
+  validateOne "$F"
+  [[ ${FAILURE} = 1 ]] && echo "$0: ${F} is stale" && SUCCESS=0
+done
+[[ ${SUCCESS} = 1 ]] || exit 1
