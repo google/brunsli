@@ -19,4 +19,4 @@ jobs:
     - name: configure
       run: cmake -B out
     - name: build
-      run: cmake ---build out
+      run: cmake --build out
