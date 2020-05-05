@@ -21,7 +21,7 @@ jobs:
       with:
         submodules: recursive
     - name: configure
-      run: cmake -B out -j 2
+      run: cmake -B out
     - name: build
       run: cmake --build out -j 2
     - name: test
