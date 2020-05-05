@@ -153,3 +153,10 @@ if(NOT BRUNSLI_EMSCRIPTEN)
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   )
 endif() # BRUNSLI_EMSCRIPTEN
+
+# Gather artifacts in a single directory for easier uploading.
+set_target_properties(cbrunsli dbrunsli ${BRUNSLI_LIBRARIES} PROPERTIES
+  ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/artifacts"
+  LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/artifacts"
+  RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/artifacts"
+)
