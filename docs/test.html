@@ -1,0 +1,22 @@
+<html><body>
+<script type='text/javascript'>
+function loadImage() {
+  document.getElementById('stub').style = 'display:none';
+  let img = document.getElementById('img');
+  img.style = '';
+  img.src = 'test.jpg?t=' + Date.now();
+}
+function onLoad() {
+  if (!('serviceWorker' in navigator)) {
+    document.getElementById('stub').textContent =
+        'ServiceWorker is not supported';
+    return;
+  }
+  navigator.serviceWorker.register('/sw.js');
+  navigator.serviceWorker.ready.then(loadImage);
+}
+window.addEventListener('load', onLoad);
+</script>
+<div id='stub'>Waiting for ServiceWorker</div>
+<img id='img' style='display:none'>
+</body></html>
