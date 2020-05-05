@@ -19,4 +19,4 @@ jobs:
     - name: configure
       run: mkdir out && cd out && cmake ..
     - name: make
-      run: make -j `nproc`
+      run: make -j 2
