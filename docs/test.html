@@ -12,8 +12,13 @@ function onLoad() {
         'ServiceWorker is not supported';
     return;
   }
+  let controller = navigator.serviceWorker.controller;
   navigator.serviceWorker.register('/sw.js');
-  navigator.serviceWorker.ready.then(loadImage);
+  if (controller) {
+    loadImage();
+  } else {
+    location.reload();
+  }
 }
 window.addEventListener('load', onLoad);
 </script>
