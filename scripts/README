@@ -1,0 +1,4 @@
+Collection of useful / CI / git scripts.
+
+To enable git hooks in local repository run (NB: git 2.9+ is required):
+  git config --local core.hooksPath scripts
