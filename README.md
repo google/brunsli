@@ -30,26 +30,10 @@ Stay tuned!
 
 ## Build instructions
 
-### Clone and prepare
-
-Run the following commands to clone and prepare brunsli:
+Run the following commands to clone, configure and build Brunsli:
 
     git clone --depth=1 https://github.com/google/brunsli.git
     cd brunsli
     git submodule update --init --recursive
-    mkdir bin
-    cd bin
-    cmake ..
-
-### Linux & macOS
-
-On Linux and macOS, compile and install by running: 
-
-    make -j
-    make -j install
-
-### Windows
-
-On Windows, compile with Visual Studio:
-
-    msbuild brunsli.sln
+    cmake -DCMAKE_BUILD_TYPE=Release -B bin
+    cmake --build out --config Release
