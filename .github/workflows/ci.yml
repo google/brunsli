@@ -12,21 +12,43 @@ defaults:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+        - os: ubuntu
+          env: CC=/usr/bin/clang-9 CXX=/usr/bin/clang++-9
+        - os: ubuntu
+          env: CC=/usr/bin/gcc-7 CXX=/usr/bin/g++-7
+        - os: ubuntu
+          env: CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8
+        - os: ubuntu
+          env: CC=/usr/bin/gcc-9 CXX=/usr/bin/g++-9
+        - os: ubuntu
+          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25
+        - os: ubuntu
+          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_NATIVE_API_LEVEL=25
+        - os: windows
+          upload_artifacts: true
+        - os: macos
     steps:
-    - uses: actions/checkout@v2
+    - name: checkout
+      uses: actions/checkout@v2
       with:
         submodules: recursive
+
     - name: configure
-      run: cmake -DCMAKE_BUILD_TYPE=Release -B out
+      run: ${{ matrix.env }} cmake -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_params }} -B out
+
     - name: build
       run: cmake --build out --config Release -j 2
+
     - name: test
       run: cd out && ctest -j 2
-    - uses: actions/upload-artifact@v2
+
+    - name: upload
+      if: ${{ matrix.upload_artifacts }}
+      uses: actions/upload-artifact@v2
       with:
         name: ${{ matrix.os }}
         path: out/artifacts
