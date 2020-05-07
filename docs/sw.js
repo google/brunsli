@@ -6,6 +6,7 @@ self.addEventListener('fetch', onFetch);
 
 function shouldUpgradeRequest(request) {
   if (request.method != 'GET') return false;
+  if (request.referrer.includes('no-jxl')) return false;
   if (request.headers.get('Accept').indexOf('image/') == -1) return false;
   if (request.destination != "image") return false;
   return true;
