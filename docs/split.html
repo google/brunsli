@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<title>Images of Empowerment</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+<script type='text/javascript'>
+let names = [
+  "Hewlett_Bogota_PartialRelease_361-scaled.jpg",
+  "Hewlett_Thailand_FullRelease_228-scaled.jpg",
+  "WIEGO_ACCRA_8008_FULLY_RELEASED-scaled.jpg",
+  "hewlett_India_fullrelease112-scaled.jpg",
+];
+let name_idx = 0;
+let interactive = false;
+
+function makeInteractive() {
+  interactive = true;
+  document.onkeypress = function(e) {
+    let chr = (e || window.event).charCode;
+    if (chr == 32) loadImages();
+    return true;
+  };
+}
+
+function loadImages() {
+  if (!interactive) makeInteractive();
+
+  let salt = Date.now();
+  let imgJpg = document.getElementById('img-jpg');
+  imgJpg.classList.remove('w3-hide');
+  imgJpg.src = names[name_idx] + '?no-jxl;t=' + salt++;
+
+  let imgJxl = document.getElementById('img-jxl');
+  imgJxl.classList.remove('w3-hide');
+  imgJxl.src = names[name_idx] + '?t=' + salt++;
+
+  name_idx = (name_idx + 1) % names.length;
+}
+function onLoad() {
+  if (!('serviceWorker' in navigator)) return;
+  let controller = navigator.serviceWorker.controller;
+  navigator.serviceWorker.register('/sw.js');
+  if (controller) {
+    loadImages();
+  } else {
+    location.reload();
+  }
+}
+window.addEventListener('load', onLoad);
+
+</script>
+</head>
+<body>
+
+<div class="w3-container w3-indigo">
+ <h1>Images of Empowerment</h1>
+</div>
+
+<div class="w3-row">
+ <div class="w3-half w3-padding">
+  <div class="w3-card">
+   <img id='img-jpg' class="w3-hide" style="width:100%">
+   <div class="w3-container">
+    <h4>JPEG</h4>
+   </div>
+  </div>
+ </div>
+ <div class="w3-half w3-padding">
+  <div class="w3-card">
+   <img id='img-jxl' class="w3-hide" style="width:100%">
+   <div class="w3-container">
+    <h4>JXL</h4>
+   </div>
+  </div>
+ </div>
+</div>
+
+<div class="w3-container w3-amber w3-margin-top">
+ <h5>Images are licensed under <b>CC BY-NC 4.0</b> and downloaded from <a href="https://www.imagesofempowerment.org/">imagesofempowerment.org</a></h5>
+</div>
+
+</body></html>
