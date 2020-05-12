@@ -37,13 +37,14 @@ function onImageLoad(e) {
   let id = e.srcElement.id;
   let meta = metas[id];
   let start = meta["load_start"];
-  document.getElementById(id + "-title").textContent = meta["title"] + ": " + (now - start) + "ms";
+  document.getElementById(id + "-title").textContent = meta["title"] + " has loaded in " + (now - start) + "ms";
 }
 
-function loadImage(imageId, url) {
-  let meta = metas[imageId];
-  let img = document.getElementById(imageId);
+function loadImage(id, url) {
+  let meta = metas[id];
+  let img = document.getElementById(id);
   img.src = '';
+  document.getElementById(id + "-title").textContent = meta["title"] + " is loading...";
   meta["load_start"] = Date.now();
   img.src = url + "?t="  + salt++;
 }
@@ -51,7 +52,7 @@ function loadImage(imageId, url) {
 function loadImages() {
   if (!interactive) makeInteractive();
   loadImage("img-jpg", names[name_idx] + "?no-jxl");
-  loadImage("img-jxl", names[name_idx] + ".j");
+  loadImage("img-jxl", names[name_idx]);
   name_idx = (name_idx + 1) % names.length;
 }
 
