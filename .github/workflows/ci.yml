@@ -39,7 +39,7 @@ jobs:
       with:
         submodules: recursive
 
-    - name: My first step
+    - name: install
       if: ${{ matrix.env == 'CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10' }}
       run: |
         sudo apt-get update
