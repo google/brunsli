@@ -5,12 +5,15 @@
 // https://opensource.org/licenses/MIT.
 
 #include <brunsli/jpeg_data.h>
+#include "../common/platform.h"
 #include <brunsli/status.h>
 #include <brunsli/types.h>
 #include <brunsli/brunsli_decode.h>
 #include <brunsli/jpeg_data_writer.h>
 
-int DiscardOutputFunction(void* data, const uint8_t* buf, size_t count) {
+size_t DiscardOutputFunction(void* data, const uint8_t* buf, size_t count) {
+  BRUNSLI_UNUSED(data);
+  BRUNSLI_UNUSED(buf);
   return count;
 }
 

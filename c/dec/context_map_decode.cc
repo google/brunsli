@@ -11,6 +11,7 @@
 
 #include "../common/platform.h"
 #include <brunsli/types.h>
+#include "./bit_reader.h"
 #include "./huffman_decode.h"
 
 namespace brunsli {
@@ -37,6 +38,23 @@ void InverseMoveToFrontTransform(uint8_t* v, int v_len) {
   }
 }
 
+// Decodes the next Huffman coded symbol from the bit-stream.
+uint16_t ReadHuffmanSymbol(const HuffmanDecodingData& code,
+                           BrunsliBitReader* br) {
+  size_t n_bits;
+  const HuffmanCode* table = &code.table_[0];
+  table += BrunsliBitReaderGet(br, kHuffmanTableBits);
+  n_bits = table->bits;
+  if (n_bits > kHuffmanTableBits) {
+    BrunsliBitReaderDrop(br, kHuffmanTableBits);
+    n_bits -= kHuffmanTableBits;
+    table += table->value;
+    table += BrunsliBitReaderGet(br, n_bits);
+  }
+  BrunsliBitReaderDrop(br, table->bits);
+  return table->value;
+}
+
 }  // namespace
 
 bool DecodeContextMap(int num_h_trees, int context_map_size,
@@ -58,7 +76,7 @@ bool DecodeContextMap(int num_h_trees, int context_map_size,
   }
   for (int i = 0; i < context_map_size;) {
     int code;
-    code = HuffmanDecoder::ReadSymbol(entropy, br);
+    code = ReadHuffmanSymbol(entropy, br);
     if (code == 0) {
       context_map[i] = 0;
       ++i;

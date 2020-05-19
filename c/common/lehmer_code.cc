@@ -11,25 +11,26 @@
 
 namespace brunsli {
 
-void ComputeLehmerCode(const int* sigma, const int len, int* code) {
-  std::vector<int> items(len);
-  for (int i = 0; i < len; ++i) items[i] = i;
-  for (int i = 0; i < len; ++i) {
-    std::vector<int>::iterator it =
-      std::find(items.begin(), items.end(), sigma[i]);
+void ComputeLehmerCode(const uint32_t* sigma, const size_t len,
+                       uint32_t* code) {
+  std::vector<uint32_t> items(len);
+  for (size_t i = 0; i < len; ++i) items[i] = i;
+  for (size_t i = 0; i < len; ++i) {
+    std::vector<uint32_t>::iterator it =
+        std::find(items.begin(), items.end(), sigma[i]);
     BRUNSLI_DCHECK(it != items.end());
     code[i] = it - items.begin();
     items.erase(it);
   }
 }
 
-bool DecodeLehmerCode(const int* code, int len, int* sigma) {
-  std::vector<int> items(len);
-  for (int i = 0; i < len; ++i) items[i] = i;
-  for (int i = 0; i < len; ++i) {
-    int index = code[i];
-    if (index >= items.size() || index < 0) return false;
-    const int value = items[index];
+bool DecodeLehmerCode(const uint32_t* code, size_t len, uint32_t* sigma) {
+  std::vector<uint32_t> items(len);
+  for (size_t i = 0; i < len; ++i) items[i] = i;
+  for (size_t i = 0; i < len; ++i) {
+    uint32_t index = code[i];
+    if (index >= items.size()) return false;
+    const uint32_t value = items[index];
     items.erase(items.begin() + index);
     sigma[i] = value;
   }

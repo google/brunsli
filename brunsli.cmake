@@ -16,6 +16,7 @@ file(GLOB BRUNSLI_COMMON_HEADERS
 
 set(BRUNSLI_DEC_SOURCES
   c/dec/ans_decode.cc
+  c/dec/bit_reader.cc
   c/dec/brunsli_decode.cc
   c/dec/context_map_decode.cc
   c/dec/histogram_decode.cc

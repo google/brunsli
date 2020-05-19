@@ -293,6 +293,10 @@ static BRUNSLI_INLINE uint16_t BrunsliUnalignedRead16(const void* p) {
   memcpy(&t, p, sizeof t);
   return t;
 }
+/* Portable unaligned memory access: read / write values via memcpy. */
+static BRUNSLI_INLINE uint16_t BrunsliUnalignedWrite16(void* p, uint16_t v) {
+  memcpy(p, &v, sizeof v);
+}
 static BRUNSLI_INLINE uint32_t BrunsliUnalignedRead32(const void* p) {
   uint32_t t;
   memcpy(&t, p, sizeof t);
@@ -323,6 +327,7 @@ static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
 extern "C" {
 #endif  /* __cplusplus */
   uint16_t __sanitizer_unaligned_load16(const void* p);
+  void __sanitizer_unaligned_store16(void* p, uint16_t v);
   uint32_t __sanitizer_unaligned_load32(const void* p);
   uint64_t __sanitizer_unaligned_load64(const void* p);
   void __sanitizer_unaligned_store64(void* p, uint64_t v);
@@ -330,12 +335,16 @@ extern "C" {
 }  /* extern "C" */
 #endif  /* __cplusplus */
 #define BrunsliUnalignedRead16 __sanitizer_unaligned_load16
+#define BrunsliUnalignedWrite16 __sanitizer_unaligned_store16
 #define BrunsliUnalignedRead32 __sanitizer_unaligned_load32
 #define BrunsliUnalignedRead64 __sanitizer_unaligned_load64
 #define BrunsliUnalignedWrite64 __sanitizer_unaligned_store64
 #else  /* BRUNSLI_SANITIZED */
 static BRUNSLI_INLINE uint16_t BrunsliUnalignedRead16(const void* p) {
   return *(const uint16_t*)p;
+}
+static BRUNSLI_INLINE void BrunsliUnalignedWrite16(void* p, uint16_t v) {
+  *(uint16_t*)p = v;
 }
 static BRUNSLI_INLINE uint32_t BrunsliUnalignedRead32(const void* p) {
   return *(const uint32_t*)p;
@@ -379,6 +388,7 @@ static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
 #if BRUNSLI_LITTLE_ENDIAN
 /* Straight endianness. Just read / write values. */
 #define BRUNSLI_UNALIGNED_LOAD16LE BrunsliUnalignedRead16
+#define BRUNSLI_UNALIGNED_STORE16LE BrunsliUnalignedWrite16
 #define BRUNSLI_UNALIGNED_LOAD32LE BrunsliUnalignedRead32
 #define BRUNSLI_UNALIGNED_LOAD64LE BrunsliUnalignedRead64
 #define BRUNSLI_UNALIGNED_STORE64LE BrunsliUnalignedWrite64
@@ -390,6 +400,10 @@ static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
 static BRUNSLI_INLINE uint16_t BRUNSLI_UNALIGNED_LOAD16LE(const void* p) {
   uint16_t value = BrunsliUnalignedRead16(p);
   return BRUNSLI_BSWAP16_(value);
+}
+static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE16LE(void* p, uint16_t v) {
+  uint16_t value = BRUNSLI_BSWAP16_(v);
+  BrunsliUnalignedWrite16(p, value);
 }
 #define BRUNSLI_BSWAP32_(V) ( \
   (((V) & 0xFFU) << 24) | (((V) & 0xFF00U) << 8) | \
@@ -416,6 +430,11 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 static BRUNSLI_INLINE uint16_t BRUNSLI_UNALIGNED_LOAD16LE(const void* p) {
   const uint8_t* in = (const uint8_t*)p;
   return (uint16_t)(in[0] | (in[1] << 8));
+}
+static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE16LE(void* p, uint16_t v) {
+  uint8_t* out = (uint8_t*)p;
+  out[0] = (uint8_t)v;
+  out[1] = (uint8_t)(v >> 8);
 }
 static BRUNSLI_INLINE uint32_t BRUNSLI_UNALIGNED_LOAD32LE(const void* p) {
   const uint8_t* in = (const uint8_t*)p;
@@ -523,10 +542,12 @@ inline int Log2FloorNonZero(uint32_t n) {
 BRUNSLI_UNUSED_FUNCTION void BrunsliSuppressUnusedFunctions(void) {
   BRUNSLI_UNUSED(&BrunsliSuppressUnusedFunctions);
   BRUNSLI_UNUSED(&BrunsliUnalignedRead16);
+  BRUNSLI_UNUSED(&BrunsliUnalignedWrite16);
   BRUNSLI_UNUSED(&BrunsliUnalignedRead32);
   BRUNSLI_UNUSED(&BrunsliUnalignedRead64);
   BRUNSLI_UNUSED(&BrunsliUnalignedWrite64);
   BRUNSLI_UNUSED(&BRUNSLI_UNALIGNED_LOAD16LE);
+  BRUNSLI_UNUSED(&BRUNSLI_UNALIGNED_STORE16LE);
   BRUNSLI_UNUSED(&BRUNSLI_UNALIGNED_LOAD32LE);
   BRUNSLI_UNUSED(&BRUNSLI_UNALIGNED_LOAD64LE);
   BRUNSLI_UNUSED(&BRUNSLI_UNALIGNED_STORE64LE);

@@ -32,8 +32,7 @@ int DecodeBrunsli(size_t in_size, const uint8_t* in, void* out_data,
   brunsli::JPEGOutput writer(
       [](void* data, const uint8_t* buf, size_t count) {
         OutputStruct* sink = (OutputStruct*)data;
-        int result = sink->fun(sink->data, buf, count) == count ? count : -1;
-        return result;
+        return sink->fun(sink->data, buf, count);
       },
       &out);
   if (!brunsli::WriteJpeg(jpg, writer)) {

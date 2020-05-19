@@ -411,8 +411,8 @@ bool ProcessCOM(const uint8_t* data, const size_t len, size_t* pos,
   size_t marker_len = ReadUint16(data, pos);
   BRUNSLI_VERIFY_INPUT(marker_len, 2, 65535, MARKER_LEN);
   BRUNSLI_VERIFY_LEN(marker_len - 2);
-  std::string com_str(reinterpret_cast<const char*>(&data[*pos - 2]),
-                      marker_len);
+  std::string com_str(reinterpret_cast<const char*>(&data[*pos - 3]),
+                      marker_len + 1);
   *pos += marker_len - 2;
   jpg->com_data.push_back(com_str);
   return true;
@@ -531,10 +531,45 @@ int ReadSymbol(const HuffmanTableEntry* table, BitReaderState* br) {
   return table->value;
 }
 
-// Returns the DC diff or AC value for extra bits value x and prefix code s.
-// See Tables F.1 and F.2 of the spec.
+/**
+ * Returns the DC diff or AC value for extra bits value x and prefix code s.
+ *
+ * CCITT Rec. T.81 (1992 E)
+ * Table F.1 – Difference magnitude categories for DC coding
+ *  SSSS | DIFF values
+ * ------+--------------------------
+ *     0 | 0
+ *     1 | –1, 1
+ *     2 | –3, –2, 2, 3
+ *     3 | –7..–4, 4..7
+ * ......|..........................
+ *    11 | –2047..–1024, 1024..2047
+ *
+ * CCITT Rec. T.81 (1992 E)
+ * Table F.2 – Categories assigned to coefficient values
+ * [ Same as Table F.1, but does not include SSSS equal to 0 and 11]
+ *
+ *
+ * CCITT Rec. T.81 (1992 E)
+ * F.1.2.1.1 Structure of DC code table
+ * For each category,... additional bits... appended... to uniquely identify
+ * which difference... occurred... When DIFF is positive... SSSS... bits of DIFF
+ * are appended. When DIFF is negative... SSSS... bits of (DIFF – 1) are
+ * appended... Most significant bit... is 0 for negative differences and 1 for
+ * positive differences.
+ *
+ * In other words the upper half of extra bits range represents DIFF as is.
+ * The lower half represents the negative DIFFs with an offset.
+ */
 int HuffExtend(int x, int s) {
-  return (x < (1 << (s - 1)) ? x + ((-1) << s) + 1 : x);
+  BRUNSLI_DCHECK(s >= 1);
+  int half = 1 << (s - 1);
+  if (x >= half) {
+    BRUNSLI_DCHECK(x < (1 << s));
+    return x;
+  } else {
+    return x - (1 << s) + 1;
+  }
 }
 
 // Decodes one 8x8 block of DCT coefficients from the bit stream.
@@ -543,31 +578,33 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
                     int* eobrun, bool* reset_state, int* num_zero_runs,
                     BitReaderState* br, JPEGData* jpg, coeff_t* last_dc_coeff,
                     coeff_t* coeffs) {
-  int s;
-  int r;
+  // Nowadays multiplication is even faster than variable shift.
+  int Am = 1 << Al;
   bool eobrun_allowed = Ss > 0;
   if (Ss == 0) {
-    s = ReadSymbol(dc_huff, br);
+    int s = ReadSymbol(dc_huff, br);
     if (s >= kJpegDCAlphabetSize) {
       BRUNSLI_LOG_INFO() << "Invalid Huffman symbol " << s
                          << " for DC coefficient." << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::INVALID_SYMBOL;
       return false;
     }
+    int diff = 0;
     if (s > 0) {
-      r = br->ReadBits(s);
-      s = HuffExtend(r, s);
+      int bits = br->ReadBits(s);
+      diff = HuffExtend(bits, s);
     }
-    s += *last_dc_coeff;
-    const int dc_coeff = s << Al;
+    int coeff = diff + *last_dc_coeff;
+    const int dc_coeff = coeff * Am;
     coeffs[0] = dc_coeff;
+    // TODO(eustas): is there a more elegant / explicit way to check this?
     if (dc_coeff != coeffs[0]) {
       BRUNSLI_LOG_INFO() << "Invalid DC coefficient " << dc_coeff
                          << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::NON_REPRESENTABLE_DC_COEFF;
       return false;
     }
-    *last_dc_coeff = s;
+    *last_dc_coeff = coeff;
     ++Ss;
   }
   if (Ss > Se) {
@@ -579,15 +616,15 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
   }
   *num_zero_runs = 0;
   for (int k = Ss; k <= Se; k++) {
-    s = ReadSymbol(ac_huff, br);
-    if (s >= kJpegHuffmanAlphabetSize) {
-      BRUNSLI_LOG_INFO() << "Invalid Huffman symbol " << s
+    int sr = ReadSymbol(ac_huff, br);
+    if (sr >= kJpegHuffmanAlphabetSize) {
+      BRUNSLI_LOG_INFO() << "Invalid Huffman symbol " << sr
                          << " for AC coefficient " << k << BRUNSLI_ENDL();
       jpg->error = JPEGReadError::INVALID_SYMBOL;
       return false;
     }
-    r = s >> 4;
-    s &= 15;
+    int r = sr >> 4;
+    int s = sr & 15;
     if (s > 0) {
       k += r;
       if (k > Se) {
@@ -602,9 +639,9 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
         jpg->error = JPEGReadError::NON_REPRESENTABLE_AC_COEFF;
         return false;
       }
-      r = br->ReadBits(s);
-      s = HuffExtend(r, s);
-      coeffs[kJPEGNaturalOrder[k]] = s << Al;
+      int bits = br->ReadBits(s);
+      int coeff = HuffExtend(bits, s);
+      coeffs[kJPEGNaturalOrder[k]] = coeff * Am;
       *num_zero_runs = 0;
     } else if (r == 15) {
       k += 15;
@@ -635,19 +672,21 @@ bool DecodeDCTBlock(const HuffmanTableEntry* dc_huff,
 bool RefineDCTBlock(const HuffmanTableEntry* ac_huff, int Ss, int Se, int Al,
                     int* eobrun, bool* reset_state, BitReaderState* br,
                     JPEGData* jpg, coeff_t* coeffs) {
+  // Nowadays multiplication is even faster than variable shift.
+  int Am = 1 << Al;
   bool eobrun_allowed = Ss > 0;
   if (Ss == 0) {
     int s = br->ReadBits(1);
     coeff_t dc_coeff = coeffs[0];
-    dc_coeff |= s << Al;
+    dc_coeff |= s * Am;
     coeffs[0] = dc_coeff;
     ++Ss;
   }
   if (Ss > Se) {
     return true;
   }
-  int p1 = 1 << Al;
-  int m1 = (-1) << Al;
+  int p1 = Am;
+  int m1 = -Am;
   int k = Ss;
   int r;
   int s;

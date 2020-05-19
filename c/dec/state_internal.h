@@ -8,6 +8,7 @@
 #define BRUNSLI_DEC_STATE_INTERNAL_H_
 
 #include <array>
+#include <string>
 #include <vector>
 
 #include "../common/context.h"
@@ -17,6 +18,8 @@
 #include "./arith_decode.h"
 #include "./brunsli_input.h"
 #include "./state.h"
+
+struct BrotliDecoderStateStruct;
 
 namespace brunsli {
 namespace internal {
@@ -107,6 +110,68 @@ struct FallbackState {
   std::vector<uint8_t> storage;
 };
 
+// Fields used for section header parsing.
+struct SectionHeaderState {
+  enum Stage {
+    // Check section tag.
+    READ_TAG,
+    // Read (dummy) value.
+    READ_VALUE,
+    // Read section length.
+    ENTER_SECTION,
+    // Finish section header decoding.
+    DONE
+  };
+
+  size_t stage = READ_TAG;
+};
+
+enum class MetadataDecompressionStage {
+  // Initial state in which it is decided which one of 3 processing variants to
+  // use.
+  INITIAL,
+  // Read the length of uncompressed payload.
+  READ_LENGTH,
+  // Continuing as stream-decompressing/-parsing of Brotli-compressed metadata.
+  DECOMPRESSING,
+  // Parsing is finished, no further processing expected.
+  DONE,
+};
+
+struct MetadataState {
+  enum Stage {
+    // Parse sequence type.
+    READ_MARKER,
+    // Dump the remaining of metadata to tail sequence.
+    READ_TAIL,
+    // Parse second byte of 2-byte sequence.
+    READ_CODE,
+    // Parse multi-byte sequence length.
+    READ_LENGTH_HI,
+    READ_LENGTH_LO,
+    // Parse multi-byte sequence.
+    READ_MULTIBYTE,
+  };
+
+  size_t short_marker_count = 0;
+  uint8_t marker;
+  uint8_t length_hi;
+  size_t remaining_multibyte_length;
+  std::string* multibyte_sink;
+  size_t stage = READ_MARKER;
+
+  BrotliDecoderStateStruct* brotli = nullptr;
+  size_t metadata_size;
+  size_t decompressed_size = 0;
+  BrunsliStatus result = BRUNSLI_DECOMPRESSION_ERROR;
+  MetadataDecompressionStage decompression_stage =
+      MetadataDecompressionStage::INITIAL;
+
+  ~MetadataState();
+
+  bool CanFinish() { return (stage == READ_MARKER) || (stage == READ_TAIL); }
+};
+
 struct InternalState {
   AcDcState ac_dc;
   SectionState section;
@@ -114,6 +179,8 @@ struct InternalState {
   // Sections.
   HeaderState header;
   FallbackState fallback;
+  SectionHeaderState section_header;
+  MetadataState metadata;
 
   // "JPEGDecodingState" storage.
   std::vector<uint8_t> context_map_;

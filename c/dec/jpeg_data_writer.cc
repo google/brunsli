@@ -37,9 +37,9 @@ bool BuildHuffmanCodeTable(const JPEGHuffmanCode& huff,
                            HuffmanCodeTable* table) {
   int huff_code[kJpegHuffmanAlphabetSize];
   // +1 for a sentinel element.
-  int huff_size[kJpegHuffmanAlphabetSize + 1];
+  uint32_t huff_size[kJpegHuffmanAlphabetSize + 1];
   int p = 0;
-  for (int l = 1; l <= kJpegHuffmanMaxBitLength; ++l) {
+  for (size_t l = 1; l <= kJpegHuffmanMaxBitLength; ++l) {
     int i = huff.counts[l];
     if (p + i > kJpegHuffmanAlphabetSize + 1) {
       return false;
@@ -56,7 +56,7 @@ bool BuildHuffmanCodeTable(const JPEGHuffmanCode& huff,
   huff_size[last_p] = 0;
 
   int code = 0;
-  int si = huff_size[0];
+  uint32_t si = huff_size[0];
   p = 0;
   while (huff_size[p]) {
     while ((huff_size[p]) == si) {
@@ -255,7 +255,7 @@ bool EncodeCOM(const JPEGData& jpg, size_t com_index, JPEGOutput out) {
   if (com_index >= jpg.com_data.size()) {
     return false;
   }
-  uint8_t data[2] = {0xff, 0xfe};
+  uint8_t data[1] = {0xff};
   return (JPEGWrite(out, data, sizeof(data)) &&
           JPEGWrite(out, jpg.com_data[com_index]));
 }
@@ -556,7 +556,7 @@ bool EncodeScan(const JPEGData& jpg, const JPEGScanInfo& scan_info,
   int restarts_to_go = restart_interval;
   int next_restart_marker = 0;
   int block_scan_index = 0;
-  int extra_zero_runs_pos = 0;
+  size_t extra_zero_runs_pos = 0;
   int next_extra_zero_run_index = scan_info.extra_zero_runs.empty()
                                       ? -1
                                       : scan_info.extra_zero_runs[0].block_idx;

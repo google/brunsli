@@ -22,11 +22,11 @@ namespace brunsli {
 
 // Computes the Lehmer code of the permutation sigma[0..len) and puts the
 // result into code[0..len).
-void ComputeLehmerCode(const int* sigma, int len, int* code);
+void ComputeLehmerCode(const uint32_t* sigma, size_t len, uint32_t* code);
 
 // Decodes the Lehmer code in code[0..len) and puts the resulting permutation
 // into sigma[0..len).
-bool DecodeLehmerCode(const int* code, int len, int* sigma);
+bool DecodeLehmerCode(const uint32_t* code, size_t len, uint32_t* sigma);
 
 // This class is an optimized Lehmer-like coder that takes the remaining
 // number of possible values into account to reduce the bit usage.
@@ -44,15 +44,15 @@ class PermutationCoder {
     return num_values <= 1 ? 0 : (Log2FloorNonZero(num_values - 1) + 1);
   }
 
-  // Removes (and return) the value coded by 'code'. Returns -1 in
+  // Copy value at position 'code' and remove it. Returns false in
   // case of error (invalid slot).
-  int Remove(int code) {
-    if (code >= values_.size() || code < 0) {
-      return -1;
+  bool Remove(size_t code, uint8_t* value) {
+    if (code >= values_.size()) {
+      return false;
     }
-    const int value = values_[code];
+    *value = values_[code];
     values_.erase(values_.begin() + code);
-    return value;
+    return true;
   }
 
   // Removes 'value' from the list and assign a code + number-of-bits

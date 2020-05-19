@@ -12,10 +12,11 @@
 
 #include "../common/ans_params.h"
 #include <brunsli/types.h>
-#include "./bit_reader.h"
 #include "./brunsli_input.h"
 
 namespace brunsli {
+
+struct BrunsliBitReader;
 
 typedef struct {
   uint16_t offset_;

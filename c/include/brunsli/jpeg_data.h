@@ -46,7 +46,7 @@ static const uint8_t kDefaultQuantMatrix[2][64] = {
     99,  99,  99,  99,  99,  99,  99,  99 }
 };
 
-const int kJPEGNaturalOrder[80] = {
+const uint32_t kJPEGNaturalOrder[80] = {
   0,   1,  8, 16,  9,  2,  3, 10,
   17, 24, 32, 25, 18, 11,  4,  5,
   12, 19, 26, 33, 40, 48, 41, 34,
@@ -60,7 +60,7 @@ const int kJPEGNaturalOrder[80] = {
   63, 63, 63, 63, 63, 63, 63, 63
 };
 
-const int kJPEGZigZagOrder[64] = {
+const uint32_t kJPEGZigZagOrder[64] = {
   0,   1,  5,  6, 14, 15, 27, 28,
   2,   4,  7, 13, 16, 26, 29, 42,
   3,   8, 12, 17, 25, 30, 41, 43,
@@ -152,7 +152,7 @@ struct JPEGHuffmanCode {
 
 // Huffman table indexes used for one component of one scan.
 struct JPEGComponentScanInfo {
-  int comp_idx;
+  uint8_t comp_idx;
   int dc_tbl_idx;
   int ac_tbl_idx;
 };
@@ -205,11 +205,11 @@ struct JPEGComponent {
   int h_samp_factor;
   int v_samp_factor;
   // The index of the quantization table used for this component.
-  int quant_idx;
+  uint8_t quant_idx;
   // The dimensions of the component measured in 8x8 blocks.
-  int width_in_blocks;
-  int height_in_blocks;
-  int num_blocks;
+  uint32_t width_in_blocks;
+  uint32_t height_in_blocks;
+  uint32_t num_blocks;
   // The DCT coefficients of this component, laid out block-by-block, divided
   // through the quantization matrix values.
   std::vector<coeff_t> coeffs;

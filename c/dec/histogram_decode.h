@@ -9,15 +9,17 @@
 #ifndef BRUNSLI_DEC_HISTOGRAM_DECODE_H_
 #define BRUNSLI_DEC_HISTOGRAM_DECODE_H_
 
-#include "./bit_reader.h"
+#include <brunsli/types.h>
 
 namespace brunsli {
+
+struct BrunsliBitReader;
 
 // Decodes a histogram from the bit-stream where the sum of all population
 // counts is 1 << precision_bits.
 // Fills in counts[0 .. length) with the decoded population count values.
 // Returns false on decoding error.
-bool ReadHistogram(int precision_bits, int length, int* counts,
+bool ReadHistogram(size_t precision_bits, size_t length, uint32_t* counts,
                    BrunsliBitReader* br);
 
 }  // namespace brunsli

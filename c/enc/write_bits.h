@@ -27,7 +27,7 @@ class Storage {
     return (pos + 7) >> 3;
   }
 
-  void AppendBytes(const uint8_t* data, size_t len);
+  void AppendBytes(const uint8_t* src, size_t len);
 
   uint8_t* const data;
   // Size of buffer in bytes.

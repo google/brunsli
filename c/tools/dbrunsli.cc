@@ -19,7 +19,7 @@
 #include <highwayhash/data_parallel.h>
 #endif
 
-int StringWriter(void* data, const uint8_t* buf, size_t count) {
+size_t StringWriter(void* data, const uint8_t* buf, size_t count) {
   std::string* output = reinterpret_cast<std::string*>(data);
   output->append(reinterpret_cast<const char*>(buf), count);
   return count;

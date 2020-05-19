@@ -22,6 +22,7 @@
 #include "../common/platform.h"
 #include "../common/predict.h"
 #include "../common/quant_matrix.h"
+#include <brunsli/types.h>
 #include "./ans_encode.h"
 #include "./cluster.h"
 #include "./context_map_encode.h"
@@ -527,7 +528,7 @@ void Histogram::Merge(const Histogram& other) {
     data_[i] += other.data_[i];
 }
 
-void ComputeCoeffOrder(const BlockI32& num_zeros, int* order) {
+void ComputeCoeffOrder(const BlockI32& num_zeros, uint32_t* order) {
   std::vector<std::pair<int, int>> pos_and_val(kDCTBlockSize);
   for (int i = 0; i < kDCTBlockSize; ++i) {
     pos_and_val[i].first = i;
@@ -538,7 +539,7 @@ void ComputeCoeffOrder(const BlockI32& num_zeros, int* order) {
       [](const std::pair<int, int>& a, const std::pair<int, int>& b) -> bool {
         return a.second < b.second;
       });
-  for (int i = 0; i < kDCTBlockSize; ++i) {
+  for (size_t i = 0; i < kDCTBlockSize; ++i) {
     order[i] = kJPEGNaturalOrder[pos_and_val[i].first];
   }
 }
@@ -694,26 +695,30 @@ void DataStream::EncodeCodeWords(EntropyCodes* s, Storage* storage) {
     }
   }
   const uint32_t state = ans.GetState();
-  // TODO(eustas): what about alignment and endianness?
   uint16_t* out = reinterpret_cast<uint16_t*>(storage->data);
   const uint16_t* out_start = out;
-  *(out++) = (state >> 16) & 0xffff;
-  *(out++) = (state >> 0) & 0xffff;
+  // Mixed-endian for historical reasons.
+  BRUNSLI_UNALIGNED_STORE16LE(out++, state >> 16);
+  BRUNSLI_UNALIGNED_STORE16LE(out++, state);
   for (int i = 0; i < pos_; ++i) {
     const CodeWord& word = code_words_[i];
     if (word.nbits) {
-      *(out++) = word.value;
+      BRUNSLI_UNALIGNED_STORE16LE(out++, word.value);
     }
   }
   storage->pos += (out - out_start) * 16;
 }
 
-void EncodeNumNonzeros(int val, Prob* p, DataStream* data_stream) {
-  int ctx = 1;
-  const int kMaxBits = 6;
-  for (int mask = 1 << (kMaxBits - 1); mask != 0; mask >>= 1) {
-    const int bit = !!(val & mask);
-    data_stream->AddBit(&p[ctx - 1], bit);
+void EncodeNumNonzeros(size_t val, Prob* p, DataStream* data_stream) {
+  BRUNSLI_DCHECK(val < (1u << kNumNonZeroBits));
+
+  // To simplity BST navigation, we use 1-based indexing.
+  Prob* bst = p - 1;
+  size_t ctx = 1;
+
+  for (size_t mask = 1 << (kNumNonZeroBits - 1); mask != 0; mask >>= 1) {
+    const size_t bit = (val & mask) != 0;
+    data_stream->AddBit(bst + ctx, bit);
     ctx = 2 * ctx + bit;
   }
 }
@@ -727,18 +732,18 @@ coeff_t CollectAllCoeffs(const coeff_t coeffs[kDCTBlockSize]) {
   return all_coeffs;
 }
 
-void EncodeCoeffOrder(const int* order, DataStream* data_stream) {
-  int order_zigzag[kDCTBlockSize];
-  for (int i = 0; i < kDCTBlockSize; ++i) {
+void EncodeCoeffOrder(const uint32_t* order, DataStream* data_stream) {
+  uint32_t order_zigzag[kDCTBlockSize];
+  for (size_t i = 0; i < kDCTBlockSize; ++i) {
     order_zigzag[i] = kJPEGZigZagOrder[order[i]];
   }
-  int lehmer[kDCTBlockSize];
+  uint32_t lehmer[kDCTBlockSize];
   ComputeLehmerCode(order_zigzag, kDCTBlockSize, lehmer);
-  int end = kDCTBlockSize - 1;
-  while (end >= 1 && lehmer[end] == 0) {
-    --end;
+  int tail = kDCTBlockSize - 1;
+  while (tail >= 1 && lehmer[tail] == 0) {
+    --tail;
   }
-  for (int i = 1; i <= end; ++i) {
+  for (int i = 1; i <= tail; ++i) {
     ++lehmer[i];
   }
   static const int kSpan = 16;
@@ -790,7 +795,9 @@ static void EncodeValue(uint8_t tag, size_t value, uint8_t* data, size_t* pos) {
   *pos += EncodeBase128(value, data + *pos);
 }
 
-bool EncodeHeader(const JPEGData& jpg, State* s, uint8_t* data, size_t* len) {
+bool EncodeHeader(const JPEGData& jpg, State* state, uint8_t* data,
+                  size_t* len) {
+  BRUNSLI_UNUSED(state);
   if ((jpg.version != 1 && (jpg.width == 0 || jpg.height == 0)) ||
       jpg.components.empty() || jpg.components.size() > kMaxComponents) {
     return false;
@@ -810,7 +817,9 @@ bool EncodeHeader(const JPEGData& jpg, State* s, uint8_t* data, size_t* len) {
   return true;
 }
 
-bool EncodeMetaData(const JPEGData& jpg, State* s, uint8_t* data, size_t* len) {
+bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
+                    size_t* len) {
+  BRUNSLI_UNUSED(state);
   // Concatenate all the (possibly transformed) metadata pieces into one string.
   std::string metadata;
   size_t transformed_marker_count = 0;
@@ -824,7 +833,6 @@ bool EncodeMetaData(const JPEGData& jpg, State* s, uint8_t* data, size_t* len) {
     return false;
   }
   for (const std::string& s : jpg.com_data) {
-    metadata.append(1, 0xfe);
     metadata.append(s);
   }
   if (!jpg.tail_data.empty()) {
@@ -861,8 +869,9 @@ bool EncodeMetaData(const JPEGData& jpg, State* s, uint8_t* data, size_t* len) {
   return true;
 }
 
-bool EncodeJPEGInternals(const JPEGData& jpg, State* s, uint8_t* data,
+bool EncodeJPEGInternals(const JPEGData& jpg, State* state, uint8_t* data,
                          size_t* len) {
+  BRUNSLI_UNUSED(state);
   Storage storage(data, *len);
 
   if (!EncodeAuxData(jpg, &storage)) {
@@ -873,8 +882,9 @@ bool EncodeJPEGInternals(const JPEGData& jpg, State* s, uint8_t* data,
   return true;
 }
 
-bool EncodeQuantData(const JPEGData& jpg, State* s, uint8_t* data,
+bool EncodeQuantData(const JPEGData& jpg, State* state, uint8_t* data,
                      size_t* len) {
+  BRUNSLI_UNUSED(state);
   Storage storage(data, *len);
 
   if (!EncodeQuantTables(jpg, &storage)) {
@@ -901,25 +911,29 @@ bool EncodeHistogramData(const JPEGData& jpg, State* state, uint8_t* data,
   return true;
 }
 
-bool EncodeDCData(const JPEGData& jpg, State* s, uint8_t* data, size_t* len) {
+bool EncodeDCData(const JPEGData& jpg, State* state, uint8_t* data,
+                  size_t* len) {
+  BRUNSLI_UNUSED(jpg);
   Storage storage(data, *len);
 
-  s->data_stream_dc.EncodeCodeWords(s->entropy_codes, &storage);
+  state->data_stream_dc.EncodeCodeWords(state->entropy_codes, &storage);
 
   *len = storage.GetBytesUsed();
   return true;
 }
 
-bool EncodeACData(const JPEGData& jpg, State* s, uint8_t* data, size_t* len) {
+bool EncodeACData(const JPEGData& jpg, State* state, uint8_t* data,
+                  size_t* len) {
+  BRUNSLI_UNUSED(jpg);
   Storage storage(data, *len);
 
-  s->data_stream_ac.EncodeCodeWords(s->entropy_codes, &storage);
+  state->data_stream_ac.EncodeCodeWords(state->entropy_codes, &storage);
 
   *len = storage.GetBytesUsed();
   return true;
 }
 
-typedef bool (*EncodeSectionDataFn)(const JPEGData& jpg, State* s,
+typedef bool (*EncodeSectionDataFn)(const JPEGData& jpg, State* state,
                                     uint8_t* data, size_t* len);
 
 bool EncodeSection(const JPEGData& jpg, State* s, uint8_t tag,
@@ -1094,19 +1108,17 @@ void EncodeDC(State* state) {
           const bool is_empty_block = (all_coeffs == 0);
           const int is_empty_ctx =
               IsEmptyBlockContext(&c->prev_is_nonempty[1], x);
-          Prob* const is_empty_p = &c->is_empty_block_prob[is_empty_ctx];
-          data_stream.AddBit(is_empty_p, !is_empty_block);
+          data_stream.AddBit(&c->is_empty_block_prob[is_empty_ctx],
+                             !is_empty_block);
           c->prev_is_nonempty[x + 1] = !is_empty_block;
           *block_state = is_empty_block;
           if (!is_empty_block) {
             const int is_zero = (coeff == 0);
-            Prob* const p = &c->is_zero_prob;
-            data_stream.AddBit(p, is_zero);
+            data_stream.AddBit(&c->is_zero_prob, is_zero);
             if (!is_zero) {
               const int avrg_ctx = WeightedAverageContextDC(prev_abs, x);
               const int sign_ctx = prev_sgn[x] * 3 + prev_sgn[x - 1];
-              Prob* const sign_p = &c->sign_prob[sign_ctx];
-              data_stream.AddBit(sign_p, sign - 1);
+              data_stream.AddBit(&c->sign_prob[sign_ctx], sign - 1);
               const int zdens_ctx = i;
               if (absval <= kNumDirectCodes) {
                 data_stream.AddCode(absval - 1, zdens_ctx, avrg_ctx,
@@ -1117,8 +1129,8 @@ void EncodeDC(State* state) {
                                     avrg_ctx, &entropy_source);
                 int extra_bits = absval - (kNumDirectCodes - 1 + (2 << nbits));
                 int first_extra_bit = (extra_bits >> nbits) & 1;
-                Prob* p = &c->first_extra_bit_prob[nbits];
-                data_stream.AddBit(p, first_extra_bit);
+                data_stream.AddBit(&c->first_extra_bit_prob[nbits],
+                                   first_extra_bit);
                 if (nbits > 0) {
                   extra_bits &= (1 << nbits) - 1;
                   data_stream.AddBits(nbits, extra_bits);
@@ -1184,7 +1196,7 @@ void EncodeAC(State* state) {
       ComponentState* const c = &comps[i];
       const ComponentMeta& m = meta[i];
       const int cur_ctx_bits = m.context_bits;
-      const int* cur_order = c->order;
+      const uint32_t* cur_order = c->order;
       const int width = c->width;
       int y = mcu_y * m.v_samp;
       const int ac_stride = m.ac_stride;
@@ -1209,16 +1221,18 @@ void EncodeAC(State* state) {
               coeffs[k] = coeffs_in[k_nat];
               if (coeffs[k]) last_nz = k;
             }
-            const int nzero_context =
-                NumNonzerosContext(&c->prev_num_nonzeros[1], x, y);
-            EncodeNumNonzeros(last_nz, c->num_nonzero_prob[nzero_context],
-                              &data_stream);
+            const uint8_t nzero_context =
+                NumNonzerosContext(c->prev_num_nonzeros.data(), x, y);
+            EncodeNumNonzeros(
+                last_nz,
+                c->num_nonzero_prob + kNumNonZeroTreeSize * nzero_context,
+                &data_stream);
           }
           for (int k = kDCTBlockSize - 1; k > last_nz; --k) {
             prev_sgn[k] = 0;
             prev_abs[k] = 0;
           }
-          int num_nzeros = 0;
+          size_t num_nzeros = 0;
           coeff_t encoded_coeffs[kDCTBlockSize] = {0};
           for (int k = last_nz; k >= 1; --k) {
             coeff_t coeff = coeffs[k];
@@ -1238,19 +1252,15 @@ void EncodeAC(State* state) {
               int sign_ctx = kMaxAverageContext;
               if (k_nat < 8) {
                 if (y > 0) {
-                  const int ctx = ACPredictContextRow(prev_row_coeffs + k_nat,
-                                                      encoded_coeffs + k_nat,
-                                                      &c->mult_col[k_nat * 8]);
-                  avrg_ctx = std::abs(ctx);
-                  sign_ctx += ctx;
+                  ACPredictContextRow(
+                      prev_row_coeffs + k_nat, encoded_coeffs + k_nat,
+                      &c->mult_col[k_nat * 8], &avrg_ctx, &sign_ctx);
                 }
               } else if ((k_nat & 7) == 0) {
                 if (x > 0) {
-                  const int ctx = ACPredictContextCol(prev_col_coeffs + k_nat,
-                                                      encoded_coeffs + k_nat,
-                                                      &c->mult_row[k_nat]);
-                  avrg_ctx = std::abs(ctx);
-                  sign_ctx += ctx;
+                  ACPredictContextCol(
+                      prev_col_coeffs + k_nat, encoded_coeffs + k_nat,
+                      &c->mult_row[k_nat], &avrg_ctx, &sign_ctx);
                 }
               } else {
                 avrg_ctx = WeightedAverageContext(prev_abs + k, prev_row_delta);
@@ -1288,7 +1298,8 @@ void EncodeAC(State* state) {
               prev_abs[k] = 0;
             }
           }
-          c->prev_num_nonzeros[x + 1] = num_nzeros;
+          BRUNSLI_DCHECK(num_nzeros <= kNumNonZeroTreeSize);
+          c->prev_num_nonzeros[x] = static_cast<uint8_t>(num_nzeros);
           ++block_state;
           coeffs_in += kDCTBlockSize;
           prev_sgn += kDCTBlockSize;
@@ -1438,8 +1449,9 @@ size_t GetBrunsliBypassSize(size_t jpg_size) {
   return jpg_size + kBrunsliSignatureSize + kMaxBypassHeaderSize;
 }
 
-bool EncodeOriginalJpg(const JPEGData& jpg, State* s, uint8_t* data,
+bool EncodeOriginalJpg(const JPEGData& jpg, State* state, uint8_t* data,
                        size_t* len) {
+  BRUNSLI_UNUSED(state);
   if (jpg.original_jpg == NULL || jpg.original_jpg_size > *len) {
     return false;
   }

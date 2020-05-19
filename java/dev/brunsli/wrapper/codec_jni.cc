@@ -46,7 +46,7 @@ JNIEXPORT jbyteArray JNICALL Java_dev_brunsli_wrapper_CodecJNI_nativeDecode(
   }
 
   std::string output;
-  auto write = [](void* data, const uint8_t* buf, size_t count) -> int {
+  auto write = [](void* data, const uint8_t* buf, size_t count) -> size_t {
     std::string* output = reinterpret_cast<std::string*>(data);
     output->append(reinterpret_cast<const char*>(buf), count);
     return count;
