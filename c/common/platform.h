@@ -294,7 +294,7 @@ static BRUNSLI_INLINE uint16_t BrunsliUnalignedRead16(const void* p) {
   return t;
 }
 /* Portable unaligned memory access: read / write values via memcpy. */
-static BRUNSLI_INLINE uint16_t BrunsliUnalignedWrite16(void* p, uint16_t v) {
+static BRUNSLI_INLINE void BrunsliUnalignedWrite16(void* p, uint16_t v) {
   memcpy(p, &v, sizeof v);
 }
 static BRUNSLI_INLINE uint32_t BrunsliUnalignedRead32(const void* p) {

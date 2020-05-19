@@ -91,12 +91,9 @@ foreach(lib IN LISTS BRUNSLI_LIBRARIES)
     "${CMAKE_CURRENT_SOURCE_DIR}/c/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"
   )
-  if(NOT BRUNSLI_EMSCRIPTEN)
-    set_property(TARGET ${lib} PROPERTY POSITION_INDEPENDENT_CODE ON)
-  endif()
+  set_property(TARGET ${lib} PROPERTY POSITION_INDEPENDENT_CODE ON)
 endforeach()
 
-if(NOT BRUNSLI_EMSCRIPTEN)
 add_executable(cbrunsli c/tools/cbrunsli.cc)
 target_link_libraries(cbrunsli PRIVATE
   brunslienc-static
@@ -105,21 +102,32 @@ add_executable(dbrunsli c/tools/dbrunsli.cc)
 target_link_libraries(dbrunsli PRIVATE
   brunslidec-static
 )
-else()  # BRUNSLI_EMSCRIPTEN
+if(BRUNSLI_EMSCRIPTEN)
 set(WASM_MODULES brunslicodec-wasm brunslidec-wasm brunslienc-wasm)
 foreach(module IN LISTS WASM_MODULES)
 add_executable(${module} wasm/codec.cc)
 target_link_libraries(${module} PRIVATE brunslidec-static brunslienc-static)
 endforeach()
-set(WASM_LINK_FLAGS "\
+set(WASM_BASE_FLAGS "\
   -O3 \
   --closure 1 \
   -s ALLOW_MEMORY_GROWTH=1 \
-  -s MODULARIZE=1 \
-  -s FILESYSTEM=0 \
   -flto \
   --llvm-lto 1 \
   -s DISABLE_EXCEPTION_CATCHING=1 \
+")
+set(WASM_LINK_FLAGS "\
+  ${WASM_BASE_FLAGS} \
+  -s MODULARIZE=1 \
+  -s FILESYSTEM=0 \
+")
+set_target_properties(cbrunsli PROPERTIES LINK_FLAGS "\
+  ${WASM_BASE_FLAGS} \
+  -s NODERAWFS=1 \
+")
+set_target_properties(dbrunsli PROPERTIES LINK_FLAGS "\
+  ${WASM_BASE_FLAGS} \
+  -s NODERAWFS=1 \
 ")
 set(WASM_COMMON_EXPORT "\"_malloc\",\"_free\"")
 set(WASM_DEC_EXPORT "\"_BrunsliToJpeg\",\"_GetJpegData\",\"_GetJpegLength\",\"_FreeJpeg\"")
