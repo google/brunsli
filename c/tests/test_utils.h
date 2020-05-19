@@ -16,7 +16,7 @@ namespace brunsli {
  *
  * assert(data instanceof std::string)
  */
-int StringOutputFunction(void* data, const uint8_t* buf, size_t count);
+size_t StringOutputFunction(void* data, const uint8_t* buf, size_t count);
 
 std::vector<uint8_t> GetSmallBrunsliFile();
 const size_t kSmallBrunsliSignatuteSize = 6;

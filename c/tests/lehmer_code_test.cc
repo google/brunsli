@@ -33,7 +33,7 @@ TEST(LehmerCodeTest, TestPermutation) {
       for (size_t n = 0; n < values.size(); ++n) {
         values[n] = (LehmerRng(&seed) % (256 + 10)) - 10;
       }
-      std::vector<int> codes;
+      std::vector<size_t> codes;
       std::vector<int> code_num_bits;
       std::vector<unsigned char> good_values;
 
@@ -71,13 +71,14 @@ TEST(LehmerCodeTest, TestPermutation) {
         for (size_t i = 0; i < max_value; ++i) range[i] = i;
         PermutationCoder p(std::move(range));
 
-        ASSERT_EQ(p.Remove(-1), -1);
-        ASSERT_EQ(p.Remove(10000), -1);
-        ASSERT_EQ(p.Remove(max_value), -1);
+        uint8_t unused;
+        ASSERT_FALSE(p.Remove(10000, &unused));
+        ASSERT_FALSE(p.Remove(max_value, &unused));
 
         for (size_t n = 0; n < codes.size(); ++n) {
           ASSERT_EQ(p.num_bits(), code_num_bits[n]);
-          const int v = p.Remove(codes[n]);
+          uint8_t v;
+          ASSERT_TRUE(p.Remove(codes[n], &v));
           ASSERT_EQ(v, good_values[n]);
         }
       }

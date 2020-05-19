@@ -45,12 +45,12 @@ struct BitSource {
     bit_pos_ = 0;
   }
 
-  int ReadBits(int nbits, WordSource* in) {
+  uint32_t ReadBits(int nbits, WordSource* in) {
     if (bit_pos_ + nbits > 16) {
       uint32_t new_bits = in->GetNextWord();
       val_ |= new_bits << 16;
     }
-    int result = (val_ >> bit_pos_) & kBitMask[nbits];
+    uint32_t result = (val_ >> bit_pos_) & kBitMask[nbits];
     bit_pos_ += nbits;
     if (bit_pos_ > 16) {
       bit_pos_ -= 16;

@@ -15,10 +15,10 @@ Storage::Storage(uint8_t* data, size_t length)
   data[0] = 0;
 }
 
-void Storage::AppendBytes(const uint8_t* data, size_t len) {
+void Storage::AppendBytes(const uint8_t* src, size_t len) {
   BRUNSLI_DCHECK((pos & 7) == 0);
   BRUNSLI_DCHECK(GetBytesUsed() + len <= length);
-  memcpy(this->data + (pos >> 3), data, len);
+  memcpy(data + (pos >> 3), src, len);
   pos += 8 * len;
 }
 

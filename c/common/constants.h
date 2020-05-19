@@ -40,11 +40,11 @@ static const uint8_t kBrunsliWiringTypeLengthDelimited = 0x2;
 // The maximum supported V / H sampling factor.
 static const int kBrunsliMaxSampling = 15;
 
-static constexpr uint8_t ValueMarker(uint8_t tag) {
+constexpr uint8_t ValueMarker(uint8_t tag) {
   return (tag << 3) | kBrunsliWiringTypeVarint;
 }
 
-static constexpr uint8_t SectionMarker(uint8_t tag) {
+constexpr uint8_t SectionMarker(uint8_t tag) {
   return (tag << 3) | kBrunsliWiringTypeLengthDelimited;
 }
 
@@ -64,10 +64,8 @@ static const uint8_t kBrunsliHeaderHeightTag = 0x2;
 static const uint8_t kBrunsliHeaderVersionCompTag = 0x3;
 static const uint8_t kBrunsliHeaderSubsamplingTag = 0x4;
 
-static const uint8_t kBrunsliSignature[] = {
-  SectionMarker(kBrunsliSignatureTag), 0x04, 'B', 0xd2, 0xd5, 'N'
-};
-static const size_t kBrunsliSignatureSize = sizeof(kBrunsliSignature);
+static const size_t kBrunsliSignatureSize = 6;
+extern const uint8_t kBrunsliSignature[kBrunsliSignatureSize];
 
 static const size_t kMaxApp0Densities = 8;
 static const uint16_t kApp0Densities[kMaxApp0Densities] = {

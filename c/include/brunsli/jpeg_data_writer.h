@@ -15,14 +15,16 @@
 namespace brunsli {
 
 // Function pointer type used to write len bytes into buf. Returns the
-// number of bytes written or -1 on error.
-typedef int (*JPEGOutputHook)(void* data, const uint8_t* buf, size_t len);
+// number of bytes written.
+typedef size_t (*JPEGOutputHook)(void* data, const uint8_t* buf, size_t len);
 
 // Output callback function with associated data.
 struct JPEGOutput {
   JPEGOutput(JPEGOutputHook cb, void* data) : cb(cb), data(data) {}
   bool Write(const uint8_t* buf, size_t len) const {
-    return (len == 0) || (cb(data, buf, len) == len);
+    if (len == 0) return true;
+    size_t bytes_written = cb(data, buf, len);
+    return (bytes_written == len);
   }
 
  private:

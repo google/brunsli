@@ -108,7 +108,7 @@ static const float kLog2Table[] = {
 };
 
 // Faster logarithm for small integers, with the property of log2(0) == 0.
-static BRUNSLI_INLINE double FastLog2(int v) {
+BRUNSLI_INLINE double FastLog2(int v) {
   if (v < (int)(sizeof(kLog2Table) / sizeof(kLog2Table[0]))) {
     return kLog2Table[v];
   }

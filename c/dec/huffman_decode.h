@@ -12,7 +12,6 @@
 
 #include <vector>
 
-#include "./bit_reader.h"
 #include "./huffman_table.h"
 
 namespace brunsli {
@@ -20,6 +19,8 @@ namespace brunsli {
 static const size_t kHuffmanTableMask = 0xFFu;
 static const size_t kHuffmanTableBits = 8u;
 static const int kMaxHuffmanTableSize = 2048;
+
+struct BrunsliBitReader;
 
 struct HuffmanDecodingData {
   HuffmanDecodingData() : table_(kMaxHuffmanTableSize) {}
@@ -30,25 +31,6 @@ struct HuffmanDecodingData {
   bool ReadFromBitStream(int alphabet_size, BrunsliBitReader* br);
 
   std::vector<HuffmanCode> table_;
-};
-
-struct HuffmanDecoder {
-  // Decodes the next Huffman coded symbol from the bit-stream.
-  static uint16_t ReadSymbol(const HuffmanDecodingData& code,
-                             BrunsliBitReader* br) {
-    size_t n_bits;
-    const HuffmanCode* table = &code.table_[0];
-    table += BrunsliBitReaderGet(br, kHuffmanTableBits);
-    n_bits = table->bits;
-    if (n_bits > kHuffmanTableBits) {
-      BrunsliBitReaderDrop(br, kHuffmanTableBits);
-      n_bits -= kHuffmanTableBits;
-      table += table->value;
-      table += BrunsliBitReaderGet(br, n_bits);
-    }
-    BrunsliBitReaderDrop(br, table->bits);
-    return table->value;
-  }
 };
 
 }  // namespace brunsli

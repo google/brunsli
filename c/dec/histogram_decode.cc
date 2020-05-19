@@ -37,7 +37,7 @@ int ReadHistogramLength(BrunsliBitReader* br) {
 
 }  // namespace
 
-bool ReadHistogram(int precision_bits, int length, int* counts,
+bool ReadHistogram(size_t precision_bits, size_t length, uint32_t* counts,
                    BrunsliBitReader* br) {
   int simple_code = BrunsliBitReaderRead(br, 1);
   if (simple_code == 1) {
@@ -66,7 +66,7 @@ bool ReadHistogram(int precision_bits, int length, int* counts,
   } else {
     int real_length = ReadHistogramLength(br);
     memset(counts, 0, length * sizeof(counts[0]));
-    int total_count = 0;
+    size_t total_count = 0;
     static const HuffmanCode huff[64] = {
         {2, 6}, {3, 7}, {3, 4}, {4, 1}, {2, 6}, {3, 8}, {3, 5}, {4, 3},
         {2, 6}, {3, 7}, {3, 4}, {4, 2}, {2, 6}, {3, 8}, {3, 5}, {5, 0},

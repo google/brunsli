@@ -8,9 +8,10 @@
 #define BRUNSLI_DEC_CONTEXT_MAP_DECODE_H_
 
 #include <brunsli/types.h>
-#include "./bit_reader.h"
 
 namespace brunsli {
+
+struct BrunsliBitReader;
 
 // Reads the context map from the bit stream. The context map is an array of
 // context_map_size histogram ids. The number of different histogram ids is

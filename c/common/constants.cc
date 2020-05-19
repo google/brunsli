@@ -10,6 +10,10 @@
 
 namespace brunsli {
 
+const uint8_t kBrunsliSignature[kBrunsliSignatureSize] = {
+  SectionMarker(kBrunsliSignatureTag), 0x04, 'B', 0xd2, 0xd5, 'N'
+};
+
 // Common app-data chunks
 
 // APP12 'Ducky' marker

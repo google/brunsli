@@ -325,9 +325,9 @@ void ConvertBitDepthsToSymbols(const uint8_t* depth,
   next_code[0] = 0;
   {
     int code = 0;
-    for (int bits = 1; bits < kMaxBits; ++bits) {
-      code = (code + bl_count[bits - 1]) << 1;
-      next_code[bits] = static_cast<uint16_t>(code);
+    for (size_t i = 1; i < kMaxBits; ++i) {
+      code = (code + bl_count[i - 1]) << 1;
+      next_code[i] = static_cast<uint16_t>(code);
     }
   }
   for (size_t i = 0; i < len; ++i) {

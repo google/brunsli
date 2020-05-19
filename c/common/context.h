@@ -18,13 +18,31 @@ namespace brunsli {
 
 static const int kMaxAverageContext = 8;
 static const int kNumAvrgContexts = kMaxAverageContext + 1;
-static const int kInterSymbolContexts = 63;
+// 6 bits allow encoding values 0..63; this range represents the possible
+// quantities of non-zero AC coefficients in the DCT block.
+static const size_t kNumNonZeroBits = 6u;
+/**
+ * "number of non-zeros" value is decoded as a series of bits,
+ * highest to lowest.
+ *
+ * Partially decoded value is used as a context for reading the next bit.
+ * Contexts are organized in a binary tree. There are 64 final values, thus
+ * there are 1-less non-leaf nodes.
+ * Also, this constant also denotes the maximal value that could be encoded.
+ *
+ * static_assert(kNumNonZeroTreeSize == kDCTBlockSize - 1u)
+ */
+static const size_t kNumNonZeroTreeSize = (1u << kNumNonZeroBits) - 1u;
+static const size_t kNumNonZeroQuant = 2u;
+static const size_t kNumNonZeroContextMax =
+    kNumNonZeroTreeSize / kNumNonZeroQuant;
+static const size_t kNumNonZeroContextCount = kNumNonZeroContextMax + 1u;
 
 static const uint8_t kNonzeroBuckets[64] = {
-   0,   1,   2,   3,   4,   4,   5,   5,   5,   6,   6,   6,   6,   7,   7,   7,
-   7,   7,   7,   7,   7,   8,   8,   8,   8,   8,   8,   8,   8,   8,   8,   8,
-   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,   9,  10,  10,  10,
-  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,  10,
+    0,  1,  2,  3,  4,  4,  5,  5,  5,  6,  6,  6,  6,  7,  7,  7,
+    7,  7,  7,  7,  7,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,  8,
+    9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  9,  10, 10, 10,
+    10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10, 10,
 };
 // kNonzeroBuckets[i] < kNumNonzeroBuckets
 static const uint8_t kNumNonzeroBuckets = 11;
@@ -32,80 +50,84 @@ static const uint8_t kNumNonzeroBuckets = 11;
 static const int kNumSchemes = 7;
 
 static const uint8_t kFreqContext[kNumSchemes][64] = {
-  { 0, },
+    {
+        0,
+    },
 
-  { 0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
-    0,  0,  0,  0,  0,  0,  0,  0,  1,  1,  1,  1,  1,  1,  1,  1,
-    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,
-    1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  1,  0,  0,  0, },
+    {
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+        1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0,
+    },
 
-  { 0,  1,  1,  1,  1,  1,  1,  1,  1,  1,  2,  2,  2,  2,  2,  2,
-    2,  2,  2,  2,  2,  2,  2,  2,  2,  2,  3,  3,  3,  3,  3,  3,
-    3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,
-    3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  3,  1,  1,  1, },
+    {
+        0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+        3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 1, 1, 1,
+    },
 
-  { 0,  1,  1,  2,  2,  2,  3,  3,  3,  3,  4,  4,  4,  4,  4,  4,
-    5,  5,  5,  5,  5,  5,  5,  5,  6,  6,  6,  6,  6,  6,  6,  6,
-    6,  6,  6,  6,  6,  6,  6,  6,  7,  7,  7,  7,  7,  7,  7,  7,
-    7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  7,  2,  2,  2, },
+    {
+        0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5,
+        5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7,
+        7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 2, 2, 2,
+    },
 
-  { 0,  1,  2,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  8,  8,
-    9,  9,  9,  9, 10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12, 12,
-   13, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14,
-   15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, },
+    {
+        0,  1,  2,  3,  4,  4,  5,  5,  6,  6,  7,  7,  8,  8,  8,  8,
+        9,  9,  9,  9,  10, 10, 10, 10, 11, 11, 11, 11, 12, 12, 12, 12,
+        13, 13, 13, 13, 13, 13, 13, 13, 14, 14, 14, 14, 14, 14, 14, 14,
+        15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15, 15,
+    },
 
-  { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
-   16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23,
-   24, 24, 24, 24, 25, 25, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27,
-   28, 28, 28, 28, 29, 29, 29, 29, 30, 30, 30, 30, 31, 31, 31, 31, },
+    {
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+        16, 16, 17, 17, 18, 18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23,
+        24, 24, 24, 24, 25, 25, 25, 25, 26, 26, 26, 26, 27, 27, 27, 27,
+        28, 28, 28, 28, 29, 29, 29, 29, 30, 30, 30, 30, 31, 31, 31, 31,
+    },
 
-  { 0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
-   16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-   32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
-   48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, },
+    {
+        0,  1,  2,  3,  4,  5,  6,  7,  8,  9,  10, 11, 12, 13, 14, 15,
+        16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+        32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
+        48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
+    },
 };
 
 static const uint16_t kNumNonzeroContext[kNumSchemes][64] = {
- { 0,   1,   1,   2,   2,   2,   3,   3,   3,   3,   4,   4,   4,   4,   4,   4,
-   5,   5,   5,   5,   5,   5,   5,   5,   6,   6,   6,   6,   6,   6,   6,   6,
-   6,   6,   6,   6,   6,   6,   6,   6,   7,   7,   7,   7,   7,   7,   7,   7,
-   7,   7,   7,   7,   7,   7,   7,   7,   7,   7,   7,   7,   7,   7,   7,   7
- },
- { 0,   2,   2,   4,   4,   4,   6,   6,   6,   6,   8,   8,  8,   8,   8,   8,
-  10,  10,  10,  10,  10,  10,  10,  10,  12,  12,  12,  12,  12,  12,  12,  12,
-  12,  12,  12,  12,  12,  12,  12,  12,  14,  14,  14,  14,  14,  14,  14,  14,
-  14,  14,  14,  14,  14,  14,  14,  14,  14,  14,  14,  14,  14,  14,  14,  14
- },
- { 0,   4,   4,   8,   8,   8,  12,  12,  12,  12,  16,  16,  16,  16,  16,  16,
-  20,  20,  20,  20,  20,  20,  20,  20,  24,  24,  24,  24,  24,  24,  24,  24,
-  24,  24,  24,  24,  24,  24,  24,  24,  28,  28,  28,  28,  28,  28,  28,  28,
-  28,  28,  28,  28,  28,  28,  28,  28,  28,  28,  28,  28,  28,  28,  28,  28
- },
- { 0,   8,   8,  16,  16,  16,  24,  24,  24,  24,  32,  32,  32,  32,  32,  32,
-  40,  40,  40,  40,  40,  40,  40,  40,  48,  48,  48,  48,  48,  48,  48,  48,
-  48,  48,  48,  48,  48,  48,  48,  48,  55,  55,  55,  55,  55,  55,  55,  55,
-  55,  55,  55,  55,  55,  55,  55,  55,  55,  55,  55,  55,  55,  55,  55,  55
- },
- { 0,  16,  16,  32,  32,  32,  48,  48,  48,  48,  64,  64,  64,  64,  64,  64,
-  80,  80,  80,  80,  80,  80,  80,  80,  95,  95,  95,  95,  95,  95,  95,  95,
-  95,  95,  95,  95,  95,  95,  95,  95, 109, 109, 109, 109, 109, 109, 109, 109,
- 109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109
- },
- { 0,  32,  32,  64,  64,  64,  96,  96,  96,  96, 127, 127, 127, 127, 127, 127,
- 157, 157, 157, 157, 157, 157, 157, 157, 185, 185, 185, 185, 185, 185, 185, 185,
- 185, 185, 185, 185, 185, 185, 185, 185, 211, 211, 211, 211, 211, 211, 211, 211,
- 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211
- },
- { 0,  64,  64, 127, 127, 127, 188, 188, 188, 188, 246, 246, 246, 246, 246, 246,
- 300, 300, 300, 300, 300, 300, 300, 300, 348, 348, 348, 348, 348, 348, 348, 348,
- 348, 348, 348, 348, 348, 348, 348, 348, 388, 388, 388, 388, 388, 388, 388, 388,
- 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388
- }
-};
+    {0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5,
+     5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7,
+     7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7},
+    {0,  2,  2,  4,  4,  4,  6,  6,  6,  6,  8,  8,  8,  8,  8,  8,
+     10, 10, 10, 10, 10, 10, 10, 10, 12, 12, 12, 12, 12, 12, 12, 12,
+     12, 12, 12, 12, 12, 12, 12, 12, 14, 14, 14, 14, 14, 14, 14, 14,
+     14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14, 14},
+    {0,  4,  4,  8,  8,  8,  12, 12, 12, 12, 16, 16, 16, 16, 16, 16,
+     20, 20, 20, 20, 20, 20, 20, 20, 24, 24, 24, 24, 24, 24, 24, 24,
+     24, 24, 24, 24, 24, 24, 24, 24, 28, 28, 28, 28, 28, 28, 28, 28,
+     28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28},
+    {0,  8,  8,  16, 16, 16, 24, 24, 24, 24, 32, 32, 32, 32, 32, 32,
+     40, 40, 40, 40, 40, 40, 40, 40, 48, 48, 48, 48, 48, 48, 48, 48,
+     48, 48, 48, 48, 48, 48, 48, 48, 55, 55, 55, 55, 55, 55, 55, 55,
+     55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55},
+    {0,   16,  16,  32,  32,  32,  48,  48,  48,  48,  64,  64,  64,
+     64,  64,  64,  80,  80,  80,  80,  80,  80,  80,  80,  95,  95,
+     95,  95,  95,  95,  95,  95,  95,  95,  95,  95,  95,  95,  95,
+     95,  109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109,
+     109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109, 109},
+    {0,   32,  32,  64,  64,  64,  96,  96,  96,  96,  127, 127, 127,
+     127, 127, 127, 157, 157, 157, 157, 157, 157, 157, 157, 185, 185,
+     185, 185, 185, 185, 185, 185, 185, 185, 185, 185, 185, 185, 185,
+     185, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211,
+     211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211, 211},
+    {0,   64,  64,  127, 127, 127, 188, 188, 188, 188, 246, 246, 246,
+     246, 246, 246, 300, 300, 300, 300, 300, 300, 300, 300, 348, 348,
+     348, 348, 348, 348, 348, 348, 348, 348, 348, 348, 348, 348, 348,
+     348, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388,
+     388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388, 388}};
 
-static const uint16_t kNumNonzeroContextSkip[kNumSchemes] = {
-  8, 15, 31, 61, 120, 231, 412
-};
+static const uint16_t kNumNonzeroContextSkip[kNumSchemes] = {8,   15,  31, 61,
+                                                             120, 231, 412};
 
 inline int ZeroDensityContext(int nonzeros_left, int k, int bits) {
   return kNumNonzeroContext[bits][nonzeros_left] + kFreqContext[bits][k];
@@ -124,13 +146,35 @@ inline int WeightedAverageContextDC(const int* vals, int x) {
   return Log2FloorNonZero(sum);
 }
 
+/**
+ * Calculates the context on the base of average of already decoded
+ * neighbour values.
+ *
+ * It is considered that vals[0] represents the value 2 rows above the current,
+ * while the (locally) previous elements represent the current row. If y < 2,
+ * then vals[0] should be 0.
+ * Elements (locally) around vals[prev_row_delta] correspond to the row above
+ * currnent one.
+ *
+ * Values are summed up with the following weights:
+ *
+ * 0|0|1|0
+ * -+-+-+-
+ * 0|1|2|1
+ * -+-+-+-
+ * 1|2|*|
+ *     ^
+ *     current position
+ *
+ * This method should not be invoked on the 0-th row or 0-th column.
+ * It is also considered, that there are 2 extra fence columns before the 0-th
+ * column and 1 fence column to the right of the last column,
+ * all initialized with zeroes.
+ */
 inline int WeightedAverageContext(const int* vals, int prev_row_delta) {
-  int sum = 4 +
-      vals[0] +
-      (vals[-kDCTBlockSize] + vals[prev_row_delta]) * 2 +
-      vals[-2 * kDCTBlockSize] +
-      vals[prev_row_delta - kDCTBlockSize] +
-      vals[prev_row_delta + kDCTBlockSize];
+  int sum = 4 + vals[0] + (vals[-kDCTBlockSize] + vals[prev_row_delta]) * 2 +
+            vals[-2 * kDCTBlockSize] + vals[prev_row_delta - kDCTBlockSize] +
+            vals[prev_row_delta + kDCTBlockSize];
   if ((sum >> (kMaxAverageContext + 2)) != 0) {
     return kMaxAverageContext;
   }
@@ -140,33 +184,31 @@ inline int WeightedAverageContext(const int* vals, int prev_row_delta) {
 static const int kACPredictPrecisionBits = 13;
 static const int kACPredictPrecision = 1 << kACPredictPrecisionBits;
 
-void ComputeACPredictMultipliers(const int* quant,
-                                 int* mult_row,
+void ComputeACPredictMultipliers(const int* quant, int* mult_row,
                                  int* mult_col);
 
-// Returns a context value from the AC prediction in the range
-// [-kMaxAverageContext, kMaxAverageContext]
-inline int ACPredictContext(int64_t p_orig) {
-  uint64_t p;
-  static const int64_t kMaxPred = (1 << (kMaxAverageContext + 1)) - 1;
-  if (p_orig >= 0) {
-    p = static_cast<uint64_t>(p_orig) << 1;
-    if (p > kMaxPred) {
-      return kMaxAverageContext;
-    }
-    return Log2FloorNonZero(++p);
-  }
-  p = static_cast<uint64_t>(-p_orig) << 1;
-  if (p > kMaxPred) {
-    return -kMaxAverageContext;
+// Computes average and sign context from the AC prediction.
+inline void ACPredictContext(int64_t p, int* avg_ctx, int* sgn) {
+  int multiplier;
+  if (p >= 0) {
+    multiplier = 1;
   } else {
-    return -Log2FloorNonZero(++p);
+    multiplier = -1;
+    p = -p;
   }
+  int ctx;
+  if (p >= (1u << kMaxAverageContext)) {
+    ctx = kMaxAverageContext;
+  } else {
+    // 0 -> 0, 1 -> 1, 2..3 -> 2, 4..7 -> 3, etc.
+    ctx = Log2FloorNonZero(2 * static_cast<uint32_t>(p)+ 1);
+  }
+  *avg_ctx = ctx;
+  *sgn = kMaxAverageContext + multiplier * ctx;
 }
 
-inline int ACPredictContextCol(const coeff_t* prev,
-                               const coeff_t* cur,
-                               const int* mult) {
+inline void ACPredictContextCol(const coeff_t* prev, const coeff_t* cur,
+                                const int* mult, int* avg_ctx, int* sgn) {
   coeff_t terms[8];
   terms[0] = 0;
   terms[1] = cur[1] + prev[1];
@@ -184,12 +226,11 @@ inline int ACPredictContextCol(const coeff_t* prev,
                   terms[5] * static_cast<int64_t>(mult[5]) +
                   terms[6] * static_cast<int64_t>(mult[6]) +
                   terms[7] * static_cast<int64_t>(mult[7]);
-  return ACPredictContext(prev[0] - delta / kACPredictPrecision);
+  ACPredictContext(prev[0] - delta / kACPredictPrecision, avg_ctx, sgn);
 }
 
-inline int ACPredictContextRow(const coeff_t* prev,
-                               const coeff_t* cur,
-                               const int* mult) {
+inline void ACPredictContextRow(const coeff_t* prev, const coeff_t* cur,
+                               const int* mult, int* avg_ctx, int* sgn) {
   coeff_t terms[8];
   terms[0] = 0;
   terms[1] = cur[8] + prev[8];
@@ -207,13 +248,33 @@ inline int ACPredictContextRow(const coeff_t* prev,
                   terms[5] * static_cast<int64_t>(mult[5]) +
                   terms[6] * static_cast<int64_t>(mult[6]) +
                   terms[7] * static_cast<int64_t>(mult[7]);
-  return ACPredictContext(prev[0] - delta / kACPredictPrecision);
+  ACPredictContext(prev[0] - delta / kACPredictPrecision, avg_ctx, sgn);
 }
 
-inline int NumNonzerosContext(const int* prev, int x, int y) {
-  return (y == 0 ? (prev[x - 1] >> 1) :
-          x == 0 ? (prev[0] >> 1) :
-          (prev[x - 1] + prev[x] + 1) >> 2);
+/**
+ * PRECONDITION: 0 <= prev[i] <= 63
+ * PRECONDITION: elements of prev at and after x correspond to previous
+ *               row; elements before x correspond to current row
+ */
+inline uint8_t NumNonzerosContext(const uint8_t* prev, int x, int y) {
+  size_t prediction;
+  if (y == 0) {
+    if (x == 0) {
+      // Special case: top-left block.
+      prediction = 0;
+    } else {
+      // No row above; use block at left.
+      prediction = prev[x - 1];
+    }
+  } else if (x == 0) {
+    // No column to the left; use block above.
+    prediction = prev[x];
+  } else {
+    // Average of left and above blocks.
+    prediction = (prev[x - 1] + prev[x] + 1) / 2;
+  }
+  BRUNSLI_DCHECK(prediction <= kNumNonZeroTreeSize);
+  return prediction / kNumNonZeroQuant;
 }
 
 // Context for the emptyness of a block is the number of non-empty blocks in the
@@ -227,11 +288,11 @@ inline int IsEmptyBlockContext(const int* prev, int x) {
 // Holds all encoding/decoding state for an image component that is needed to
 // switch between components during interleaved encoding/decoding.
 struct ComponentStateDC {
-  ComponentStateDC() :
-      width(0),
-      is_empty_block_prob(kNumIsEmptyBlockContexts),
-      sign_prob(9),
-      first_extra_bit_prob(10) {
+  ComponentStateDC()
+      : width(0),
+        is_empty_block_prob(kNumIsEmptyBlockContexts),
+        sign_prob(9),
+        first_extra_bit_prob(10) {
     InitAll();
   }
 
@@ -256,18 +317,18 @@ struct ComponentStateDC {
 };
 
 struct ComponentState {
-  ComponentState() :
-      width(0),
-      is_zero_prob(kNumNonzeroBuckets * kDCTBlockSize),
-      sign_prob((2 * kMaxAverageContext + 1) * kDCTBlockSize),
-      first_extra_bit_prob(10 * kDCTBlockSize) {
+  ComponentState()
+      : width(0),
+        is_zero_prob(kNumNonzeroBuckets * kDCTBlockSize),
+        sign_prob((2 * kMaxAverageContext + 1) * kDCTBlockSize),
+        first_extra_bit_prob(10 * kDCTBlockSize) {
     InitAll();
   }
 
   void SetWidth(int w) {
     width = w;
     prev_is_nonempty.resize(w + 1, 1);
-    prev_num_nonzeros.resize(w + 1);
+    prev_num_nonzeros.resize(w);
     prev_abs_coeff.resize(kDCTBlockSize * 2 * (w + 3));
     prev_sign.resize(kDCTBlockSize * (w + 1));
   }
@@ -276,22 +337,23 @@ struct ComponentState {
   // Used in estimating peak heap memory usage of the brunsli codec.
   static size_t SizeInBytes(int w) {
     return (4 + (10 + 3 * w) * kDCTBlockSize + 2 * w) * sizeof(int) +
-        ((kNumNonzeroBuckets + 2 * kMaxAverageContext + 11) * kDCTBlockSize +
-         32 * kInterSymbolContexts) * sizeof(Prob);
+           ((kNumNonzeroBuckets + 2 * kMaxAverageContext + 11) * kDCTBlockSize +
+            kNumNonZeroContextCount * kNumNonZeroTreeSize) *
+               sizeof(Prob);
   }
 
   int width;
   int context_offset;
-  int order[kDCTBlockSize];
+  uint32_t order[kDCTBlockSize];
   int mult_row[kDCTBlockSize];
   // mult_col is transposed for more effective ACPredictContextRow execution.
   int mult_col[kDCTBlockSize];
   std::vector<Prob> is_zero_prob;
   std::vector<Prob> sign_prob;
-  Prob num_nonzero_prob[32][kInterSymbolContexts];
+  Prob num_nonzero_prob[kNumNonZeroContextCount * kNumNonZeroTreeSize];
   std::vector<Prob> first_extra_bit_prob;
   std::vector<int> prev_is_nonempty;
-  std::vector<int> prev_num_nonzeros;
+  std::vector<uint8_t> prev_num_nonzeros;
   std::vector<int> prev_abs_coeff;
   std::vector<int> prev_sign;
 
