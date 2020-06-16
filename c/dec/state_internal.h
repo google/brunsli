@@ -326,9 +326,6 @@ struct HistogramDataState {
 };
 
 struct Buffer {
-  /** How much data could be requested by parser to continue decoding. */
-  const static size_t kMaxReadAhead = 600;
-
   size_t data_len = 0;
   size_t borrowed_len;
   std::vector<uint8_t> data;

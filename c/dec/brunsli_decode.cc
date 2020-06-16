@@ -2300,6 +2300,8 @@ void ChargeBuffer(State* state) {
   b.external_len = state->len;
 }
 
+constexpr size_t kBufferMaxReadAhead = 600;
+
 /** Sets input source either to buffered, or to external data. */
 void LoadInput(State* state) {
   InternalState& s = *state->internal;
@@ -2313,14 +2315,14 @@ void LoadInput(State* state) {
     return;
   }
 
-  BRUNSLI_DCHECK(b.data_len <= Buffer::kMaxReadAhead);
+  BRUNSLI_DCHECK(b.data_len <= kBufferMaxReadAhead);
 
   // Otherwise use buffered data.
   size_t available = b.external_len - b.external_pos;
   // Always try to borrow as much as parser could require. This way, when
   // buffer is unable to provide enough input, we could switch to unbuffered
   // input.
-  b.borrowed_len = std::min(Buffer::kMaxReadAhead, available);
+  b.borrowed_len = std::min(kBufferMaxReadAhead, available);
   memcpy(b.data.data() + b.data_len, b.external_data + b.external_pos,
          b.borrowed_len);
   state->data = b.data.data();
@@ -2344,8 +2346,8 @@ bool UnloadInput(State* state, BrunsliStatus result) {
     if (result != BRUNSLI_NOT_ENOUGH_DATA) return true;
     BRUNSLI_DCHECK(b.data_len == 0);
     size_t available = b.external_len - b.external_pos;
-    BRUNSLI_DCHECK(available < Buffer::kMaxReadAhead);
-    if (b.data.empty()) b.data.resize(2 * Buffer::kMaxReadAhead);
+    BRUNSLI_DCHECK(available < kBufferMaxReadAhead);
+    if (b.data.empty()) b.data.resize(2 * kBufferMaxReadAhead);
     b.data_len = available;
     memcpy(b.data.data(), b.external_data + b.external_pos, b.data_len);
     b.external_pos += available;
@@ -2367,7 +2369,7 @@ bool UnloadInput(State* state, BrunsliStatus result) {
     // We couldn't have taken more bytes.
     BRUNSLI_DCHECK(b.external_pos + b.borrowed_len == b.external_len);
     // Remaining piece is not too large.
-    BRUNSLI_DCHECK(b.data_len + b.borrowed_len < Buffer::kMaxReadAhead);
+    BRUNSLI_DCHECK(b.data_len + b.borrowed_len < kBufferMaxReadAhead);
     b.data_len += b.borrowed_len;
     b.external_pos += b.borrowed_len;
   }
@@ -2375,7 +2377,7 @@ bool UnloadInput(State* state, BrunsliStatus result) {
   if (state->pos > 0 && b.data_len > 0) {
     memmove(b.data.data(), b.data.data() + state->pos, b.data_len);
   }
-  BRUNSLI_DCHECK(b.data_len <= Buffer::kMaxReadAhead);
+  BRUNSLI_DCHECK(b.data_len <= kBufferMaxReadAhead);
 
   return (result != BRUNSLI_NOT_ENOUGH_DATA);
 }
