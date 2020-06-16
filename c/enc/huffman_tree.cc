@@ -10,7 +10,7 @@
 #include <limits>
 #include <vector>
 
-#include "./platform.h"
+#include "../common/platform.h"
 #include <brunsli/types.h>
 
 namespace brunsli {

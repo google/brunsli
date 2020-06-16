@@ -23,6 +23,13 @@ static const size_t kBrunsliMaxNumBlocks = 1ull << 21;
 // codes and num bits from 1 to 10, so a total of 8 + 2 + 4 + ... + 1024).
 static const int kBrunsliMaxDCAbsVal = 2054;
 
+// We use only the context map alphabet in brunsli, where the maximum alphabet
+// size is 256 + 16 = 272. (We can have 256 clusters and 16 run length codes).
+static const size_t kMaxContextMapAlphabetSize = 272;
+
+static const size_t kHuffmanTableBits = 8u;
+static const size_t kMaxHuffmanBits = 15u;
+
 // Total number of short markers allowed. Short marker represents popular marker
 // and is encoded with 1 or 2 bytes in brunsli, but expanded into 15..3161 bytes
 // in JPEG (see AppData_0x and GenerateApp0Marker). This poses "ZIP BOMB" threat

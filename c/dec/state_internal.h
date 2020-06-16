@@ -8,20 +8,35 @@
 #define BRUNSLI_DEC_STATE_INTERNAL_H_
 
 #include <array>
+#include <deque>
+#include <initializer_list>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "../common/context.h"
-#include <brunsli/types.h>
+#include "../common/lehmer_code.h"
 #include <brunsli/status.h>
+#include <brunsli/types.h>
 #include "./ans_decode.h"
 #include "./arith_decode.h"
+#include "./bit_reader.h"
 #include "./brunsli_input.h"
+#include "./huffman_decode.h"
+#include <brunsli/jpeg_data_writer.h>
 #include "./state.h"
 
 struct BrotliDecoderStateStruct;
 
 namespace brunsli {
+
+struct HuffmanDecodingData;
+
+struct HuffmanCodeTable {
+  int depth[256];
+  int code[256];
+};
+
 namespace internal {
 namespace dec {
 
@@ -172,7 +187,224 @@ struct MetadataState {
   bool CanFinish() { return (stage == READ_MARKER) || (stage == READ_TAIL); }
 };
 
+/**
+ * Fits both DecodeVarint and DecodeLimitedVarint workflows.
+ *
+ * TODO(eustas): we could turn those methods back to stateless,
+ * when "mark / rewind" utilities are added to BrunsliBitReader, and outer
+ * parsing workflow supports input buffering.
+ */
+struct VarintState {
+  enum Stage {
+    INIT,
+    READ_CONTINUATION,
+    READ_DATA
+  };
+
+  Stage stage = INIT;
+  size_t value;
+  size_t i;
+};
+
+struct JpegInternalsState {
+  enum Stage {
+    INIT = 0,
+    READ_MARKERS,
+    READ_DRI,
+
+    DECODE_HUFFMAN_MASK = 0x10,
+    READ_HUFFMAN_LAST,
+    READ_HUFFMAN_SIMPLE,
+    READ_HUFFMAN_MAX_LEN,
+    READ_HUFFMAN_COUNT,
+    READ_HUFFMAN_PERMUTATION,
+    HUFFMAN_UPDATE,
+
+    PREPARE_READ_SCANS = 0x20,
+
+    DECODE_SCAN_MASK = 0x40,
+    READ_SCAN_COMMON,
+    READ_SCAN_COMPONENT,
+    READ_SCAN_RESET_POINT_CONTINUATION,
+    READ_SCAN_RESET_POINT_DATA,
+    READ_SCAN_ZERO_RUN_CONTINUATION,
+    READ_SCAN_ZERO_RUN_DATA,
+
+    READ_NUM_QUANT = 0x80,
+    READ_QUANT,
+    READ_COMP_ID_SCHEME,
+    READ_COMP_ID,
+    READ_NUM_PADDING_BITS,
+    READ_PADDING_BITS,
+
+    ITERATE_MARKERS,
+    READ_INTERMARKER_LENGTH,
+    READ_INTERMARKER_DATA,
+
+    DONE
+  };
+
+  Stage stage = INIT;
+
+  bool have_dri = false;
+  size_t num_scans = 0;
+  size_t dht_count = 0;
+
+  BrunsliBitReader br;
+  size_t is_known_last_huffman_code;
+  size_t terminal_huffman_code_count = 0;
+  bool is_dc_table;
+  size_t total_count;
+  size_t space;
+  size_t max_len;
+  size_t max_count;
+  size_t i;
+  PermutationCoder p;
+  VarintState varint;
+
+  size_t j;
+  int last_block_idx;
+  int last_num;
+
+  size_t num_padding_bits;
+  size_t intermarker_length;
+};
+
+struct QuantDataState {
+  enum Stage {
+    INIT,
+
+    READ_NUM_QUANT,
+
+    READ_STOCK,
+    READ_Q_FACTOR,
+    READ_DIFF_IS_ZERO,
+    READ_DIFF_SIGN,
+    READ_DIFF,
+    APPLY_DIFF,
+    UPDATE,
+
+    READ_QUANT_IDX,
+
+    FINISH
+  };
+
+  Stage stage = INIT;
+
+  BrunsliBitReader br;
+  size_t i;
+  size_t j;
+  uint8_t data_precision;
+  VarintState vs;
+  int delta;
+  int sign;
+  std::vector<uint8_t> predictor;
+};
+
+struct HistogramDataState {
+  enum Stage {
+    INIT,
+
+    READ_SCHEME,
+    READ_NUM_HISTOGRAMS,
+    READ_CONTEXT_MAP_CODE,
+    READ_CONTEXT_MAP,
+    READ_HISTOGRAMS,
+
+    SKIP_CONTENT,
+
+    DONE
+  };
+
+  Stage stage = INIT;
+
+  BrunsliBitReader br;
+  size_t max_run_length_prefix;
+  std::unique_ptr<HuffmanDecodingData> entropy;
+  size_t i;
+  std::vector<uint32_t> counts;
+};
+
+struct Buffer {
+  /** How much data could be requested by parser to continue decoding. */
+  constexpr static size_t kMaxReadAhead = 600;
+
+  size_t data_len = 0;
+  size_t borrowed_len;
+  std::vector<uint8_t> data;
+
+  const uint8_t* external_data;
+  size_t external_pos;
+  size_t external_len;
+};
+
+/**
+ * A chunk of output data.
+ *
+ * |buffer| does not necessary own any data.
+ */
+struct OutputChunk {
+  // Non-owning
+  template<typename Bytes>
+  OutputChunk(Bytes& bytes) : next(bytes.data()), len(bytes.size()) {}
+
+  // Non-owning
+  OutputChunk(const uint8_t* data, size_t size) : next(data), len(size) {}
+
+  // Owning
+  OutputChunk(size_t size) {
+    buffer.reset(new std::vector<uint8_t>(size));
+    next = buffer->data();
+    len = size;
+  }
+
+  // Owning
+  OutputChunk(std::initializer_list<uint8_t> bytes) {
+    buffer.reset(new std::vector<uint8_t>(bytes));
+    next = buffer->data();
+    len = bytes.size();
+  }
+
+  const uint8_t* next;
+  size_t len;
+  std::unique_ptr<std::vector<uint8_t>> buffer;
+};
+
+struct SerializationState {
+  enum Stage {
+    INIT,
+
+    // TODO(eustas): temporary; remove
+    DUMP_OUTPUT,
+
+    DONE,
+    ERROR,
+  };
+
+  Stage stage = INIT;
+
+  std::deque<OutputChunk> output_queue;
+
+  // TODO(eustas): temporary; remove
+  JPEGOutput chunk_writer = {nullptr, nullptr};
+
+  int dht_index = 0;
+  int dqt_index = 0;
+  int app_index = 0;
+  int com_index = 0;
+  int data_index = 0;
+  int scan_index = 0;
+  std::vector<HuffmanCodeTable> dc_huff_table;
+  std::vector<HuffmanCodeTable> ac_huff_table;
+  const int* pad_bits = nullptr;
+  const int* pad_bits_end = nullptr;
+  bool seen_dri_marker = false;
+  bool is_progressive = false;
+};
+
 struct InternalState {
+  /* Parsing */
+
   AcDcState ac_dc;
   SectionState section;
 
@@ -181,6 +413,9 @@ struct InternalState {
   FallbackState fallback;
   SectionHeaderState section_header;
   MetadataState metadata;
+  JpegInternalsState internals;
+  QuantDataState quant;
+  HistogramDataState histogram;
 
   // "JPEGDecodingState" storage.
   std::vector<uint8_t> context_map_;
@@ -203,6 +438,12 @@ struct InternalState {
   BrunsliStatus result = BRUNSLI_OK;
 
   Stage last_stage = Stage::ERROR;
+
+  Buffer buffer;
+
+  /* Serialization */
+
+  SerializationState serialization;
 };
 
 }  // namespace dec

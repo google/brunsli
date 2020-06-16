@@ -9,11 +9,15 @@
 #include <cstring>  /* for memset */
 #include <vector>
 
+#include "../common/constants.h"
 #include <brunsli/types.h>
 #include "./bit_reader.h"
 #include "./huffman_table.h"
 
 namespace brunsli {
+
+/** This should be enough for kMaxContextMapAlphabetSize and max_bits=15. */
+static const size_t kMaxHuffmanTableSize = 646;
 
 static const int kCodeLengthCodes = 18;
 static const uint8_t kCodeLengthCodeOrder[kCodeLengthCodes] = {
@@ -89,6 +93,8 @@ int ReadHuffmanCodeLengths(const uint8_t* code_length_code_lengths,
   memset(&code_lengths[symbol], 0, (size_t)(num_symbols - symbol));
   return BrunsliBitReaderIsHealthy(br);
 }
+
+HuffmanDecodingData::HuffmanDecodingData() : table_(kMaxHuffmanTableSize) {}
 
 bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
                                             BrunsliBitReader* br) {
@@ -176,10 +182,26 @@ bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
     ++counts[code_lengths[i]];
   }
   if (ok) {
-    table_size = BuildHuffmanTable(&table_[0], kHuffmanTableBits,
+    table_size = BuildHuffmanTable(table_.data(), kHuffmanTableBits,
                                    &code_lengths[0], alphabet_size, &counts[0]);
   }
   return (table_size > 0);
+}
+
+// Decodes the next Huffman coded symbol from the bit-stream.
+uint16_t HuffmanDecodingData::ReadSymbol(BrunsliBitReader* br) const {
+  size_t n_bits;
+  const HuffmanCode* table = table_.data();
+  table += BrunsliBitReaderGet(br, kHuffmanTableBits);
+  n_bits = table->bits;
+  if (n_bits > kHuffmanTableBits) {
+    BrunsliBitReaderDrop(br, kHuffmanTableBits);
+    n_bits -= kHuffmanTableBits;
+    table += table->value;
+    table += BrunsliBitReaderGet(br, n_bits);
+  }
+  BrunsliBitReaderDrop(br, table->bits);
+  return table->value;
 }
 
 }  // namespace brunsli

@@ -27,11 +27,13 @@ TEST(StreamDecodeTest, DoneDone) {
   State state;
   state.data = src.data();
   state.len = src.size();
+  state.pos = 0;
 
   uint8_t foo[] = {42};
 
   // Decoding is finished.
   ASSERT_EQ(BRUNSLI_OK, internal::dec::ProcessJpeg(&state, &jpg));
+  ASSERT_EQ(src.size(), state.pos);
 
   // It is OK to "continue" decoding, result is still "OK"...
 
@@ -40,6 +42,7 @@ TEST(StreamDecodeTest, DoneDone) {
   // ... unless more data is added.
   state.data = foo;
   state.len = 1;
+  state.pos = 0;
   ASSERT_EQ(BRUNSLI_INVALID_BRN, internal::dec::ProcessJpeg(&state, &jpg));
 }
 
@@ -64,65 +67,16 @@ TEST(StreamDecodeTest, ErrorError) {
 TEST(StreamDecodeTest, BytewiseInput) {
   std::vector<uint8_t> src = GetSmallBrunsliFile();
 
-  // TODO(eustas): should be more fine-grained when streaming support is
-  //               complete.
-  std::vector<size_t> deltas = {
-      6,  // signature
-
-      1,  // header tag
-      1,  // header size
-      1, 1, 1, 1, 1, 1, 1, 1,  // header fields
-
-      1,  // internal tag
-      2,  // internal size
-      40,  // internal contents
-
-      1,  // metadata tag
-      1,  // metadata size
-      1,  // uncompressed size
-      1, 1, 1, 1, 1,  // metadata compressed contents
-
-      1,  // quant tag
-      2,  // quant size
-      2,  // quant contents
-
-      1,  // histo tag
-      3,  // histo size
-      56,  // histo contents
-
-      1,  // unknown tag
-      1,  // unknown size
-      1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,  // unknown contents
-      1, 1, 1,  // unknown contents
-
-      1,  // DC tag
-      3,  // DC size
-      14,  // DC contents
-
-      1,  // AC tag
-      3,  // AC size
-      0x142  // AC contents
-  };
-  size_t delta_idx = 0;
-
   JPEGData jpg;
   State state;
-  size_t start = 0;
-  for (size_t end = 0; end <= src.size(); ++end) {
+  for (size_t start = 0; start < src.size(); ++start) {
     state.data = src.data() + start;
     state.pos = 0;
-    state.len = end - start;
-    ASSERT_EQ(end < src.size() ? BRUNSLI_NOT_ENOUGH_DATA : BRUNSLI_OK,
+    state.len = 1;
+    ASSERT_EQ(start + 1 < src.size() ? BRUNSLI_NOT_ENOUGH_DATA : BRUNSLI_OK,
               internal::dec::ProcessJpeg(&state, &jpg));
-    size_t delta = state.pos;
-    if (delta != 0) {
-      ASSERT_LT(delta_idx, deltas.size());
-      ASSERT_EQ(deltas[delta_idx], delta);
-      delta_idx++;
-      start += delta;
-    }
+    ASSERT_EQ(1, state.pos) << start;
   }
-  ASSERT_EQ(deltas.size(), delta_idx);
 }
 
 TEST(StreamDecodeTest, BytewiseFallbackInput) {

@@ -12,9 +12,10 @@
 #include <cstring> /* for memset */
 #include <vector>
 
-#include "../common/huffman_tree.h"
+#include "../common/constants.h"
 #include "../common/platform.h"
 #include <brunsli/types.h>
+#include "./huffman_tree.h"
 #include "./write_bits.h"
 
 namespace brunsli {
@@ -22,10 +23,6 @@ namespace brunsli {
 namespace {
 
 static const int kCodeLengthCodes = 18;
-
-// We use only the context map alphabet in brunsli, where the maximum alphabet
-// size is 256 + 16 = 272. (We can have 256 clusters and 16 run length codes).
-static const size_t kMaxAlphabetSize = 272;
 
 void StoreVarLenUint8(size_t n, Storage* storage) {
   if (n == 0) {
@@ -142,9 +139,9 @@ void StoreSimpleHuffmanTree(const uint8_t* depths, size_t symbols[4],
 // depths = symbol depths
 void StoreHuffmanTree(const uint8_t* depths, size_t num, Storage* storage) {
   // Write the Huffman tree into the compact representation.
-  BRUNSLI_DCHECK(num <= kMaxAlphabetSize);
-  uint8_t huffman_tree[kMaxAlphabetSize];
-  uint8_t huffman_tree_extra_bits[kMaxAlphabetSize];
+  BRUNSLI_DCHECK(num <= kMaxContextMapAlphabetSize);
+  uint8_t huffman_tree[kMaxContextMapAlphabetSize];
+  uint8_t huffman_tree_extra_bits[kMaxContextMapAlphabetSize];
   size_t huffman_tree_size = 0;
   WriteHuffmanTree(depths, num, &huffman_tree_size, huffman_tree,
                    huffman_tree_extra_bits);
@@ -325,7 +322,7 @@ void EncodeContextMap(const std::vector<uint32_t>& context_map,
   uint32_t max_run_length_prefix = 6;
   RunLengthCodeZeros(transformed_symbols, &max_run_length_prefix, &rle_symbols,
                      &extra_bits);
-  uint32_t symbol_histogram[kMaxAlphabetSize];
+  uint32_t symbol_histogram[kMaxContextMapAlphabetSize];
   memset(symbol_histogram, 0, sizeof(symbol_histogram));
   for (size_t i = 0; i < rle_symbols.size(); ++i) {
     ++symbol_histogram[rle_symbols[i]];
@@ -335,8 +332,8 @@ void EncodeContextMap(const std::vector<uint32_t>& context_map,
   if (use_rle) {
     WriteBits(4, max_run_length_prefix - 1, storage);
   }
-  uint8_t bit_depths[kMaxAlphabetSize];
-  uint16_t bit_codes[kMaxAlphabetSize];
+  uint8_t bit_depths[kMaxContextMapAlphabetSize];
+  uint16_t bit_codes[kMaxContextMapAlphabetSize];
   memset(bit_depths, 0, sizeof(bit_depths));
   memset(bit_codes, 0, sizeof(bit_codes));
   BuildAndStoreHuffmanTree(symbol_histogram,

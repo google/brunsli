@@ -25,6 +25,10 @@ MetadataState::~MetadataState() {
   }
 }
 
+bool HasSection(const State* state, uint32_t tag) {
+  return state->internal->section.tags_met & (1u << tag);
+}
+
 }  // namespace dec
 }  // namespace internal
 }  // namespace brunsli

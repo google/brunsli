@@ -16,19 +16,17 @@
 
 namespace brunsli {
 
-static const size_t kHuffmanTableMask = 0xFFu;
-static const size_t kHuffmanTableBits = 8u;
-static const int kMaxHuffmanTableSize = 2048;
-
 struct BrunsliBitReader;
 
 struct HuffmanDecodingData {
-  HuffmanDecodingData() : table_(kMaxHuffmanTableSize) {}
+  HuffmanDecodingData();
 
   // Decodes the Huffman code lengths from the bit-stream and fills in the
   // pre-allocated table with the corresponding 2-level Huffman decoding table.
   // Returns false if the Huffman code lengths can not de decoded.
   bool ReadFromBitStream(int alphabet_size, BrunsliBitReader* br);
+
+  uint16_t ReadSymbol(BrunsliBitReader* br) const;
 
   std::vector<HuffmanCode> table_;
 };

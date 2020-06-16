@@ -11,108 +11,92 @@
 #include "../common/platform.h"
 #include <brunsli/types.h>
 #include "./bit_reader.h"
-#include "./huffman_decode.h"
-#include "./huffman_table.h"
 
 namespace brunsli {
 
 namespace {
 
-int ReadHistogramLength(BrunsliBitReader* br) {
-  // TODO(eustas): direct prefix code decoding would be faster / more readable.
-  static const uint8_t kHistogramLengthBitLengths[16] = {
-      8, 8, 6, 6, 6, 5, 4, 3, 3, 3, 3, 3, 3, 4, 5, 7,
-  };
-  HuffmanCode table[256];
-  uint16_t counts[16] = {0};
-  for (size_t i = 0; i < 16; ++i) {
-    ++counts[kHistogramLengthBitLengths[i]];
+// Binary trees; positive - offset to child nodes; other - minus leaf value.
+// 3-8 bits encoding value 3..18.
+const int8_t kLengthTree[] = {1, 2, 3, 4, 5, 6, 7, -10, -11, -12, -13,
+  -14, -15, 2, 3, -9, -16, 2, 3, -8, -17, 2, 3, -5, -6, -7, 1, -18, 1, -3, -4};
+// 2..6 bits encoding value 0..10.
+const int8_t kLogCountTree[] = {1, 2, 3, -6, 3, 4, 5, -4, -5, -7, -8, 2,
+  3, -1, -2, -3, 1, 0, 1, -9, -10};
+
+size_t ReadShortHuffmanCode(BrunsliBitReader* br, const int8_t* tree) {
+  size_t pos = 0;
+  int8_t delta = 1;
+  while (delta > 0) {
+    pos += delta + BrunsliBitReaderRead(br, 1);
+    delta = tree[pos];
   }
-  BuildHuffmanTable(table, 8, kHistogramLengthBitLengths, 16, &counts[0]);
-  const HuffmanCode* p = table;
-  p += BrunsliBitReaderGet(br, 8);
-  BrunsliBitReaderDrop(br, p->bits);
-  return p->value + 3;
+  return static_cast<size_t>(-delta);
 }
 
 }  // namespace
 
-bool ReadHistogram(size_t precision_bits, size_t length, uint32_t* counts,
+bool ReadHistogram(size_t precision_bits, std::vector<uint32_t>* counts,
                    BrunsliBitReader* br) {
+  BRUNSLI_DCHECK(!counts->empty());
+  const size_t length = counts->size();
+  std::fill(counts->begin(), counts->end(), 0);
+  uint32_t* histogram = counts->data();
   int simple_code = BrunsliBitReaderRead(br, 1);
   if (simple_code == 1) {
-    int i;
-    int max_bits_counter = length - 1;
-    int max_bits = 0;
+    size_t max_bits_counter = length - 1;
+    size_t max_bits = 0;
     int symbols[2] = {0};
-    const int num_symbols = BrunsliBitReaderRead(br, 1) + 1;
+    const size_t num_symbols = BrunsliBitReaderRead(br, 1) + 1u;
     while (max_bits_counter) {
       max_bits_counter >>= 1;
       ++max_bits;
     }
-    memset(counts, 0, length * sizeof(counts[0]));
-    for (i = 0; i < num_symbols; ++i) {
+    for (size_t i = 0; i < num_symbols; ++i) {
       symbols[i] = BrunsliBitReaderRead(br, max_bits) % length;
     }
     if (num_symbols == 1) {
-      counts[symbols[0]] = 1u << precision_bits;
+      histogram[symbols[0]] = 1u << precision_bits;
     } else {
       if (symbols[0] == symbols[1]) {  // corrupt data
         return false;
       }
-      counts[symbols[0]] = BrunsliBitReaderRead(br, precision_bits);
-      counts[symbols[1]] = (1u << precision_bits) - counts[symbols[0]];
+      uint32_t value = BrunsliBitReaderRead(br, precision_bits);
+      histogram[symbols[0]] = value;
+      histogram[symbols[1]] = (1u << precision_bits) - value;
     }
   } else {
-    int real_length = ReadHistogramLength(br);
-    memset(counts, 0, length * sizeof(counts[0]));
+    size_t real_length = ReadShortHuffmanCode(br, kLengthTree);
     size_t total_count = 0;
-    static const HuffmanCode huff[64] = {
-        {2, 6}, {3, 7}, {3, 4}, {4, 1}, {2, 6}, {3, 8}, {3, 5}, {4, 3},
-        {2, 6}, {3, 7}, {3, 4}, {4, 2}, {2, 6}, {3, 8}, {3, 5}, {5, 0},
-        {2, 6}, {3, 7}, {3, 4}, {4, 1}, {2, 6}, {3, 8}, {3, 5}, {4, 3},
-        {2, 6}, {3, 7}, {3, 4}, {4, 2}, {2, 6}, {3, 8}, {3, 5}, {6, 9},
-        {2, 6}, {3, 7}, {3, 4}, {4, 1}, {2, 6}, {3, 8}, {3, 5}, {4, 3},
-        {2, 6}, {3, 7}, {3, 4}, {4, 2}, {2, 6}, {3, 8}, {3, 5}, {5, 0},
-        {2, 6}, {3, 7}, {3, 4}, {4, 1}, {2, 6}, {3, 8}, {3, 5}, {4, 3},
-        {2, 6}, {3, 7}, {3, 4}, {4, 2}, {2, 6}, {3, 8}, {3, 5}, {6, 10},
-    };
-    int log_counts[BRUNSLI_ANS_MAX_SYMBOLS];
-    int omit_log = -1;
-    int omit_pos = -1;
+    uint32_t log_counts[BRUNSLI_ANS_MAX_SYMBOLS];
+    size_t omit_pos = 0;
     BRUNSLI_DCHECK(real_length > 2);
-    for (int i = 0; i < real_length; ++i) {
-      const HuffmanCode* p = huff;
-      p += BrunsliBitReaderGet(br, 6);
-      BrunsliBitReaderDrop(br, p->bits);
-      log_counts[i] = p->value;
-      if (log_counts[i] > omit_log) {
-        omit_log = log_counts[i];
-        omit_pos = i;
-      }
+    for (size_t i = 0; i < real_length; ++i) {
+      log_counts[i] = ReadShortHuffmanCode(br, kLogCountTree);
+      if (log_counts[i] > log_counts[omit_pos]) omit_pos = i;
     }
     BRUNSLI_DCHECK(omit_pos >= 0);
-    for (int i = 0; i < real_length; ++i) {
-      int code = log_counts[i];
+    for (size_t i = 0; i < real_length; ++i) {
+      uint32_t code = log_counts[i];
       if (i == omit_pos) {
         continue;
       } else if (code == 0) {
         continue;
       } else if (code == 1) {
-        counts[i] = 1;
+        histogram[i] = 1;
       } else {
-        int bit_count = GetPopulationCountPrecision(code - 1);
-        counts[i] = (1u << (code - 1)) + (BrunsliBitReaderRead(br, bit_count)
-                                          << (code - 1 - bit_count));
+        size_t bit_count = GetPopulationCountPrecision(code - 1);
+        histogram[i] = (1u << (code - 1)) + (BrunsliBitReaderRead(br, bit_count)
+                                             << (code - 1 - bit_count));
       }
-      total_count += counts[i];
+      total_count += histogram[i];
     }
     if (total_count >= (1u << precision_bits)) {
       // The histogram we've read sums to more than total_count (including at
       // least 1 for the omitted value).
       return false;
     }
-    counts[omit_pos] = (1u << precision_bits) - total_count;
+    histogram[omit_pos] = (1u << precision_bits) - total_count;
   }
   return BrunsliBitReaderIsHealthy(br);
 }

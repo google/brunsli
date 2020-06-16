@@ -14,13 +14,15 @@ void BrunsliBitReaderInit(BrunsliBitReader* br) {
   br->num_bits_ = 0;
   br->bits_ = 0;
   br->num_debt_bytes_ = 0;
-  br->is_healthy = true;
+  br->is_healthy_ = true;
+  br->is_optimistic_ = false;
 }
 
 void BrunsliBitReaderResume(BrunsliBitReader* br, const uint8_t* buffer,
                               size_t length) {
   br->next_ = buffer;
   br->end_ = buffer + length;
+  br->is_optimistic_ = false;
 }
 
 /*
@@ -56,18 +58,30 @@ void BrunsliBitReaderFinish(BrunsliBitReader* br) {
   uint32_t n_bits = br->num_bits_;
   // Likely, did not invoke Suspend before.
   if (n_bits >= 8) {
-    br->is_healthy = false;
+    br->is_healthy_ = false;
     return;
   }
   if (n_bits > 0) {
     uint32_t padding_bits = BrunsliBitReaderRead(br, n_bits);
-    if (padding_bits != 0) br->is_healthy = false;
+    if (padding_bits != 0) br->is_healthy_ = false;
   }
 }
 
 size_t BrunsliBitReaderIsHealthy(BrunsliBitReader* br) {
   BrunsliBitReaderUnload(br);
-  return (br->num_debt_bytes_ == 0) && (br->is_healthy);
+  return (br->num_debt_bytes_ == 0) && (br->is_healthy_);
+}
+
+void BrunsliBitReaderSetOptimistic(BrunsliBitReader* br) {
+  br->is_optimistic_ = true;
+}
+
+bool BrunsliBitReaderCanRead(BrunsliBitReader* br, uint32_t n_bits) {
+  if (br->is_optimistic_) return true;
+  if (br->num_debt_bytes_ != 0) return false;
+  if (br->num_bits_ >= n_bits) return true;
+  size_t num_extra_bytes = (n_bits - br->num_bits_ + 7) >> 3;
+  return (br->next_ + num_extra_bytes <= br->end_);
 }
 
 }  // namespace brunsli

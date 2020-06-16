@@ -53,6 +53,13 @@ enum struct Stage {
   ERROR
 };
 
+enum struct SerializationStatus {
+  NEEDS_MORE_INPUT,
+  NEEDS_MORE_OUTPUT,
+  ERROR,
+  DONE
+};
+
 struct InternalState;
 
 class State {
@@ -93,8 +100,14 @@ void PrepareMeta(const JPEGData* jpg, State* state);
 // Make sure to set State::is_storage_allocated appropriately.
 void WarmupMeta(JPEGData* jpg, State* state);
 
+bool HasSection(const State* state, uint32_t tag);
+
 // Core decoding loop.
 BrunsliStatus ProcessJpeg(State* state, JPEGData* jpg);
+
+// Core serialization loop.
+SerializationStatus SerializeJpeg(State* state, const JPEGData& jpg,
+                                  size_t* available_out, uint8_t** next_out);
 
 }  // namespace dec
 }  // namespace internal

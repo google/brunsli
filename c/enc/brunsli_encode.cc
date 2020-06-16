@@ -353,7 +353,8 @@ bool EncodeHuffmanCode(const JPEGHuffmanCode& huff, bool is_known_last,
     return false;
   }
 
-  PermutationCoder p(
+  PermutationCoder p;
+  p.Init(
       is_dc_table
           ? std::vector<uint8_t>(kDefaultDCValues, std::end(kDefaultDCValues))
           : std::vector<uint8_t>(kDefaultACValues, std::end(kDefaultACValues)));

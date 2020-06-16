@@ -10,13 +10,13 @@
 #ifndef BRUNSLI_DEC_ANS_DECODE_H_
 #define BRUNSLI_DEC_ANS_DECODE_H_
 
+#include <vector>
+
 #include "../common/ans_params.h"
 #include <brunsli/types.h>
 #include "./brunsli_input.h"
 
 namespace brunsli {
-
-struct BrunsliBitReader;
 
 typedef struct {
   uint16_t offset_;
@@ -27,7 +27,7 @@ typedef struct {
 struct ANSDecodingData {
   ANSDecodingData() {}
 
-  bool ReadFromBitStream(size_t alphabet_size, BrunsliBitReader* br);
+  bool Init(const std::vector<uint32_t>& counts);
 
   ANSSymbolInfo map_[BRUNSLI_ANS_TAB_SIZE];
 };

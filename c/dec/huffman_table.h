@@ -18,9 +18,9 @@ typedef struct {
 
 /* Builds Huffman lookup table assuming code lengths are in symbol order. */
 /* Returns false in case of error (invalid tree or memory error). */
-int BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
-                      const uint8_t* code_lengths, int code_lengths_size,
-                      uint16_t* count_arg);
+bool BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
+                       const uint8_t* code_lengths, size_t code_lengths_size,
+                       uint16_t* count_arg);
 
 }  // namespace brunsli
 

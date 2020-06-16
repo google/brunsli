@@ -59,7 +59,7 @@ void Roundtrip(const std::vector<int>& text) {
   ds.Flush();
 
   WordSource in(reinterpret_cast<const uint8_t*>(ds.words.data()),
-                ds.words.size() * sizeof(uint16_t));
+                ds.words.size() * sizeof(uint16_t), true);
   BinaryArithmeticDecoder bad;
   bad.Init(&in);
   std::vector<Prob> p_in(4);
@@ -71,6 +71,72 @@ void Roundtrip(const std::vector<int>& text) {
 }
 
 }  // namespace
+
+TEST(Distributions, Worst) {
+  DataStream ds;
+  for (size_t i = 0; i < 640; ++i) {
+    Prob p;
+    p.Init(0);
+    ds.AddBit(&p, 0);
+  }
+  ds.Flush();
+  // This means that every AddBit emits the whole word (16 bits).
+  // That is far from ideal (see "Bad" test case).
+  ASSERT_EQ(642, ds.words.size());
+}
+
+// TODO(eustas): explore if this could happen for valid JPEG input; also, if
+//               this could be triggered by Brunsli input (CPU-zip-bomb)
+TEST(Distributions, Perfect) {
+  DataStream ds;
+  {
+    Prob p;
+    p.Init(255);
+    ds.AddBit(&p, 1);
+  }
+  // This is a backflip of "Worst" case - 4 billions bits could be stored
+  // in 2 words...
+  for (size_t i = 0; i < 0xFF0000 - 1; ++i) {
+    Prob p;
+    p.Init(0);
+    ds.AddBit(&p, 1);
+  }
+  ASSERT_EQ(0, ds.words.size());
+  {
+    Prob p;
+    p.Init(0);
+    ds.AddBit(&p, 1);
+  }
+  ASSERT_EQ(1, ds.words.size());
+}
+
+TEST(Distributions, Bad) {
+  DataStream ds;
+  for (size_t i = 0; i < 640; ++i) {
+    Prob p;
+    p.Init(255);
+    ds.AddBit(&p, 1);
+  }
+  ds.Flush();
+  // Unlike "Worst" just one byte (amortized) is used per AddBit.
+  ASSERT_EQ(322, ds.words.size());
+}
+
+TEST(Distributions, Good) {
+  DataStream ds;
+  for (size_t i = 0; i < 2833; ++i) {
+    Prob p;
+    p.Init(255);
+    ds.AddBit(&p, 0);
+  }
+  ASSERT_EQ(0, ds.words.size());
+  {
+    Prob p;
+    p.Init(255);
+    ds.AddBit(&p, 0);
+  }
+  ASSERT_EQ(1, ds.words.size());
+}
 
 TEST(Distributions, TowardsZero) {
   Prob p;

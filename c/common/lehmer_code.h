@@ -35,8 +35,16 @@ bool DecodeLehmerCode(const uint32_t* code, size_t len, uint32_t* sigma);
 // the complexity to O(N * log(N)).
 class PermutationCoder {
  public:
-  explicit PermutationCoder(std::vector<uint8_t> values)
-      : values_(std::move(values)) {}
+  PermutationCoder() {}
+
+  void Init(std::vector<uint8_t> values) {
+    values_ = std::move(values);
+  }
+
+  void Clear() {
+    std::vector<uint8_t>().swap(values_);
+  }
+
   // number of bits needed to represent the next code.
   int num_bits() const {
     size_t num_values = values_.size();

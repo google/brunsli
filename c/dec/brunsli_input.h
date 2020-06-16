@@ -17,24 +17,39 @@ static const int kBitMask[] = {0,    1,    3,     7,     15,   31,
                                4095, 8191, 16383, 32767, 65535};
 
 struct WordSource {
-  WordSource(const uint8_t* data, size_t len)
-      : data_(data), len_(len & ~1), pos_(0), error_(len & 1) {}
+  WordSource(const uint8_t* data, size_t len, bool optimistic)
+      : data_(data),
+        len_(len & ~1),
+        pos_(0),
+        error_(false),
+        optimistic_(optimistic) {}
 
   uint16_t GetNextWord() {
     uint16_t val = 0;
-    if (pos_ < len_) {
+    if (pos_ < len_) {  /* NB: both pos_ and len_ are even. */
       val = BRUNSLI_UNALIGNED_LOAD16LE(data_ + pos_);
     } else {
-      error_ = 1;
+      error_ = true;
     }
+    // TODO(eustas): take care of overflows?
     pos_ += 2;
     return val;
+  }
+
+  bool CanRead(size_t n) {
+    if (optimistic_) return true;
+    size_t delta = 2 * n;
+    size_t projected_end = pos_ + delta;
+    // Check for overflow; just in case.
+    if (projected_end < pos_) return false;
+    return projected_end <= len_;
   }
 
   const uint8_t* data_;
   size_t len_;
   size_t pos_;
-  int error_;
+  bool error_;
+  bool optimistic_;
 };
 
 struct BitSource {

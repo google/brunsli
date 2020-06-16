@@ -8,14 +8,11 @@
 
 #include <cstring> /* for memcpy */
 
+#include "../common/constants.h"
 #include <brunsli/types.h>
+#include "./huffman_decode.h"
 
 namespace brunsli {
-
-#define BRUNSLI_MAX_LENGTH 15
-
-/* For current format this constant equals to kNumInsertAndCopyCodes */
-#define BRUNSLI_MAX_CODE_LENGTHS_SIZE 704
 
 /* Returns reverse(reverse(key, len) + 1, len), where reverse(key, len) is the
    bit-wise reversal of the len least significant bits of key. */
@@ -40,46 +37,46 @@ static inline void ReplicateValue(HuffmanCode* table, int step, int end,
 /* Returns the table width of the next 2nd level table. count is the histogram
    of bit lengths for the remaining symbols, len is the code length of the next
    processed symbol */
-static inline int NextTableBitSize(const uint16_t* const count, int len,
-                                   int root_bits) {
-  int left = 1u << (len - root_bits);
-  while (len < BRUNSLI_MAX_LENGTH) {
+static inline size_t NextTableBitSize(const uint16_t* const count, size_t len,
+                                      int root_bits) {
+  size_t left = 1u << (len - root_bits);
+  while (len < kMaxHuffmanBits) {
+    if (left <= count[len]) break;
     left -= count[len];
-    if (left <= 0) break;
     ++len;
     left <<= 1;
   }
   return len - root_bits;
 }
 
-int BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
-                      const uint8_t* const code_lengths, int code_lengths_size,
-                      uint16_t* count) {
+bool BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
+                       const uint8_t* const code_lengths,
+                       size_t code_lengths_size, uint16_t* count) {
   HuffmanCode code;    /* current table entry */
   HuffmanCode* table;  /* next available space in table */
-  int len;             /* current code length */
-  int symbol;          /* symbol index in original or sorted table */
+  size_t len;          /* current code length */
+  size_t symbol;       /* symbol index in original or sorted table */
   int key;             /* reversed prefix code */
   int step;            /* step size to replicate values in current table */
   int low;             /* low bits for current root entry */
   int mask;            /* mask for low bits */
-  int table_bits;      /* key length of current table */
+  size_t table_bits;   /* key length of current table */
   int table_size;      /* size of current table */
   int total_size;      /* sum of root table size and 2nd level table sizes */
   /* symbols sorted by code length */
-  int sorted[BRUNSLI_MAX_CODE_LENGTHS_SIZE];
+  int sorted[kMaxContextMapAlphabetSize];
   /* offsets in sorted table for each length */
-  uint16_t offset[BRUNSLI_MAX_LENGTH + 1];
-  int max_length = 1;
+  uint16_t offset[kMaxHuffmanBits + 1];
+  size_t max_length = 1;
 
-  if (code_lengths_size > BRUNSLI_MAX_CODE_LENGTHS_SIZE) {
+  if (code_lengths_size > kMaxContextMapAlphabetSize) {
     return 0;
   }
 
   /* generate offsets into sorted symbol table by code length */
   {
     uint16_t sum = 0;
-    for (len = 1; len <= BRUNSLI_MAX_LENGTH; len++) {
+    for (len = 1; len <= kMaxHuffmanBits; len++) {
       offset[len] = sum;
       if (count[len]) {
         sum = static_cast<uint16_t>(sum + count[len]);
@@ -101,7 +98,7 @@ int BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
   total_size = table_size;
 
   /* special case code with only one value */
-  if (offset[BRUNSLI_MAX_LENGTH] == 1) {
+  if (offset[kMaxHuffmanBits] == 1) {
     code.bits = 0;
     code.value = static_cast<uint16_t>(sorted[0]);
     for (key = 0; key < total_size; ++key) {

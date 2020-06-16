@@ -6,10 +6,9 @@
 
 #include "./context_map_decode.h"
 
-#include <cstring>  /* for memset */
-#include <vector>
-
+#include "../common/constants.h"
 #include "../common/platform.h"
+#include <brunsli/status.h>
 #include <brunsli/types.h>
 #include "./bit_reader.h"
 #include "./huffman_decode.h"
@@ -38,66 +37,40 @@ void InverseMoveToFrontTransform(uint8_t* v, int v_len) {
   }
 }
 
-// Decodes the next Huffman coded symbol from the bit-stream.
-uint16_t ReadHuffmanSymbol(const HuffmanDecodingData& code,
-                           BrunsliBitReader* br) {
-  size_t n_bits;
-  const HuffmanCode* table = &code.table_[0];
-  table += BrunsliBitReaderGet(br, kHuffmanTableBits);
-  n_bits = table->bits;
-  if (n_bits > kHuffmanTableBits) {
-    BrunsliBitReaderDrop(br, kHuffmanTableBits);
-    n_bits -= kHuffmanTableBits;
-    table += table->value;
-    table += BrunsliBitReaderGet(br, n_bits);
-  }
-  BrunsliBitReaderDrop(br, table->bits);
-  return table->value;
-}
-
 }  // namespace
 
-bool DecodeContextMap(int num_h_trees, int context_map_size,
-                      uint8_t* context_map, BrunsliBitReader* br) {
-  if (num_h_trees <= 1) {
-    memset(context_map, 0, (size_t)context_map_size);
-    return true;
-  }
-
-  int max_run_length_prefix = 0;
-  int use_rle_for_zeros = (int)BrunsliBitReaderRead(br, 1);
-  if (use_rle_for_zeros) {
-    max_run_length_prefix = (int)BrunsliBitReaderRead(br, 4) + 1;
-  }
-  std::vector<HuffmanCode> table(kMaxHuffmanTableSize);
-  HuffmanDecodingData entropy;
-  if (!entropy.ReadFromBitStream(num_h_trees + max_run_length_prefix, br)) {
-    return false;
-  }
-  for (int i = 0; i < context_map_size;) {
-    int code;
-    code = ReadHuffmanSymbol(entropy, br);
+BrunsliStatus DecodeContextMap(const HuffmanDecodingData& entropy,
+                               size_t max_run_length_prefix, size_t* index,
+                               std::vector<uint8_t>* context_map,
+                               BrunsliBitReader* br) {
+  size_t& i = *index;
+  uint8_t* map = context_map->data();
+  const size_t length = context_map->size();
+  while (i < length) {
+    // Check there is enough deta for Huffman code, RLE and IMTF bit.
+    if (!BrunsliBitReaderCanRead(br, 15 + max_run_length_prefix + 1)) {
+      return BRUNSLI_NOT_ENOUGH_DATA;
+    }
+    size_t code = entropy.ReadSymbol(br);
     if (code == 0) {
-      context_map[i] = 0;
+      map[i] = 0;
       ++i;
     } else if (code <= max_run_length_prefix) {
-      int reps = 1 + (1u << code) + (int)BrunsliBitReaderRead(br, code);
+      size_t reps = 1u + (1u << code) + (int)BrunsliBitReaderRead(br, code);
       while (--reps) {
-        if (i >= context_map_size) {
-          return false;
-        }
-        context_map[i] = 0;
+        if (i >= length) return BRUNSLI_INVALID_BRN;
+        map[i] = 0;
         ++i;
       }
     } else {
-      context_map[i] = (uint8_t)(code - max_run_length_prefix);
+      map[i] = (uint8_t)(code - max_run_length_prefix);
       ++i;
     }
   }
   if (BrunsliBitReaderRead(br, 1)) {
-    InverseMoveToFrontTransform(context_map, context_map_size);
+    InverseMoveToFrontTransform(map, length);
   }
-  return BrunsliBitReaderIsHealthy(br);
+  return BrunsliBitReaderIsHealthy(br) ? BRUNSLI_OK : BRUNSLI_INVALID_BRN;
 }
 
 }  // namespace brunsli

@@ -31,7 +31,8 @@ struct BrunsliBitReader {
      BrunsliBitReaderUnload returns debt, if possible.
    */
   uint32_t num_debt_bytes_;
-  bool is_healthy;
+  bool is_healthy_;
+  bool is_optimistic_;
 };
 
 /**
@@ -87,6 +88,22 @@ static BRUNSLI_INLINE void BrunsliBitReaderMaybeFetchByte(BrunsliBitReader* br,
     }
   }
 }
+
+/**
+ * Turns instance to optimistic mode.
+ *
+ * The only difference with regular operating mode is that CanRead always
+ * returns "true". Use this mode only when instance is supplied with complete
+ * input.
+ */
+void BrunsliBitReaderSetOptimistic(BrunsliBitReader* br);
+
+/**
+ * Returns true if there is enough input.
+ *
+ * Guaranteed to work correctly only in normalized state.
+ */
+bool BrunsliBitReaderCanRead(BrunsliBitReader* br, uint32_t n_bits);
 
 static BRUNSLI_INLINE uint32_t BrunsliBitReaderGet(BrunsliBitReader* br,
                                                    uint32_t n_bits) {

@@ -41,7 +41,8 @@ TEST(LehmerCodeTest, TestPermutation) {
       {
         std::vector<uint8_t> range(max_value);
         for (size_t i = 0; i < max_value; ++i) range[i] = i;
-        PermutationCoder p(std::move(range));
+        PermutationCoder p;
+        p.Init(std::move(range));
         ASSERT_EQ(p.num_bits(), nbits);
 
         std::vector<int> value_already_used(max_value, false);
@@ -69,7 +70,8 @@ TEST(LehmerCodeTest, TestPermutation) {
       {
         std::vector<uint8_t> range(max_value);
         for (size_t i = 0; i < max_value; ++i) range[i] = i;
-        PermutationCoder p(std::move(range));
+        PermutationCoder p;
+        p.Init(std::move(range));
 
         uint8_t unused;
         ASSERT_FALSE(p.Remove(10000, &unused));
