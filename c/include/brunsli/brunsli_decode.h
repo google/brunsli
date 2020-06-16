@@ -19,7 +19,7 @@ namespace brunsli {
 
 namespace internal {
 namespace dec {
-struct State;
+class State;
 }  // namespace dec
 }  // namespace internal
 
