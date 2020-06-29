@@ -131,7 +131,7 @@ set_target_properties(dbrunsli PROPERTIES LINK_FLAGS "\
   -s NODERAWFS=1 \
 ")
 set(WASM_COMMON_EXPORT "\"_malloc\",\"_free\"")
-set(WASM_DEC_EXPORT "\"_BrunsliToJpeg\",\"_GetJpegData\",\"_GetJpegLength\",\"_FreeJpeg\"")
+set(WASM_DEC_EXPORT "\"_BrunsliToJpeg\",\"_GetJpegData\",\"_GetJpegLength\",\"_FreeJpeg\",\"_BrunsliDecoderInit\",\"_BrunsliDecoderProcess\",\"_BrunsliDecoderCleanup\"")
 set(WASM_ENC_EXPORT "\"_JpegToBrunsli\",\"_GetBrunsliData\",\"_GetBrunsliLength\",\"_FreeBrunsli\"")
 set_target_properties(brunslicodec-wasm PROPERTIES LINK_FLAGS "\
   ${WASM_LINK_FLAGS}\

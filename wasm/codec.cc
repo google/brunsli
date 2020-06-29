@@ -33,6 +33,74 @@ std::string* BrunsliToJpeg(const uint8_t* data, size_t length) {
   return result;
 }
 
+/*
+ * Instance layout (uint32 array):
+ *  0: decoder
+ *  1: max_in_len
+ *  2: in
+ *  3: in_len - the only writable field
+ *  4: out
+ *  5: out_len
+ */
+
+static const size_t kBufferSize = 65536;
+
+uint32_t* BrunsliDecoderInit() {
+  uint32_t* instance = new uint32_t[6];
+  // TODO(eustas): check for OOMs
+  BrunsliDecoder* decoder = new BrunsliDecoder();
+  uint8_t* in = reinterpret_cast<uint8_t*>(malloc(kBufferSize));
+  uint8_t* out = reinterpret_cast<uint8_t*>(malloc(kBufferSize));
+  instance[0] = reinterpret_cast<uint32_t>(decoder);
+  instance[1] = kBufferSize;
+  instance[2] = reinterpret_cast<uint32_t>(in);
+  instance[3] = 0;
+  instance[4] = reinterpret_cast<uint32_t>(out);
+  instance[5] = 0;
+  return instance;
+}
+
+/*
+ * Parse input and produce output.
+ *
+ * Input should be passed via `in_len`; data have to be stored starting at `in`.
+ * It is considered that all input is consumed.
+ * After invocation `out_len` output bytes are placed at `out`.
+ * It is considered that client consumes all the output right after inovcation.
+ *
+ * Result:
+ *  0: ok - keep feeding input / consuming output
+ *  1: done - no more input / output
+ *  2: error
+ */
+uint32_t BrunsliDecoderProcess(uint32_t* instance) {
+  BrunsliDecoder* decoder = reinterpret_cast<BrunsliDecoder*>(instance[0]);
+  const uint8_t* next_in = reinterpret_cast<uint8_t*>(instance[2]);
+  size_t available_in = instance[3];
+  uint8_t* next_out = reinterpret_cast<uint8_t*>(instance[4]);
+  size_t available_out = kBufferSize;
+  BrunsliDecoder::Status result = decoder->Decode(
+      &available_in, &next_in, &available_out, &next_out);
+  instance[5] = kBufferSize - available_out;
+  if ((result == BrunsliDecoder::NEEDS_MORE_INPUT) ||
+      (result == BrunsliDecoder::NEEDS_MORE_OUTPUT)) {
+    return 0;
+  }
+  if (result == BrunsliDecoder::DONE) return 1;
+  return 2;
+}
+
+void BrunsliDecoderCleanup(uint32_t* instance) {
+  if (instance == nullptr) return;
+  BrunsliDecoder* decoder = reinterpret_cast<BrunsliDecoder*>(instance[0]);
+  delete decoder;
+  uint8_t* in = reinterpret_cast<uint8_t*>(instance[2]);
+  delete[] in;
+  uint8_t* out = reinterpret_cast<uint8_t*>(instance[4]);
+  delete[] out;
+  delete[] instance;
+}
+
 const char* GetJpegData(std::string* jpeg) {
   if (!jpeg) return 0;
   return jpeg->data();
