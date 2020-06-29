@@ -803,19 +803,18 @@ static size_t BRUNSLI_NOINLINE DecodeAcBlock(const AcBlockCookie& cookie) {
     int sign = 1;
     const int k_nat = c.order[k];
     if (!is_zero) {
+      const int context_type = kContextType[k_nat];
       int avg_ctx = 0;
       int sign_ctx = kMaxAverageContext;
-      if (k_nat < 8) {
-        if (c.y > 0) {
-          ACPredictContextRow(c.prev_row_coeffs + k_nat, c.coeffs + k_nat,
-                              c.mult_col + k_nat * 8, &avg_ctx, &sign_ctx);
-        }
-      } else if ((k_nat & 7u) == 0) {
-        if (c.x > 0) {
-          ACPredictContextCol(c.prev_col_coeffs + k_nat, c.coeffs + k_nat,
-                              c.mult_row + k_nat, &avg_ctx, &sign_ctx);
-        }
-      } else {
+      if ((context_type & 1) && (c.y > 0)) {
+        size_t offset = k_nat & 7;
+        ACPredictContextRow(c.prev_row_coeffs + offset, c.coeffs + offset,
+                            c.mult_col + offset * 8, &avg_ctx, &sign_ctx);
+      } else if ((context_type & 2) && (c.x > 0)) {
+        size_t offset = k_nat & ~7;
+        ACPredictContextCol(c.prev_col_coeffs + offset, c.coeffs + offset,
+                            c.mult_row + offset, &avg_ctx, &sign_ctx);
+      } else if (context_type & 4) {
         avg_ctx = WeightedAverageContext(c.prev_abs + k, c.prev_row_delta);
         sign_ctx =
             c.prev_sgn[k] * 3 + c.prev_sgn[static_cast<int>(k) - kDCTBlockSize];
@@ -1533,6 +1532,8 @@ static BrunsliStatus DecodeJPEGInternalsSection(State* state, JPEGData* jpg) {
   }
 
   if (js.stage == JpegInternalsState::READ_NUM_PADDING_BITS) {
+    // TODO(eustas): sanitize: should not be bigger than
+    //               7 x (num_scans + num_blocks / dri)
     // security: limit is 32b for n_size
     if (!DecodeLimitedVarint<8>(&js.varint, br, 4)) {
       return suspend_bit_reader(BRUNSLI_NOT_ENOUGH_DATA);
@@ -2510,7 +2511,7 @@ BrunsliDecoder::Status BrunsliDecoder::Decode(size_t* available_in,
   BRUNSLI_DCHECK(*available_in == 0);
 
   SerializationStatus serialization_status =
-      internal::dec::SerializeJpeg(state, *jpg, available_out, next_out);
+      SerializeJpeg(state, *jpg, available_out, next_out);
   if (serialization_status == SerializationStatus::ERROR) {
     return BrunsliDecoder::ERROR;
   }

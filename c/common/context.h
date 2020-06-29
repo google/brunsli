@@ -129,6 +129,25 @@ static const uint16_t kNumNonzeroContext[kNumSchemes][64] = {
 static const uint16_t kNumNonzeroContextSkip[kNumSchemes] = {8,   15,  31, 61,
                                                              120, 231, 412};
 
+/**
+ * Table that specifies, how context is calculated.
+ *
+ * Each value corresponds to DCT coefficient and is a sum of flags:
+ *  - 1: context should be calculated using ACPredictContextRow
+ *  - 2: context should be calculated using ACPredictContextCol
+ *  - 4: context should be calculated using WeightedAverageContext
+ */
+static const uint8_t kContextType[64] = {
+    0, 1, 1, 1, 1, 1, 1, 1,  //
+    2, 4, 4, 4, 4, 4, 4, 4,  //
+    2, 4, 4, 4, 4, 4, 4, 4,  //
+    2, 4, 4, 4, 4, 4, 4, 4,  //
+    2, 4, 4, 4, 4, 4, 4, 4,  //
+    2, 4, 4, 4, 4, 4, 4, 4,  //
+    2, 4, 4, 4, 4, 4, 4, 4,  //
+    2, 4, 4, 4, 4, 4, 4, 4,
+};
+
 inline int ZeroDensityContext(int nonzeros_left, int k, int bits) {
   return kNumNonzeroContext[bits][nonzeros_left] + kFreqContext[bits][k];
 }

@@ -4,8 +4,9 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include <brotli/decode.h>
 #include "./state.h"
+
+#include <brotli/decode.h>
 #include "./state_internal.h"
 
 namespace brunsli {

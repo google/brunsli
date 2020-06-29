@@ -1249,21 +1249,24 @@ void EncodeAC(State* state) {
               const int absval = sign ? -coeff : coeff;
 
               const int k_nat = cur_order[k];
+              const int context_type = kContextType[k_nat];
               int avrg_ctx = 0;
               int sign_ctx = kMaxAverageContext;
-              if (k_nat < 8) {
+              if ((context_type & 1) && (y > 0)) {
                 if (y > 0) {
+                  size_t offset = k_nat & 7;
                   ACPredictContextRow(
-                      prev_row_coeffs + k_nat, encoded_coeffs + k_nat,
-                      &c->mult_col[k_nat * 8], &avrg_ctx, &sign_ctx);
+                      prev_row_coeffs + offset, encoded_coeffs + offset,
+                      &c->mult_col[offset * 8], &avrg_ctx, &sign_ctx);
                 }
-              } else if ((k_nat & 7) == 0) {
+              } else if ((context_type & 2) && (x > 0)) {
                 if (x > 0) {
+                  size_t offset = k_nat & ~7;
                   ACPredictContextCol(
-                      prev_col_coeffs + k_nat, encoded_coeffs + k_nat,
-                      &c->mult_row[k_nat], &avrg_ctx, &sign_ctx);
+                      prev_col_coeffs + offset, encoded_coeffs + offset,
+                      &c->mult_row[offset], &avrg_ctx, &sign_ctx);
                 }
-              } else {
+              } else if (context_type & 4) {
                 avrg_ctx = WeightedAverageContext(prev_abs + k, prev_row_delta);
                 sign_ctx = prev_sgn[k] * 3 + prev_sgn[k - kDCTBlockSize];
               }

@@ -8,8 +8,6 @@
 #define BRUNSLI_DEC_STATE_INTERNAL_H_
 
 #include <array>
-#include <deque>
-#include <initializer_list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -24,6 +22,7 @@
 #include "./brunsli_input.h"
 #include "./huffman_decode.h"
 #include <brunsli/jpeg_data_writer.h>
+#include "./serialization_state.h"
 #include "./state.h"
 
 struct BrotliDecoderStateStruct;
@@ -31,11 +30,6 @@ struct BrotliDecoderStateStruct;
 namespace brunsli {
 
 struct HuffmanDecodingData;
-
-struct HuffmanCodeTable {
-  int depth[256];
-  int code[256];
-};
 
 namespace internal {
 namespace dec {
@@ -333,70 +327,6 @@ struct Buffer {
   const uint8_t* external_data;
   size_t external_pos;
   size_t external_len;
-};
-
-/**
- * A chunk of output data.
- *
- * |buffer| does not necessary own any data.
- */
-struct OutputChunk {
-  // Non-owning
-  template<typename Bytes>
-  OutputChunk(Bytes& bytes) : next(bytes.data()), len(bytes.size()) {}
-
-  // Non-owning
-  OutputChunk(const uint8_t* data, size_t size) : next(data), len(size) {}
-
-  // Owning
-  OutputChunk(size_t size) {
-    buffer.reset(new std::vector<uint8_t>(size));
-    next = buffer->data();
-    len = size;
-  }
-
-  // Owning
-  OutputChunk(std::initializer_list<uint8_t> bytes) {
-    buffer.reset(new std::vector<uint8_t>(bytes));
-    next = buffer->data();
-    len = bytes.size();
-  }
-
-  const uint8_t* next;
-  size_t len;
-  std::unique_ptr<std::vector<uint8_t>> buffer;
-};
-
-struct SerializationState {
-  enum Stage {
-    INIT,
-
-    // TODO(eustas): temporary; remove
-    DUMP_OUTPUT,
-
-    DONE,
-    ERROR,
-  };
-
-  Stage stage = INIT;
-
-  std::deque<OutputChunk> output_queue;
-
-  // TODO(eustas): temporary; remove
-  JPEGOutput chunk_writer = {nullptr, nullptr};
-
-  int dht_index = 0;
-  int dqt_index = 0;
-  int app_index = 0;
-  int com_index = 0;
-  int data_index = 0;
-  int scan_index = 0;
-  std::vector<HuffmanCodeTable> dc_huff_table;
-  std::vector<HuffmanCodeTable> ac_huff_table;
-  const int* pad_bits = nullptr;
-  const int* pad_bits_end = nullptr;
-  bool seen_dri_marker = false;
-  bool is_progressive = false;
 };
 
 struct InternalState {

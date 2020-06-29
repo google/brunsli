@@ -12,15 +12,20 @@
 #include <string>
 #include <vector>
 
+#include "../common/constants.h"
 #include <brunsli/jpeg_data.h>
 #include "../common/platform.h"
 #include <brunsli/types.h>
 #include "./jpeg_bit_writer.h"
+#include "./serialization_state.h"
 #include "./state.h"
 #include "./state_internal.h"
 
 namespace brunsli {
 
+using ::brunsli::internal::dec::BitWriter;
+using ::brunsli::internal::dec::DCTCodingState;
+using ::brunsli::internal::dec::EncodeScanState;
 using ::brunsli::internal::dec::OutputChunk;
 using ::brunsli::internal::dec::SerializationState;
 using ::brunsli::internal::dec::SerializationStatus;
@@ -31,9 +36,6 @@ using ::brunsli::internal::dec::State;
 namespace {
 
 const int kJpegPrecision = 8;
-
-// Maximum number of correction bits to buffer.
-const int kJPEGMaxCorrectionBits = 1u << 16;
 
 // Returns ceil(a/b).
 inline int DivCeil(int a, int b) { return (a + b - 1) / b; }
@@ -79,32 +81,26 @@ bool BuildHuffmanCodeTable(const JPEGHuffmanCode& huff,
   return true;
 }
 
-// Writes len bytes from buf, using the out callback.
-inline bool JPEGWrite(SerializationState* state, const uint8_t* buf,
-                      size_t len) {
-  static const size_t kBlockSize = 1u << 30u;
-  size_t pos = 0;
-  while (len - pos > kBlockSize) {
-    if (!state->chunk_writer.Write(buf + pos, kBlockSize)) {
-      return false;
-    }
-    pos += kBlockSize;
-  }
-  return state->chunk_writer.Write(buf + pos, len - pos);
+bool EncodeSOI(SerializationState* state) {
+  state->output_queue.push_back(OutputChunk({0xFF, 0xD8}));
+  return true;
 }
 
-// Writes a string using the out callback.
-inline bool JPEGWrite(SerializationState* state, const std::string& s) {
-  const uint8_t* data = reinterpret_cast<const uint8_t*>(&s[0]);
-  return JPEGWrite(state, data, s.size());
+bool EncodeEOI(const JPEGData& jpg, SerializationState* state) {
+  state->output_queue.push_back(OutputChunk({0xFF, 0xD9}));
+  state->output_queue.emplace_back(jpg.tail_data);
+  return true;
 }
 
 bool EncodeSOF(const JPEGData& jpg, uint8_t marker, SerializationState* state) {
+  if (marker <= 0xC2) state->is_progressive = (marker == 0xC2);
+
   const size_t n_comps = jpg.components.size();
   const size_t marker_len = 8 + 3 * n_comps;
-  std::vector<uint8_t> data(marker_len + 2);
+  state->output_queue.emplace_back(marker_len + 2);
+  uint8_t* data = state->output_queue.back().buffer->data();
   size_t pos = 0;
-  data[pos++] = 0xff;
+  data[pos++] = 0xFF;
   data[pos++] = marker;
   data[pos++] = marker_len >> 8u;
   data[pos++] = marker_len & 0xFFu;
@@ -119,19 +115,18 @@ bool EncodeSOF(const JPEGData& jpg, uint8_t marker, SerializationState* state) {
     data[pos++] = ((jpg.components[i].h_samp_factor << 4u) |
                    (jpg.components[i].v_samp_factor));
     const size_t quant_idx = jpg.components[i].quant_idx;
-    if (quant_idx >= jpg.quant.size()) {
-      return false;
-    }
+    if (quant_idx >= jpg.quant.size()) return false;
     data[pos++] = jpg.quant[quant_idx].index;
   }
-  return JPEGWrite(state, &data[0], pos);
+  return true;
 }
 
 bool EncodeSOS(const JPEGData& jpg, const JPEGScanInfo& scan_info,
                SerializationState* state) {
   const size_t n_scans = scan_info.components.size();
   const size_t marker_len = 6 + 2 * n_scans;
-  std::vector<uint8_t> data(marker_len + 2);
+  state->output_queue.emplace_back(marker_len + 2);
+  uint8_t* data = state->output_queue.back().buffer->data();
   size_t pos = 0;
   data[pos++] = 0xFF;
   data[pos++] = 0xDA;
@@ -140,16 +135,14 @@ bool EncodeSOS(const JPEGData& jpg, const JPEGScanInfo& scan_info,
   data[pos++] = n_scans;
   for (size_t i = 0; i < n_scans; ++i) {
     const JPEGComponentScanInfo& si = scan_info.components[i];
-    if (si.comp_idx >= jpg.components.size()) {
-      return false;
-    }
+    if (si.comp_idx >= jpg.components.size()) return false;
     data[pos++] = jpg.components[si.comp_idx].id;
     data[pos++] = (si.dc_tbl_idx << 4u) + si.ac_tbl_idx;
   }
   data[pos++] = scan_info.Ss;
   data[pos++] = scan_info.Se;
   data[pos++] = ((scan_info.Ah << 4u) | (scan_info.Al));
-  return JPEGWrite(state, &data[0], pos);
+  return true;
 }
 
 bool EncodeDHT(const JPEGData& jpg, SerializationState* state) {
@@ -164,10 +157,11 @@ bool EncodeDHT(const JPEGData& jpg, SerializationState* state) {
     }
     if (huff.is_last) break;
   }
-  std::vector<uint8_t> data(marker_len + 2);
+  state->output_queue.emplace_back(marker_len + 2);
+  uint8_t* data = state->output_queue.back().buffer->data();
   size_t pos = 0;
-  data[pos++] = 0xff;
-  data[pos++] = 0xc4;
+  data[pos++] = 0xFF;
+  data[pos++] = 0xC4;
   data[pos++] = marker_len >> 8u;
   data[pos++] = marker_len & 0xFFu;
   while (true) {
@@ -184,6 +178,8 @@ bool EncodeDHT(const JPEGData& jpg, SerializationState* state) {
     } else {
       huff_table = &state->dc_huff_table[index];
     }
+    // TODO(eustas): cache
+    // TODO(eustas): set up non-existing symbols
     if (!BuildHuffmanCodeTable(huff, huff_table)) {
       return false;
     }
@@ -205,7 +201,7 @@ bool EncodeDHT(const JPEGData& jpg, SerializationState* state) {
     }
     if (huff.is_last) break;
   }
-  return JPEGWrite(state, &data[0], pos);
+  return true;
 }
 
 bool EncodeDQT(const JPEGData& jpg, SerializationState* state) {
@@ -215,7 +211,8 @@ bool EncodeDQT(const JPEGData& jpg, SerializationState* state) {
     marker_len += 1 + (table.precision ? 2 : 1) * kDCTBlockSize;
     if (table.is_last) break;
   }
-  std::vector<uint8_t> data(marker_len + 2);
+  state->output_queue.emplace_back(marker_len + 2);
+  uint8_t* data = state->output_queue.back().buffer->data();
   size_t pos = 0;
   data[pos++] = 0xFF;
   data[pos++] = 0xDB;
@@ -238,97 +235,51 @@ bool EncodeDQT(const JPEGData& jpg, SerializationState* state) {
     }
     if (table.is_last) break;
   }
-  return JPEGWrite(state, &data[0], pos);
+  return true;
 }
 
 bool EncodeDRI(const JPEGData& jpg, SerializationState* state) {
-  int restart_interval = jpg.restart_interval;
-  uint8_t data[6] = {0xFF, 0xDD, 0, 4};
-  data[4] = restart_interval >> 8u;
-  data[5] = restart_interval & 0xFFu;
-  return JPEGWrite(state, data, sizeof(data));
+  state->seen_dri_marker = true;
+  OutputChunk dri_marker = {0xFF,
+                            0xDD,
+                            0,
+                            4,
+                            static_cast<uint8_t>(jpg.restart_interval >> 8),
+                            static_cast<uint8_t>(jpg.restart_interval & 0xFF)};
+  state->output_queue.push_back(std::move(dri_marker));
+  return true;
 }
 
-bool EncodeAPP(const JPEGData& jpg, SerializationState* state) {
+bool EncodeRestart(uint8_t marker, SerializationState* state) {
+  state->output_queue.push_back(OutputChunk({0xFF, marker}));
+  return true;
+}
+
+bool EncodeAPP(const JPEGData& jpg, uint8_t marker, SerializationState* state) {
+  // TODO(eustas): check that marker corresponds to payload?
+  (void)marker;
+
   size_t app_index = state->app_index++;
-  if (app_index >= jpg.app_data.size()) {
-    return false;
-  }
-  uint8_t data[1] = {0xff};
-  return (JPEGWrite(state, data, sizeof(data)) &&
-          JPEGWrite(state, jpg.app_data[app_index]));
+  if (app_index >= jpg.app_data.size()) return false;
+  state->output_queue.push_back(OutputChunk({0xFF}));
+  state->output_queue.emplace_back(jpg.app_data[app_index]);
+  return true;
 }
 
 bool EncodeCOM(const JPEGData& jpg, SerializationState* state) {
   size_t com_index = state->com_index++;
-  if (com_index >= jpg.com_data.size()) {
-    return false;
-  }
-  uint8_t data[1] = {0xff};
-  return (JPEGWrite(state, data, sizeof(data)) &&
-          JPEGWrite(state, jpg.com_data[com_index]));
+  if (com_index >= jpg.com_data.size()) return false;
+  state->output_queue.push_back(OutputChunk({0xFF}));
+  state->output_queue.emplace_back(jpg.com_data[com_index]);
+  return true;
 }
 
 bool EncodeInterMarkerData(const JPEGData& jpg, SerializationState* state) {
   size_t index = state->data_index++;
-  if (index >= jpg.inter_marker_data.size()) {
-    return false;
-  }
-  return JPEGWrite(state, jpg.inter_marker_data[index]);
+  if (index >= jpg.inter_marker_data.size()) return false;
+  state->output_queue.emplace_back(jpg.inter_marker_data[index]);
+  return true;
 }
-
-// Holds data that is buffered between 8x8 blocks in progressive mode.
-class DCTCodingState {
- public:
-  DCTCodingState() : eob_run_(0), cur_ac_huff_(nullptr) {
-    refinement_bits_.reserve(kJPEGMaxCorrectionBits);
-  }
-
-  // Emit all buffered data to the bit stream using the given Huffman code and
-  // bit writer.
-  void Flush(BitWriter* bw) {
-    if (eob_run_ > 0) {
-      int nbits = Log2FloorNonZero(eob_run_);
-      int symbol = nbits << 4u;
-      bw->WriteBits(cur_ac_huff_->depth[symbol], cur_ac_huff_->code[symbol]);
-      if (nbits > 0) {
-        bw->WriteBits(nbits, eob_run_ & ((1 << nbits) - 1));
-      }
-      eob_run_ = 0;
-    }
-    for (size_t i = 0; i < refinement_bits_.size(); ++i) {
-      bw->WriteBits(1, refinement_bits_[i]);
-    }
-    refinement_bits_.clear();
-  }
-
-  // Buffer some more data at the end-of-band (the last non-zero or newly
-  // non-zero coefficient within the [Ss, Se] spectral band).
-  void BufferEndOfBand(const HuffmanCodeTable& ac_huff,
-                       const std::vector<int>* new_bits, BitWriter* bw) {
-    if (eob_run_ == 0) {
-      cur_ac_huff_ = &ac_huff;
-    }
-    ++eob_run_;
-    if (new_bits) {
-      refinement_bits_.insert(refinement_bits_.end(), new_bits->begin(),
-                              new_bits->end());
-    }
-    if (eob_run_ == 0x7fff ||
-        refinement_bits_.size() > kJPEGMaxCorrectionBits - kDCTBlockSize + 1) {
-      Flush(bw);
-    }
-  }
-
- private:
-  // The run length of end-of-band symbols in a progressive scan.
-  int eob_run_;
-  // The huffman table to be used when flushing the state.
-  const HuffmanCodeTable* cur_ac_huff_;
-  // The sequence of currently buffered refinement bits for a successive
-  // approximation scan (one where Ah > 0).
-  std::vector<int> refinement_bits_;
-};
 
 bool EncodeDCTBlockSequential(const coeff_t* coeffs,
                               const HuffmanCodeTable& dc_huff,
@@ -517,82 +468,93 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
   return true;
 }
 
-bool GetNextPadPattern(const int** pad_bits, const int* pad_bits_end, int nbits,
-                       uint8_t* pad_pattern) {
-  // TODO(eustas): DCHECK pad_bits < 8
-  if (*pad_bits == nullptr) {
-    *pad_pattern = (1u << nbits) - 1;
-    return true;
-  }
-  uint8_t p = 0;
-  const int* src = *pad_bits;
-  // TODO(eustas): bitwise reading looks insanely ineffective...
-  while (nbits--) {
-    p <<= 1;
-    if (src >= pad_bits_end) {
-      return false;
+SerializationStatus EncodeScan(const JPEGData& jpg, const State& parsing_state,
+                               SerializationState* state) {
+  const JPEGScanInfo& scan_info = jpg.scan_info[state->scan_index];
+  EncodeScanState& ss = state->scan_state;
+
+  const int restart_interval =
+      state->seen_dri_marker ? jpg.restart_interval : 0;
+
+  const auto get_next_extra_zero_run_index = [&ss, &scan_info]() {
+    if (ss.extra_zero_runs_pos < scan_info.extra_zero_runs.size()) {
+      return scan_info.extra_zero_runs[ss.extra_zero_runs_pos].block_idx;
+    } else {
+      return -1;
     }
-    // TODO(eustas): DCHECK *src == {0, 1}
-    p |= *(src++);
-  }
-  *pad_bits = src;
-  *pad_pattern = p;
-  return true;
-}
+  };
 
-bool EncodeScan(const JPEGData& jpg, SerializationState* state) {
-  const JPEGScanInfo& scan_info = jpg.scan_info[state->scan_index++];
+  if (ss.stage == EncodeScanState::HEAD) {
+    if (!EncodeSOS(jpg, scan_info, state)) return SerializationStatus::ERROR;
+    ss.bw.Init(&state->output_queue);
+    ss.coding_state.Init();
+    ss.restarts_to_go = restart_interval;
+    ss.next_restart_marker = 0;
+    ss.block_scan_index = 0;
+    ss.extra_zero_runs_pos = 0;
+    ss.next_extra_zero_run_index = get_next_extra_zero_run_index();
+    ss.mcu_y = 0;
+    memset(ss.last_dc_coeff, 0, sizeof(ss.last_dc_coeff));
+    ss.stage = EncodeScanState::BODY;
+  }
+  BitWriter* bw = &ss.bw;
+  DCTCodingState* coding_state = &ss.coding_state;
 
-  if (!EncodeSOS(jpg, scan_info, state)) {
-    return false;
-  }
-  bool is_interleaved = (scan_info.components.size() > 1);
-  int MCUs_per_row;
-  int MCU_rows;
-  if (is_interleaved) {
-    MCUs_per_row = DivCeil(jpg.width, jpg.max_h_samp_factor * 8);
-    MCU_rows = DivCeil(jpg.height, jpg.max_v_samp_factor * 8);
-  } else {
-    const JPEGComponent& c = jpg.components[scan_info.components[0].comp_idx];
-    MCUs_per_row =
-        DivCeil(jpg.width * c.h_samp_factor, 8 * jpg.max_h_samp_factor);
-    MCU_rows = DivCeil(jpg.height * c.v_samp_factor, 8 * jpg.max_v_samp_factor);
-  }
-  coeff_t last_dc_coeff[kMaxComponents] = {0};
-  BitWriter bw(1 << 17);
-  int restart_interval = state->seen_dri_marker ? jpg.restart_interval : 0;
-  int restarts_to_go = restart_interval;
-  int next_restart_marker = 0;
-  int block_scan_index = 0;
-  size_t extra_zero_runs_pos = 0;
-  int next_extra_zero_run_index = scan_info.extra_zero_runs.empty()
-                                      ? -1
-                                      : scan_info.extra_zero_runs[0].block_idx;
-  DCTCodingState coding_state;
-  bool is_progressive = state->is_progressive;
+  BRUNSLI_DCHECK(ss.stage == EncodeScanState::BODY);
+
+  // "Non-interleaved" means color data comes in separate scans, in other words
+  // each scan can contain only one color component.
+  const bool is_interleaved = (scan_info.components.size() > 1);
+  const JPEGComponent& base_component =
+      jpg.components[scan_info.components[0].comp_idx];
+  // h_group / v_group act as numerators for converting number of blocks to
+  // number of MCU. In interleaved mode it is 1, so MCU is represented with
+  // max_*_samp_factor blocks. In non-interleaved mode we choose numerator to
+  // be the samping factor, consequently MCU is always represented with single
+  // block.
+  const int h_group = is_interleaved ? 1 : base_component.h_samp_factor;
+  const int v_group = is_interleaved ? 1 : base_component.v_samp_factor;
+  const int MCUs_per_row =
+      DivCeil(jpg.width * h_group, 8 * jpg.max_h_samp_factor);
+  const int MCU_rows = DivCeil(jpg.height * v_group, 8 * jpg.max_v_samp_factor);
+  const bool is_progressive = state->is_progressive;
   const int Al = is_progressive ? scan_info.Al : 0;
   const int Ah = is_progressive ? scan_info.Ah : 0;
   const int Ss = is_progressive ? scan_info.Ss : 0;
   const int Se = is_progressive ? scan_info.Se : 63;
   const bool need_sequential =
       !is_progressive || (Ah == 0 && Al == 0 && Ss == 0 && Se == 63);
-  for (int mcu_y = 0; mcu_y < MCU_rows; ++mcu_y) {
+
+  // DC-only is defined by [0..0] spectral range.
+  const bool want_ac = ((Ss != 0) || (Se != 0));
+  const bool complete_ac = (parsing_state.stage == Stage::DONE);
+  const bool has_ac =
+      complete_ac || HasSection(&parsing_state, kBrunsliACDataTag);
+  if (want_ac && !has_ac) return SerializationStatus::NEEDS_MORE_INPUT;
+
+  // |has_ac| implies |complete_dc| but not vice versa; for the sake of
+  // simplicity we pretend they are equal, because they are separated by just a
+  // few bytes of input.
+  const bool complete_dc = has_ac;
+  const bool complete = want_ac ? complete_ac : complete_dc;
+  // When "incomplete" |ac_dc| tracks information about current ("incomplete")
+  // band parsing progress.
+  const int last_mcu_y =
+      complete ? MCU_rows : parsing_state.internal->ac_dc.next_mcu_y * v_group;
+
+  for (; ss.mcu_y < last_mcu_y; ++ss.mcu_y) {
     for (int mcu_x = 0; mcu_x < MCUs_per_row; ++mcu_x) {
       // Possibly emit a restart marker.
-      if (restart_interval > 0 && restarts_to_go == 0) {
-        coding_state.Flush(&bw);
-        const int n_pad_bits = bw.put_bits & 7u;
-        uint8_t pad_pattern;
-        if (!GetNextPadPattern(&state->pad_bits, state->pad_bits_end,
-                               n_pad_bits, &pad_pattern)) {
-          return false;
+      if (restart_interval > 0 && ss.restarts_to_go == 0) {
+        coding_state->Flush(bw);
+        if (!bw->JumpToByteBoundary(&state->pad_bits, state->pad_bits_end)) {
+          return SerializationStatus::ERROR;
         }
-        bw.JumpToByteBoundary(pad_pattern);
-        bw.EmitMarker(0xd0 + next_restart_marker);
-        next_restart_marker += 1;
-        next_restart_marker &= 0x7;
-        restarts_to_go = restart_interval;
-        memset(last_dc_coeff, 0, sizeof(last_dc_coeff));
+        bw->EmitMarker(0xD0 + ss.next_restart_marker);
+        ss.next_restart_marker += 1;
+        ss.next_restart_marker &= 0x7;
+        ss.restarts_to_go = restart_interval;
+        memset(ss.last_dc_coeff, 0, sizeof(ss.last_dc_coeff));
       }
       // Encode one MCU
       for (size_t i = 0; i < scan_info.components.size(); ++i) {
@@ -604,183 +566,125 @@ bool EncodeScan(const JPEGData& jpg, SerializationState* state) {
         int n_blocks_x = is_interleaved ? c.h_samp_factor : 1;
         for (int iy = 0; iy < n_blocks_y; ++iy) {
           for (int ix = 0; ix < n_blocks_x; ++ix) {
-            int block_y = mcu_y * n_blocks_y + iy;
+            int block_y = ss.mcu_y * n_blocks_y + iy;
             int block_x = mcu_x * n_blocks_x + ix;
             int block_idx = block_y * c.width_in_blocks + block_x;
-            if (scan_info.reset_points.find(block_scan_index) !=
+            if (scan_info.reset_points.find(ss.block_scan_index) !=
                 scan_info.reset_points.end()) {
-              coding_state.Flush(&bw);
+              coding_state->Flush(bw);
             }
             int num_zero_runs = 0;
-            if (block_scan_index == next_extra_zero_run_index) {
-              num_zero_runs = scan_info.extra_zero_runs[extra_zero_runs_pos]
+            if (ss.block_scan_index == ss.next_extra_zero_run_index) {
+              num_zero_runs = scan_info.extra_zero_runs[ss.extra_zero_runs_pos]
                                   .num_extra_zero_runs;
-              ++extra_zero_runs_pos;
-              next_extra_zero_run_index =
-                  (extra_zero_runs_pos < scan_info.extra_zero_runs.size())
-                      ? scan_info.extra_zero_runs[extra_zero_runs_pos].block_idx
-                      : -1;
+              ++ss.extra_zero_runs_pos;
+              ss.next_extra_zero_run_index = get_next_extra_zero_run_index();
             }
             const coeff_t* coeffs = &c.coeffs[block_idx << 6];
+            bool ok;
             if (need_sequential) {
-              if (!EncodeDCTBlockSequential(coeffs, dc_huff, ac_huff,
+              ok = EncodeDCTBlockSequential(coeffs, dc_huff, ac_huff,
                                             num_zero_runs,
-                                            &last_dc_coeff[si.comp_idx], &bw)) {
-                return false;
-              }
+                                            ss.last_dc_coeff + si.comp_idx, bw);
             } else if (Ah == 0) {
-              if (!EncodeDCTBlockProgressive(
-                      coeffs, dc_huff, ac_huff, Ss, Se, Al, num_zero_runs,
-                      &coding_state, &last_dc_coeff[si.comp_idx], &bw)) {
-                return false;
-              }
+              ok = EncodeDCTBlockProgressive(
+                  coeffs, dc_huff, ac_huff, Ss, Se, Al, num_zero_runs,
+                  coding_state, ss.last_dc_coeff + si.comp_idx, bw);
             } else {
-              if (!EncodeRefinementBits(coeffs, ac_huff, Ss, Se, Al,
-                                        &coding_state, &bw)) {
-                return false;
-              }
+              ok = EncodeRefinementBits(coeffs, ac_huff, Ss, Se, Al,
+                                        coding_state, bw);
             }
-            ++block_scan_index;
+            if (!ok) return SerializationStatus::ERROR;
+            ++ss.block_scan_index;
           }
         }
       }
-      --restarts_to_go;
-      if (bw.pos > (1 << 16)) {
-        if (!JPEGWrite(state, bw.data.get(), bw.pos)) {
-          return false;
-        }
-        bw.pos = 0;
-      }
+      --ss.restarts_to_go;
     }
   }
-  coding_state.Flush(&bw);
-  const int n_pad_bits = bw.put_bits & 7u;
-  uint8_t pad_pattern;
-  if (!GetNextPadPattern(&state->pad_bits, state->pad_bits_end, n_pad_bits,
-                         &pad_pattern)) {
-    return false;
+  if (ss.mcu_y < MCU_rows) {
+    if (!bw->IsHealthy()) return SerializationStatus::ERROR;
+    return SerializationStatus::NEEDS_MORE_INPUT;
   }
-  bw.JumpToByteBoundary(pad_pattern);
-  return !bw.overflow && !bw.invalid_write &&
-         JPEGWrite(state, bw.data.get(), bw.pos);
+  coding_state->Flush(bw);
+  if (!bw->JumpToByteBoundary(&state->pad_bits, state->pad_bits_end)) {
+    return SerializationStatus::ERROR;
+  }
+  bw->Finish();
+  ss.stage = EncodeScanState::HEAD;
+  state->scan_index++;
+  if (!bw->IsHealthy()) return SerializationStatus::ERROR;
+
+  return SerializationStatus::DONE;
 }
 
-bool WriteJpegBypass(const JPEGData& jpg, SerializationState* state) {
-  if (jpg.version != 1 || jpg.original_jpg == nullptr) {
-    return false;
-  }
-  return JPEGWrite(state, jpg.original_jpg, jpg.original_jpg_size);
-}
-
-bool SerializeSection(uint8_t marker, SerializationState* state,
-                      const JPEGData& jpg) {
+SerializationStatus SerializeSection(uint8_t marker, const State& parsing_state,
+                                     SerializationState* state,
+                                     const JPEGData& jpg) {
+  const auto to_status = [] (bool result) {
+    return result ? SerializationStatus::DONE : SerializationStatus::ERROR;
+  };
   // TODO(eustas): add and use marker enum
   switch (marker) {
-    case 0xc0:
-    case 0xc1:
-    case 0xc2:
-      state->is_progressive = (marker == 0xc2);
-      return EncodeSOF(jpg, marker, state);
+    case 0xC0:
+    case 0xC1:
+    case 0xC2:
+    case 0xC9:
+    case 0xCA:
+      return to_status(EncodeSOF(jpg, marker, state));
 
-    case 0xc9:
-    case 0xca:
-      return EncodeSOF(jpg, marker, state);
+    case 0xC4:
+      return to_status(EncodeDHT(jpg, state));
 
-    case 0xc4:
-      return EncodeDHT(jpg, state);
+    case 0xD0:
+    case 0xD1:
+    case 0xD2:
+    case 0xD3:
+    case 0xD4:
+    case 0xD5:
+    case 0xD6:
+    case 0xD7:
+      return to_status(EncodeRestart(marker, state));
 
-    case 0xd0:
-    case 0xd1:
-    case 0xd2:
-    case 0xd3:
-    case 0xd4:
-    case 0xd5:
-    case 0xd6:
-    case 0xd7: {
-      uint8_t marker_data[2] = {0xff, marker};
-      return JPEGWrite(state, marker_data, sizeof(marker_data));
-    }
+    case 0xD9:
+      return to_status(EncodeEOI(jpg, state));
 
-    case 0xd9:
-      // Found end marker.
-      return true;
+    case 0xDA:
+      return EncodeScan(jpg, parsing_state, state);
 
-    case 0xda:
-      return EncodeScan(jpg, state);
+    case 0xDB:
+      return to_status(EncodeDQT(jpg, state));
 
-    case 0xdb:
-      return EncodeDQT(jpg, state);
+    case 0xDD:
+      return to_status(EncodeDRI(jpg, state));
 
-    case 0xdd:
-      state->seen_dri_marker = true;
-      return EncodeDRI(jpg, state);
+    case 0xE0:
+    case 0xE1:
+    case 0xE2:
+    case 0xE3:
+    case 0xE4:
+    case 0xE5:
+    case 0xE6:
+    case 0xE7:
+    case 0xE8:
+    case 0xE9:
+    case 0xEA:
+    case 0xEB:
+    case 0xEC:
+    case 0xED:
+    case 0xEE:
+    case 0xEF:
+      return to_status(EncodeAPP(jpg, marker, state));
 
-    case 0xe0:
-    case 0xe1:
-    case 0xe2:
-    case 0xe3:
-    case 0xe4:
-    case 0xe5:
-    case 0xe6:
-    case 0xe7:
-    case 0xe8:
-    case 0xe9:
-    case 0xea:
-    case 0xeb:
-    case 0xec:
-    case 0xed:
-    case 0xee:
-    case 0xef:
-      // TODO(eustas): check that marker corresponds to payload?
-      return EncodeAPP(jpg, state);
+    case 0xFE:
+      return to_status(EncodeCOM(jpg, state));
 
-    case 0xfe:
-      return EncodeCOM(jpg, state);
-
-    case 0xff:
-      return EncodeInterMarkerData(jpg, state);
+    case 0xFF:
+      return to_status(EncodeInterMarkerData(jpg, state));
 
     default:
-      return false;
+      return SerializationStatus::ERROR;
   }
-}
-
-bool WriteJpegInternal(const JPEGData& jpg, SerializationState* state) {
-  if (jpg.version == 1) {
-    return WriteJpegBypass(jpg, state);
-  }
-
-  const std::vector<uint8_t>& marker_order = jpg.marker_order;
-  // Valid Brunsli requires, at least, 0xD9 marker.
-  // This might happen on corrupted stream, or on unconditioned JPEGData.
-  if (marker_order.empty()) {
-    return false;
-  }
-
-  static const uint8_t kSOIMarker[2] = {0xff, 0xd8};
-  if (!JPEGWrite(state, kSOIMarker, sizeof(kSOIMarker))) {
-    return false;
-  }
-
-  if (jpg.has_zero_padding_bit) {
-    state->pad_bits = jpg.padding_bits.data();
-    state->pad_bits_end = state->pad_bits + jpg.padding_bits.size();
-  }
-
-  state->dc_huff_table.resize(kMaxHuffmanTables);
-  state->ac_huff_table.resize(kMaxHuffmanTables);
-
-  for (size_t i = 0; i < marker_order.size(); ++i) {
-    uint8_t marker = marker_order[i];
-    if (!SerializeSection(marker, state, jpg)) {
-      BRUNSLI_LOG_DEBUG() << "Failed to encode marker " << std::hex << marker
-                          << BRUNSLI_ENDL();
-      return false;
-    }
-  }
-  static const uint8_t kEOIMarker[2] = {0xff, 0xd9};
-  return (JPEGWrite(state, kEOIMarker, sizeof(kEOIMarker)) &&
-          JPEGWrite(state, jpg.tail_data));
 }
 
 void PushOutput(std::deque<OutputChunk>* in, size_t* available_out,
@@ -830,40 +734,96 @@ SerializationStatus SerializeJpeg(State* state, const JPEGData& jpg,
                                   size_t* available_out, uint8_t** next_out) {
   SerializationState& ss = state->internal->serialization;
 
+  const auto maybe_push_output = [&] () {
+    if (ss.stage != SerializationState::ERROR) {
+      PushOutput(&ss.output_queue, available_out, next_out);
+    }
+  };
+
+  // Push remaining output from prevoius session.
+  maybe_push_output();
+
   while (true) {
     switch (ss.stage) {
       case SerializationState::INIT: {
-        // Wait for parsing to complete.
-        if (state->stage != Stage::DONE) {
+        // If parsing is complete, serialization is possible.
+        bool can_start_serialization = (state->stage == Stage::DONE);
+        // Parsing of AC/DC has started; i.e. quant/huffman/metadata is ready
+        // to be used.
+        if (HasSection(state, kBrunsliDCDataTag) ||
+            HasSection(state, kBrunsliACDataTag)) {
+          can_start_serialization = true;
+        }
+        if (!can_start_serialization) {
           return SerializationStatus::NEEDS_MORE_INPUT;
         }
-        auto add_chunk = +[](void* data, const uint8_t* buf, size_t len) {
-          std::deque<OutputChunk>* output_queue =
-              reinterpret_cast<std::deque<OutputChunk>*>(data);
-          output_queue->emplace_back(len);
-          memcpy(output_queue->back().buffer->data(), buf, len);
-          return len;
-        };
-        ss.chunk_writer = {add_chunk, &ss.output_queue};
-        if (!WriteJpegInternal(jpg, &ss)) {
-          ss.stage = SerializationState::ERROR;
-        }
-        ss.stage = SerializationState::DUMP_OUTPUT;
-        break;
-      }
-
-      case SerializationState::DUMP_OUTPUT: {
-        PushOutput(&ss.output_queue, available_out, next_out);
-        if (ss.output_queue.empty()) {
+        // JpegBypass is a very simple / special case.
+        if (jpg.version == 1) {
+          if (jpg.original_jpg == nullptr) {
+            ss.stage = SerializationState::ERROR;
+            break;
+          }
+          // TODO(eustas): investigate if bad things can happen when complete
+          //               file is passed to parser, but it is impossible to
+          //               push complete output.
+          ss.output_queue.emplace_back(jpg.original_jpg, jpg.original_jpg_size);
           ss.stage = SerializationState::DONE;
-        } else {
-          return SerializationStatus::NEEDS_MORE_OUTPUT;
+          break;
         }
+
+        // Valid Brunsli requires, at least, 0xD9 marker.
+        // This might happen on corrupted stream, or on unconditioned JPEGData.
+        // TODO(eustas): check D9 in the only one and is the last one.
+        if (jpg.marker_order.empty()) {
+          ss.stage = SerializationState::ERROR;
+          break;
+        }
+
+        ss.dc_huff_table.resize(kMaxHuffmanTables);
+        ss.ac_huff_table.resize(kMaxHuffmanTables);
+        if (jpg.has_zero_padding_bit) {
+          ss.pad_bits = jpg.padding_bits.data();
+          ss.pad_bits_end = ss.pad_bits + jpg.padding_bits.size();
+        }
+
+        EncodeSOI(&ss);
+        maybe_push_output();
+        ss.stage = SerializationState::SERIALIZE_SECTION;
         break;
       }
 
-      case SerializationState::DONE:
-        return SerializationStatus::DONE;
+      case SerializationState::SERIALIZE_SECTION: {
+        if (ss.section_index >= jpg.marker_order.size()) {
+          ss.stage = SerializationState::DONE;
+          break;
+        }
+        uint8_t marker = jpg.marker_order[ss.section_index];
+        SerializationStatus status = SerializeSection(marker, *state, &ss, jpg);
+        if (status == SerializationStatus::ERROR) {
+          BRUNSLI_LOG_DEBUG() << "Failed to encode marker " << std::hex
+                              << marker << BRUNSLI_ENDL();
+          ss.stage = SerializationState::ERROR;
+          break;
+        }
+        maybe_push_output();
+        if (status == SerializationStatus::NEEDS_MORE_INPUT) {
+          return SerializationStatus::NEEDS_MORE_INPUT;
+        } else if (status != SerializationStatus::DONE) {
+          BRUNSLI_DCHECK(false);
+          ss.stage = SerializationState::ERROR;
+          break;
+        }
+        ++ss.section_index;
+        break;
+      }
+
+      case SerializationState::DONE: {
+        if (!ss.output_queue.empty()) {
+          return SerializationStatus::NEEDS_MORE_OUTPUT;
+        } else {
+          return SerializationStatus::DONE;
+        }
+      }
 
       default:
         return SerializationStatus::ERROR;
