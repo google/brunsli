@@ -69,12 +69,59 @@ function onLoad() {
 
 window.addEventListener("load", onLoad);
 
+function getTouchPosition(e) {
+  let touch = e;
+  if (typeof e["targetTouches"] !== undefined) touch = e.targetTouches[0];
+  return touch.screenY;
+}
+
+let y0 = 0;
+let wantRefresh = false;
+
+function onTouchStart(e) {
+  y0 = getTouchPosition(e);
+}
+
+function onTouchMove(e) {
+  if (document.body.scrollTop === 0) {
+    let y1 = getTouchPosition(e);
+    let delta = y1 - y0;
+    wantRefresh = (delta > 200);
+    let refresher = document.getElementById("refresher");
+    refresher.style.opacity = (delta >> 1) + "%";
+    refresher.style.maxHeight = (delta >> 2) + "px";
+  } else {
+    wantRefresh = false;
+  }
+}
+
+function onTouchEnd(e) {
+  refresher.style.opacity = "0%";
+  refresher.style.maxHeight = "0px";
+  if (wantRefresh) {
+    loadImages();
+  }
+  wantRefresh = false;
+}
+
+document.addEventListener("touchstart", e => onTouchStart(e), false);
+document.addEventListener("touchmove", e => onTouchMove(e), false);
+document.addEventListener("touchend", e => onTouchEnd(e), false);
+
 </script>
 </head>
 <body>
 
 <div class="w3-container w3-indigo">
- <h1>Images of Empowerment</h1>
+ <h1 style="font-size:6vw;text-align:center">Images of Empowerment</h1>
+</div>
+
+<div class="w3-container w3-light-gray" id="refresher" style="max-height:0;overflow-y:hidden;opacity:0%;">
+  <h5 style="line-height:0.9;text-align:center;overflow-y:hidden;margin:0">
+    <b>⤺</b><br>
+    Load the next image<br>
+    <b>⤻</b>
+  </h5>
 </div>
 
 <div class="w3-row">
@@ -97,7 +144,7 @@ window.addEventListener("load", onLoad);
 </div>
 
 <div class="w3-container w3-light-gray w3-margin-top">
- <h5>Press space to load the next image.</h5>
+ <h5>Press space or pull-down to load the next image.</h5>
 </div>
 <div class="w3-container w3-amber">
  <h5>Images are licensed under <b>CC BY-NC 4.0</b> and downloaded from <a href="https://www.imagesofempowerment.org/">imagesofempowerment.org</a></h5>
