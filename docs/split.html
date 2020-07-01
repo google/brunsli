@@ -12,23 +12,23 @@ html, body {
 </style>
 <script type='text/javascript'>
 let names = [
-  "Hewlett_Bogota_PartialRelease_361-scaled.jpg",
-  "Hewlett_Thailand_FullRelease_228-scaled.jpg",
-  "WIEGO_ACCRA_8008_FULLY_RELEASED-scaled.jpg",
-  "hewlett_India_fullrelease112-scaled.jpg",
+  "Hewlett_Bogota_PartialRelease_361-scaled",
+  "Hewlett_Thailand_FullRelease_228-scaled",
+  "WIEGO_ACCRA_8008_FULLY_RELEASED-scaled",
+  "hewlett_India_fullrelease112-scaled",
 ];
 let name_idx = 0;
 let interactive = false;
 let metas = {
-  "img-jpg": {"load_start": 0, "title": "JPG"},
-  "img-jxl": {"load_start": 0, "title": "JXL"}
+  "img-jxl": {"load_start": 0, "title": "JXL"},
+  "img-jpg": {"load_start": 0, "title": "JPG"}
 };
 let salt = Date.now();
 
 function makeInteractive() {
   interactive = true;
-  document.getElementById("img-jpg").addEventListener("load", onImageLoad);
   document.getElementById("img-jxl").addEventListener("load", onImageLoad);
+  document.getElementById("img-jpg").addEventListener("load", onImageLoad);
 
   document.onkeypress = function(e) {
     let chr = (e || window.event).charCode;
@@ -56,8 +56,10 @@ function loadImage(id, url) {
 
 function loadImages() {
   if (!interactive) makeInteractive();
-  loadImage("img-jpg", names[name_idx] + "?no-jxl");
-  loadImage("img-jxl", names[name_idx]);
+  let suffix = ".jpg";
+  if (window.location.search.includes('?progressive')) suffix = ".p" + suffix;
+  loadImage("img-jxl", names[name_idx] + suffix);
+  loadImage("img-jpg", names[name_idx] + suffix + "?no-jxl");
   name_idx = (name_idx + 1) % names.length;
 }
 
@@ -132,17 +134,17 @@ document.addEventListener("touchend", e => onTouchEnd(e), false);
 <div class="w3-row">
  <div class="w3-half w3-padding">
   <div class="w3-card">
-   <img id="img-jpg" style="width:100%">
+   <img id="img-jxl" style="width:100%">
    <div class="w3-container">
-    <h4 id="img-jpg-title">JPEG</h4>
+    <h4 id="img-jxl-title">JXL</h4>
    </div>
   </div>
  </div>
  <div class="w3-half w3-padding">
   <div class="w3-card">
-   <img id="img-jxl" style="width:100%">
+   <img id="img-jpg" style="width:100%">
    <div class="w3-container">
-    <h4 id="img-jxl-title">JXL</h4>
+    <h4 id="img-jpg-title">JPEG</h4>
    </div>
   </div>
  </div>
