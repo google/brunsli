@@ -232,7 +232,7 @@ function processJpeg(fileName, jpegData, jpegSize) {
   let brunsli = brunsliModule._JpegToBrunsli(jpegData, jpegSize);
   let t1 = performance.now();
   if (!brunsli) {
-    log('w3-text-red', text("JXL Recompression failed"));
+    log('w3-text-red', [text("JXL Recompression failed")]);
     return;
   }
   let brunsliData = brunsliModule._GetBrunsliData(brunsli);
