@@ -16,9 +16,6 @@
 
 namespace brunsli {
 
-/** This should be enough for kMaxContextMapAlphabetSize and max_bits=15. */
-static const size_t kMaxHuffmanTableSize = 646;
-
 static const int kCodeLengthCodes = 18;
 static const uint8_t kCodeLengthCodeOrder[kCodeLengthCodes] = {
     1, 2, 3, 4, 0, 5, 17, 6, 16, 7, 8, 9, 10, 11, 12, 13, 14, 15,
@@ -94,13 +91,16 @@ int ReadHuffmanCodeLengths(const uint8_t* code_length_code_lengths,
   return BrunsliBitReaderIsHealthy(br);
 }
 
-HuffmanDecodingData::HuffmanDecodingData() : table_(kMaxHuffmanTableSize) {}
-
-bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
-                                            BrunsliBitReader* br) {
+bool HuffmanDecodingData::ReadFromBitStream(
+    int alphabet_size, BrunsliBitReader* br,
+    Arena<HuffmanCode>* arena) {
   int ok = 1;
   int table_size = 0;
   int simple_code_or_skip;
+  Arena<HuffmanCode> local_arena;
+  if (arena == nullptr) arena = &local_arena;
+
+  if (alphabet_size > (1 << kMaxHuffmanBits)) return false;
 
   std::vector<uint8_t> code_lengths(alphabet_size, 0);
   /* simple_code_or_skip is used as follows:
@@ -182,8 +182,11 @@ bool HuffmanDecodingData::ReadFromBitStream(int alphabet_size,
     ++counts[code_lengths[i]];
   }
   if (ok) {
-    table_size = BuildHuffmanTable(table_.data(), kHuffmanTableBits,
+    arena->reserve(alphabet_size + 376);
+    table_size = BuildHuffmanTable(arena->data(), kHuffmanTableBits,
                                    &code_lengths[0], alphabet_size, &counts[0]);
+    table_ =
+        std::vector<HuffmanCode>(arena->data(), arena->data() + table_size);
   }
   return (table_size > 0);
 }

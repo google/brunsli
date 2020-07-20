@@ -62,7 +62,7 @@ class EntropyCodes {
   EntropyCodes(const std::vector<Histogram>& histograms, int num_bands,
                const std::vector<int>& offsets);
   // GCC declares it won't apply RVO, even if it actually does.
-  //EntropyCodes(const EntropyCodes&) = delete;
+  // EntropyCodes(const EntropyCodes&) = delete;
   void EncodeContextMap(Storage* storage) const;
   void BuildAndStoreEntropyCodes(Storage* storage);
   const ANSTable* GetANSTable(int context) const;
@@ -136,6 +136,7 @@ struct State {
 
   std::vector<ComponentMeta> meta;
   size_t num_contexts;
+  bool use_legacy_context_model = false;
 };
 
 // Encoder workflow:

@@ -7,7 +7,7 @@
 #include <brunsli/jpeg_data_writer.h>
 
 #include <cstdlib>
-#include <cstring>  /* for memset, memcpy */
+#include <cstring> /* for memset, memcpy */
 #include <deque>
 #include <string>
 #include <vector>
@@ -16,7 +16,6 @@
 #include <brunsli/jpeg_data.h>
 #include "../common/platform.h"
 #include <brunsli/types.h>
-#include "./jpeg_bit_writer.h"
 #include "./serialization_state.h"
 #include "./state.h"
 #include "./state_internal.h"
@@ -37,8 +36,199 @@ namespace {
 
 const int kJpegPrecision = 8;
 
+// BitWriter: buffer size
+const size_t kBitWriterChunkSize = 16384;
+
+// DCTCodingState: maximum number of correction bits to buffer
+const int kJPEGMaxCorrectionBits = 1u << 16;
+
 // Returns ceil(a/b).
-inline int DivCeil(int a, int b) { return (a + b - 1) / b; }
+static BRUNSLI_INLINE int DivCeil(int a, int b) { return (a + b - 1) / b; }
+
+// Returns non-zero if and only if x has a zero byte, i.e. one of
+// x & 0xff, x & 0xff00, ..., x & 0xff00000000000000 is zero.
+static BRUNSLI_INLINE uint64_t HasZeroByte(uint64_t x) {
+  return (x - 0x0101010101010101ULL) & ~x & 0x8080808080808080ULL;
+}
+
+void BitWriterInit(BitWriter* bw, std::deque<OutputChunk>* output_queue) {
+  bw->output = output_queue;
+  bw->chunk = OutputChunk(kBitWriterChunkSize);
+  bw->pos = 0;
+  bw->put_buffer = 0;
+  bw->put_bits = 64;
+  bw->healthy = true;
+  bw->data = bw->chunk.buffer->data();
+}
+
+static BRUNSLI_NOINLINE void SwapBuffer(BitWriter* bw) {
+  bw->chunk.len = bw->pos;
+  bw->output->emplace_back(std::move(bw->chunk));
+  bw->chunk = OutputChunk(kBitWriterChunkSize);
+  bw->data = bw->chunk.buffer->data();
+  bw->pos = 0;
+}
+
+static BRUNSLI_INLINE void Reserve(BitWriter* bw, size_t n_bytes) {
+  if (BRUNSLI_PREDICT_FALSE((bw->pos + n_bytes) > kBitWriterChunkSize)) {
+    SwapBuffer(bw);
+  }
+}
+
+/**
+ * Writes the given byte to the output, writes an extra zero if byte is 0xFF.
+ *
+ * This method is "careless" - caller must make sure that there is enough
+ * space in the output buffer. Emits up to 2 bytes to buffer.
+ */
+static BRUNSLI_INLINE void EmitByte(BitWriter* bw, int byte) {
+  bw->data[bw->pos++] = byte;
+  if (byte == 0xFF) bw->data[bw->pos++] = 0;
+}
+
+static BRUNSLI_INLINE void DischargeBitBuffer(BitWriter* bw) {
+  // At this point we are ready to emit the most significant 6 bytes of
+  // put_buffer_ to the output.
+  // The JPEG format requires that after every 0xff byte in the entropy
+  // coded section, there is a zero byte, therefore we first check if any of
+  // the 6 most significant bytes of put_buffer_ is 0xFF.
+  Reserve(bw, 12);
+  if (HasZeroByte(~bw->put_buffer | 0xFFFF)) {
+    // We have a 0xFF byte somewhere, examine each byte and append a zero
+    // byte if necessary.
+    EmitByte(bw, (bw->put_buffer >> 56) & 0xFF);
+    EmitByte(bw, (bw->put_buffer >> 48) & 0xFF);
+    EmitByte(bw, (bw->put_buffer >> 40) & 0xFF);
+    EmitByte(bw, (bw->put_buffer >> 32) & 0xFF);
+    EmitByte(bw, (bw->put_buffer >> 24) & 0xFF);
+    EmitByte(bw, (bw->put_buffer >> 16) & 0xFF);
+  } else {
+    // We don't have any 0xFF bytes, output all 6 bytes without checking.
+    bw->data[bw->pos] = (bw->put_buffer >> 56) & 0xFF;
+    bw->data[bw->pos + 1] = (bw->put_buffer >> 48) & 0xFF;
+    bw->data[bw->pos + 2] = (bw->put_buffer >> 40) & 0xFF;
+    bw->data[bw->pos + 3] = (bw->put_buffer >> 32) & 0xFF;
+    bw->data[bw->pos + 4] = (bw->put_buffer >> 24) & 0xFF;
+    bw->data[bw->pos + 5] = (bw->put_buffer >> 16) & 0xFF;
+    bw->pos += 6;
+  }
+  bw->put_buffer <<= 48;
+  bw->put_bits += 48;
+}
+
+static BRUNSLI_INLINE void WriteBits(BitWriter* bw, int nbits, uint64_t bits) {
+  // This is an optimization; if everything goes well,
+  // then |nbits| is positive; if non-existing Huffman symbol is going to be
+  // encoded, its length should be zero; later encoder could check the
+  // "health" of BitWriter.
+  if (nbits == 0) {
+    bw->healthy = false;
+    return;
+  }
+  bw->put_bits -= nbits;
+  bw->put_buffer |= (bits << bw->put_bits);
+  if (bw->put_bits <= 16) DischargeBitBuffer(bw);
+}
+
+void EmitMarker(BitWriter* bw, int marker) {
+  Reserve(bw, 2);
+  BRUNSLI_DCHECK(marker != 0xFF);
+  bw->data[bw->pos++] = 0xFF;
+  bw->data[bw->pos++] = marker;
+}
+
+bool JumpToByteBoundary(BitWriter* bw, const int** pad_bits,
+                        const int* pad_bits_end) {
+  size_t n_bits = bw->put_bits & 7u;
+  uint8_t pad_pattern;
+  if (*pad_bits == nullptr) {
+    pad_pattern = (1u << n_bits) - 1;
+  } else {
+    pad_pattern = 0;
+    const int* src = *pad_bits;
+    // TODO(eustas): bitwise reading looks insanely ineffective...
+    while (n_bits--) {
+      pad_pattern <<= 1;
+      if (src >= pad_bits_end) return false;
+      // TODO(eustas): DCHECK *src == {0, 1}
+      pad_pattern |= !!*(src++);
+    }
+    *pad_bits = src;
+  }
+
+  Reserve(bw, 16);
+
+  while (bw->put_bits <= 56) {
+    int c = (bw->put_buffer >> 56) & 0xFF;
+    EmitByte(bw, c);
+    bw->put_buffer <<= 8;
+    bw->put_bits += 8;
+  }
+  if (bw->put_bits < 64) {
+    int pad_mask = 0xFFu >> (64 - bw->put_bits);
+    int c = ((bw->put_buffer >> 56) & ~pad_mask) | pad_pattern;
+    EmitByte(bw, c);
+  }
+  bw->put_buffer = 0;
+  bw->put_bits = 64;
+
+  return true;
+}
+
+void BitWriterFinish(BitWriter* bw) {
+  if (bw->pos == 0) return;
+  bw->chunk.len = bw->pos;
+  bw->output->emplace_back(std::move(bw->chunk));
+  bw->chunk = OutputChunk(nullptr, 0);
+  bw->data = nullptr;
+  bw->pos = 0;
+}
+
+void DCTCodingStateInit(DCTCodingState* s) {
+  s->eob_run_ = 0;
+  s->cur_ac_huff_ = nullptr;
+  s->refinement_bits_.clear();
+  s->refinement_bits_.reserve(kJPEGMaxCorrectionBits);
+}
+
+// Emit all buffered data to the bit stream using the given Huffman code and
+// bit writer.
+static BRUNSLI_INLINE void Flush(DCTCodingState* s, BitWriter* bw) {
+  if (s->eob_run_ > 0) {
+    int nbits = Log2FloorNonZero(s->eob_run_);
+    int symbol = nbits << 4u;
+    WriteBits(bw, s->cur_ac_huff_->depth[symbol],
+              s->cur_ac_huff_->code[symbol]);
+    if (nbits > 0) {
+      WriteBits(bw, nbits, s->eob_run_ & ((1 << nbits) - 1));
+    }
+    s->eob_run_ = 0;
+  }
+  for (size_t i = 0; i < s->refinement_bits_.size(); ++i) {
+    WriteBits(bw, 1, s->refinement_bits_[i]);
+  }
+  s->refinement_bits_.clear();
+}
+
+// Buffer some more data at the end-of-band (the last non-zero or newly
+// non-zero coefficient within the [Ss, Se] spectral band).
+static BRUNSLI_INLINE void BufferEndOfBand(DCTCodingState* s,
+                                           const HuffmanCodeTable* ac_huff,
+                                           const std::vector<int>* new_bits,
+                                           BitWriter* bw) {
+  if (s->eob_run_ == 0) {
+    s->cur_ac_huff_ = ac_huff;
+  }
+  ++s->eob_run_;
+  if (new_bits) {
+    s->refinement_bits_.insert(s->refinement_bits_.end(), new_bits->begin(),
+                               new_bits->end());
+  }
+  if (s->eob_run_ == 0x7FFF ||
+      s->refinement_bits_.size() > kJPEGMaxCorrectionBits - kDCTBlockSize + 1) {
+    Flush(s, bw);
+  }
+}
 
 bool BuildHuffmanCodeTable(const JPEGHuffmanCode& huff,
                            HuffmanCodeTable* table) {
@@ -297,9 +487,9 @@ bool EncodeDCTBlockSequential(const coeff_t* coeffs,
     temp2--;
   }
   int dc_nbits = (temp == 0) ? 0 : (Log2FloorNonZero(temp) + 1);
-  bw->WriteBits(dc_huff.depth[dc_nbits], dc_huff.code[dc_nbits]);
+  WriteBits(bw, dc_huff.depth[dc_nbits], dc_huff.code[dc_nbits]);
   if (dc_nbits > 0) {
-    bw->WriteBits(dc_nbits, temp2 & ((1u << dc_nbits) - 1));
+    WriteBits(bw, dc_nbits, temp2 & ((1u << dc_nbits) - 1));
   }
   int r = 0;
   for (int k = 1; k < 64; ++k) {
@@ -314,21 +504,21 @@ bool EncodeDCTBlockSequential(const coeff_t* coeffs,
       temp2 = temp;
     }
     while (r > 15) {
-      bw->WriteBits(ac_huff.depth[0xf0], ac_huff.code[0xf0]);
+      WriteBits(bw, ac_huff.depth[0xf0], ac_huff.code[0xf0]);
       r -= 16;
     }
     int ac_nbits = Log2FloorNonZero(temp) + 1;
     int symbol = (r << 4u) + ac_nbits;
-    bw->WriteBits(ac_huff.depth[symbol], ac_huff.code[symbol]);
-    bw->WriteBits(ac_nbits, temp2 & ((1 << ac_nbits) - 1));
+    WriteBits(bw, ac_huff.depth[symbol], ac_huff.code[symbol]);
+    WriteBits(bw, ac_nbits, temp2 & ((1 << ac_nbits) - 1));
     r = 0;
   }
   for (int i = 0; i < num_zero_runs; ++i) {
-    bw->WriteBits(ac_huff.depth[0xf0], ac_huff.code[0xf0]);
+    WriteBits(bw, ac_huff.depth[0xf0], ac_huff.code[0xf0]);
     r -= 16;
   }
   if (r > 0) {
-    bw->WriteBits(ac_huff.depth[0], ac_huff.code[0]);
+    WriteBits(bw, ac_huff.depth[0], ac_huff.code[0]);
   }
   return true;
 }
@@ -352,9 +542,9 @@ bool EncodeDCTBlockProgressive(const coeff_t* coeffs,
       temp2--;
     }
     int nbits = (temp == 0) ? 0 : (Log2FloorNonZero(temp) + 1);
-    bw->WriteBits(dc_huff.depth[nbits], dc_huff.code[nbits]);
+    WriteBits(bw, dc_huff.depth[nbits], dc_huff.code[nbits]);
     if (nbits > 0) {
-      bw->WriteBits(nbits, temp2 & ((1 << nbits) - 1));
+      WriteBits(bw, nbits, temp2 & ((1 << nbits) - 1));
     }
     ++Ss;
   }
@@ -379,28 +569,28 @@ bool EncodeDCTBlockProgressive(const coeff_t* coeffs,
       r++;
       continue;
     }
-    coding_state->Flush(bw);
+    Flush(coding_state, bw);
     while (r > 15) {
-      bw->WriteBits(ac_huff.depth[0xf0], ac_huff.code[0xf0]);
+      WriteBits(bw, ac_huff.depth[0xf0], ac_huff.code[0xf0]);
       r -= 16;
     }
     int nbits = Log2FloorNonZero(temp) + 1;
     int symbol = (r << 4u) + nbits;
-    bw->WriteBits(ac_huff.depth[symbol], ac_huff.code[symbol]);
-    bw->WriteBits(nbits, temp2 & ((1 << nbits) - 1));
+    WriteBits(bw, ac_huff.depth[symbol], ac_huff.code[symbol]);
+    WriteBits(bw, nbits, temp2 & ((1 << nbits) - 1));
     r = 0;
   }
   if (num_zero_runs > 0) {
-    coding_state->Flush(bw);
+    Flush(coding_state, bw);
     for (int i = 0; i < num_zero_runs; ++i) {
-      bw->WriteBits(ac_huff.depth[0xf0], ac_huff.code[0xf0]);
+      WriteBits(bw, ac_huff.depth[0xf0], ac_huff.code[0xf0]);
       r -= 16;
     }
   }
   if (r > 0) {
-    coding_state->BufferEndOfBand(ac_huff, nullptr, bw);
+    BufferEndOfBand(coding_state, &ac_huff, nullptr, bw);
     if (!eob_run_allowed) {
-      coding_state->Flush(bw);
+      Flush(coding_state, bw);
     }
   }
   return true;
@@ -412,7 +602,7 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
   bool eob_run_allowed = Ss > 0;
   if (Ss == 0) {
     // Emit next bit of DC component.
-    bw->WriteBits(1, (coeffs[0] >> Al) & 1);
+    WriteBits(bw, 1, (coeffs[0] >> Al) & 1);
     ++Ss;
   }
   if (Ss > Se) {
@@ -436,11 +626,11 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
       continue;
     }
     while (r > 15 && k <= eob) {
-      coding_state->Flush(bw);
-      bw->WriteBits(ac_huff.depth[0xf0], ac_huff.code[0xf0]);
+      Flush(coding_state, bw);
+      WriteBits(bw, ac_huff.depth[0xf0], ac_huff.code[0xf0]);
       r -= 16;
       for (int bit : refinement_bits) {
-        bw->WriteBits(1, bit);
+        WriteBits(bw, 1, bit);
       }
       refinement_bits.clear();
     }
@@ -448,28 +638,30 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
       refinement_bits.push_back(abs_values[k] & 1u);
       continue;
     }
-    coding_state->Flush(bw);
+    Flush(coding_state, bw);
     int symbol = (r << 4u) + 1;
     int new_non_zero_bit = (coeffs[kJPEGNaturalOrder[k]] < 0) ? 0 : 1;
-    bw->WriteBits(ac_huff.depth[symbol], ac_huff.code[symbol]);
-    bw->WriteBits(1, new_non_zero_bit);
+    WriteBits(bw, ac_huff.depth[symbol], ac_huff.code[symbol]);
+    WriteBits(bw, 1, new_non_zero_bit);
     for (int bit : refinement_bits) {
-      bw->WriteBits(1, bit);
+      WriteBits(bw, 1, bit);
     }
     refinement_bits.clear();
     r = 0;
   }
   if (r > 0 || !refinement_bits.empty()) {
-    coding_state->BufferEndOfBand(ac_huff, &refinement_bits, bw);
+    BufferEndOfBand(coding_state, &ac_huff, &refinement_bits, bw);
     if (!eob_run_allowed) {
-      coding_state->Flush(bw);
+      Flush(coding_state, bw);
     }
   }
   return true;
 }
 
-SerializationStatus EncodeScan(const JPEGData& jpg, const State& parsing_state,
-                               SerializationState* state) {
+template <int kMode>
+SerializationStatus BRUNSLI_NOINLINE DoEncodeScan(const JPEGData& jpg,
+                                                  const State& parsing_state,
+                                                  SerializationState* state) {
   const JPEGScanInfo& scan_info = jpg.scan_info[state->scan_index];
   EncodeScanState& ss = state->scan_state;
 
@@ -486,8 +678,8 @@ SerializationStatus EncodeScan(const JPEGData& jpg, const State& parsing_state,
 
   if (ss.stage == EncodeScanState::HEAD) {
     if (!EncodeSOS(jpg, scan_info, state)) return SerializationStatus::ERROR;
-    ss.bw.Init(&state->output_queue);
-    ss.coding_state.Init();
+    BitWriterInit(&ss.bw, &state->output_queue);
+    DCTCodingStateInit(&ss.coding_state);
     ss.restarts_to_go = restart_interval;
     ss.next_restart_marker = 0;
     ss.block_scan_index = 0;
@@ -519,11 +711,8 @@ SerializationStatus EncodeScan(const JPEGData& jpg, const State& parsing_state,
   const int MCU_rows = DivCeil(jpg.height * v_group, 8 * jpg.max_v_samp_factor);
   const bool is_progressive = state->is_progressive;
   const int Al = is_progressive ? scan_info.Al : 0;
-  const int Ah = is_progressive ? scan_info.Ah : 0;
   const int Ss = is_progressive ? scan_info.Ss : 0;
   const int Se = is_progressive ? scan_info.Se : 63;
-  const bool need_sequential =
-      !is_progressive || (Ah == 0 && Al == 0 && Ss == 0 && Se == 63);
 
   // DC-only is defined by [0..0] spectral range.
   const bool want_ac = ((Ss != 0) || (Se != 0));
@@ -546,11 +735,11 @@ SerializationStatus EncodeScan(const JPEGData& jpg, const State& parsing_state,
     for (int mcu_x = 0; mcu_x < MCUs_per_row; ++mcu_x) {
       // Possibly emit a restart marker.
       if (restart_interval > 0 && ss.restarts_to_go == 0) {
-        coding_state->Flush(bw);
-        if (!bw->JumpToByteBoundary(&state->pad_bits, state->pad_bits_end)) {
+        Flush(coding_state, bw);
+        if (!JumpToByteBoundary(bw, &state->pad_bits, state->pad_bits_end)) {
           return SerializationStatus::ERROR;
         }
-        bw->EmitMarker(0xD0 + ss.next_restart_marker);
+        EmitMarker(bw, 0xD0 + ss.next_restart_marker);
         ss.next_restart_marker += 1;
         ss.next_restart_marker &= 0x7;
         ss.restarts_to_go = restart_interval;
@@ -571,7 +760,7 @@ SerializationStatus EncodeScan(const JPEGData& jpg, const State& parsing_state,
             int block_idx = block_y * c.width_in_blocks + block_x;
             if (scan_info.reset_points.find(ss.block_scan_index) !=
                 scan_info.reset_points.end()) {
-              coding_state->Flush(bw);
+              Flush(coding_state, bw);
             }
             int num_zero_runs = 0;
             if (ss.block_scan_index == ss.next_extra_zero_run_index) {
@@ -582,11 +771,11 @@ SerializationStatus EncodeScan(const JPEGData& jpg, const State& parsing_state,
             }
             const coeff_t* coeffs = &c.coeffs[block_idx << 6];
             bool ok;
-            if (need_sequential) {
+            if (kMode == 0) {
               ok = EncodeDCTBlockSequential(coeffs, dc_huff, ac_huff,
                                             num_zero_runs,
                                             ss.last_dc_coeff + si.comp_idx, bw);
-            } else if (Ah == 0) {
+            } else if (kMode == 1) {
               ok = EncodeDCTBlockProgressive(
                   coeffs, dc_huff, ac_huff, Ss, Se, Al, num_zero_runs,
                   coding_state, ss.last_dc_coeff + si.comp_idx, bw);
@@ -603,25 +792,45 @@ SerializationStatus EncodeScan(const JPEGData& jpg, const State& parsing_state,
     }
   }
   if (ss.mcu_y < MCU_rows) {
-    if (!bw->IsHealthy()) return SerializationStatus::ERROR;
+    if (!bw->healthy) return SerializationStatus::ERROR;
     return SerializationStatus::NEEDS_MORE_INPUT;
   }
-  coding_state->Flush(bw);
-  if (!bw->JumpToByteBoundary(&state->pad_bits, state->pad_bits_end)) {
+  Flush(coding_state, bw);
+  if (!JumpToByteBoundary(bw, &state->pad_bits, state->pad_bits_end)) {
     return SerializationStatus::ERROR;
   }
-  bw->Finish();
+  BitWriterFinish(bw);
   ss.stage = EncodeScanState::HEAD;
   state->scan_index++;
-  if (!bw->IsHealthy()) return SerializationStatus::ERROR;
+  if (!bw->healthy) return SerializationStatus::ERROR;
 
   return SerializationStatus::DONE;
+}
+
+static SerializationStatus BRUNSLI_INLINE
+EncodeScan(const JPEGData& jpg, const State& parsing_state,
+           SerializationState* state) {
+  const JPEGScanInfo& scan_info = jpg.scan_info[state->scan_index];
+  const bool is_progressive = state->is_progressive;
+  const int Al = is_progressive ? scan_info.Al : 0;
+  const int Ah = is_progressive ? scan_info.Ah : 0;
+  const int Ss = is_progressive ? scan_info.Ss : 0;
+  const int Se = is_progressive ? scan_info.Se : 63;
+  const bool need_sequential =
+      !is_progressive || (Ah == 0 && Al == 0 && Ss == 0 && Se == 63);
+  if (need_sequential) {
+    return DoEncodeScan<0>(jpg, parsing_state, state);
+  } else if (Ah == 0) {
+    return DoEncodeScan<1>(jpg, parsing_state, state);
+  } else {
+    return DoEncodeScan<2>(jpg, parsing_state, state);
+  }
 }
 
 SerializationStatus SerializeSection(uint8_t marker, const State& parsing_state,
                                      SerializationState* state,
                                      const JPEGData& jpg) {
-  const auto to_status = [] (bool result) {
+  const auto to_status = [](bool result) {
     return result ? SerializationStatus::DONE : SerializationStatus::ERROR;
   };
   // TODO(eustas): add and use marker enum
@@ -734,7 +943,7 @@ SerializationStatus SerializeJpeg(State* state, const JPEGData& jpg,
                                   size_t* available_out, uint8_t** next_out) {
   SerializationState& ss = state->internal->serialization;
 
-  const auto maybe_push_output = [&] () {
+  const auto maybe_push_output = [&]() {
     if (ss.stage != SerializationState::ERROR) {
       PushOutput(&ss.output_queue, available_out, next_out);
     }
@@ -768,6 +977,12 @@ SerializationStatus SerializeJpeg(State* state, const JPEGData& jpg,
           //               push complete output.
           ss.output_queue.emplace_back(jpg.original_jpg, jpg.original_jpg_size);
           ss.stage = SerializationState::DONE;
+          break;
+        }
+
+        // Invalid mode - fallback + something else.
+        if (jpg.version & 1) {
+          ss.stage = SerializationState::ERROR;
           break;
         }
 

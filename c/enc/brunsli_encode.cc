@@ -799,12 +799,18 @@ static void EncodeValue(uint8_t tag, size_t value, uint8_t* data, size_t* pos) {
 bool EncodeHeader(const JPEGData& jpg, State* state, uint8_t* data,
                   size_t* len) {
   BRUNSLI_UNUSED(state);
-  if ((jpg.version != 1 && (jpg.width == 0 || jpg.height == 0)) ||
+  size_t version = jpg.version;
+  bool is_fallback = (version & 1);
+  // Fallback can not be combined with anything else.
+  if (is_fallback && (version != 1)) return false;
+  // Non-fallback image can not be empty.
+  if ((!is_fallback && (jpg.width == 0 || jpg.height == 0)) ||
       jpg.components.empty() || jpg.components.size() > kMaxComponents) {
     return false;
   }
+  // Only 3 bits are defined.
+  if (version & ~7u) return false;
 
-  size_t version = jpg.version;
   size_t version_comp = (jpg.components.size() - 1) | (version << 2);
   size_t subsampling = FrameTypeCode(jpg);
 
@@ -1156,6 +1162,8 @@ void EncodeAC(State* state) {
   const int mcu_rows = meta[0].height_in_blocks / meta[0].v_samp;
   EntropySource& entropy_source = state->entropy_source;
   DataStream& data_stream = state->data_stream_ac;
+  const uint8_t* context_modes =
+      kContextAlgorithm + (state->use_legacy_context_model ? 64 : 0);
 
   int num_code_words = 0;
   int total_num_blocks = 0;
@@ -1249,7 +1257,7 @@ void EncodeAC(State* state) {
               const int absval = sign ? -coeff : coeff;
 
               const int k_nat = cur_order[k];
-              const int context_type = kContextType[k_nat];
+              const int context_type = context_modes[k_nat];
               int avrg_ctx = 0;
               int sign_ctx = kMaxAverageContext;
               if ((context_type & 1) && (y > 0)) {
@@ -1266,7 +1274,7 @@ void EncodeAC(State* state) {
                       prev_col_coeffs + offset, encoded_coeffs + offset,
                       &c->mult_row[offset], &avrg_ctx, &sign_ctx);
                 }
-              } else if (context_type & 4) {
+              } else if (!context_type) {
                 avrg_ctx = WeightedAverageContext(prev_abs + k, prev_row_delta);
                 sign_ctx = prev_sgn[k] * 3 + prev_sgn[k - kDCTBlockSize];
               }
@@ -1335,51 +1343,53 @@ bool BrunsliSerialize(State* state, const JPEGData& jpg, uint32_t skip_sections,
   // TODO(eustas): refactor to remove repetitive params.
   bool ok = true;
 
+  const auto encode_section = [&](uint8_t tag, EncodeSectionDataFn fn,
+                                  size_t size) {
+    return EncodeSection(jpg, state, tag, fn, size, *len, data, &pos);
+  };
+
   if (!(skip_sections & (1u << kBrunsliSignatureTag))) {
     ok = EncodeSignature(*len, data, &pos);
     if (!ok) return false;
   }
 
   if (!(skip_sections & (1u << kBrunsliHeaderTag))) {
-    ok = EncodeSection(jpg, NULL, kBrunsliHeaderTag, EncodeHeader, 1, *len,
-                       data, &pos);
+    ok = encode_section(kBrunsliHeaderTag, EncodeHeader, 1);
     if (!ok) return false;
   }
 
   if (!(skip_sections & (1u << kBrunsliJPEGInternalsTag))) {
-    ok = EncodeSection(jpg, NULL, kBrunsliJPEGInternalsTag, EncodeJPEGInternals,
-                       Base128Size(EstimateAuxDataSize(jpg)), *len, data, &pos);
+    ok = encode_section(kBrunsliJPEGInternalsTag, EncodeJPEGInternals,
+                        Base128Size(EstimateAuxDataSize(jpg)));
     if (!ok) return false;
   }
 
   if (!(skip_sections & (1u << kBrunsliMetaDataTag))) {
-    ok = EncodeSection(jpg, NULL, kBrunsliMetaDataTag, EncodeMetaData,
-                       Base128Size(*len - pos), *len, data, &pos);
+    ok = encode_section(kBrunsliMetaDataTag, EncodeMetaData,
+                        Base128Size(*len - pos));
     if (!ok) return false;
   }
 
   if (!(skip_sections & (1u << kBrunsliQuantDataTag))) {
-    ok = EncodeSection(jpg, NULL, kBrunsliQuantDataTag, EncodeQuantData, 2,
-                       *len, data, &pos);
+    ok = encode_section(kBrunsliQuantDataTag, EncodeQuantData, 2);
     if (!ok) return false;
   }
 
   if (!(skip_sections & (1u << kBrunsliHistogramDataTag))) {
-    ok =
-        EncodeSection(jpg, state, kBrunsliHistogramDataTag, EncodeHistogramData,
-                      Base128Size(*len - pos), *len, data, &pos);
+    ok = encode_section(kBrunsliHistogramDataTag, EncodeHistogramData,
+                        Base128Size(*len - pos));
     if (!ok) return false;
   }
 
   if (!(skip_sections & (1u << kBrunsliDCDataTag))) {
-    ok = EncodeSection(jpg, state, kBrunsliDCDataTag, EncodeDCData,
-                       Base128Size(*len - pos), *len, data, &pos);
+    ok = encode_section(kBrunsliDCDataTag, EncodeDCData,
+                        Base128Size(*len - pos));
     if (!ok) return false;
   }
 
   if (!(skip_sections & (1u << kBrunsliACDataTag))) {
-    ok = EncodeSection(jpg, state, kBrunsliACDataTag, EncodeACData,
-                       Base128Size(*len - pos), *len, data, &pos);
+    ok = encode_section(kBrunsliACDataTag, EncodeACData,
+                        Base128Size(*len - pos));
     if (!ok) return false;
   }
 
@@ -1398,6 +1408,7 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg, uint8_t* data, size_t* len) {
   State state;
   std::vector<ComponentMeta>& meta = state.meta;
   size_t num_components = jpg.components.size();
+  state.use_legacy_context_model = !(jpg.version & 2);
 
   if (!CalculateMeta(jpg, &state)) return false;
   // Groups workflow: update width_in_blocks, height_in_blocks, ac_coeffs.
@@ -1482,11 +1493,15 @@ bool BrunsliEncodeJpegBypass(const uint8_t* jpg_data, size_t jpg_data_len,
   jpg.version = 1;
   jpg.original_jpg = jpg_data;
   jpg.original_jpg_size = jpg_data_len;
-  if (!EncodeSection(jpg, NULL, kBrunsliHeaderTag, EncodeHeader, 1, *len, data,
-                     &pos)) {
+
+  // TODO(eustas): could use simpler serialization here
+  State state;
+
+  if (!EncodeSection(jpg, &state, kBrunsliHeaderTag, EncodeHeader,
+                     1, *len, data, &pos)) {
     return false;
   }
-  if (!EncodeSection(jpg, NULL, kBrunsliOriginalJpgTag, EncodeOriginalJpg,
+  if (!EncodeSection(jpg, &state, kBrunsliOriginalJpgTag, EncodeOriginalJpg,
                      Base128Size(jpg_data_len), *len, data, &pos)) {
     return false;
   }

@@ -30,7 +30,7 @@ size_t GetBrunsliBypassSize(size_t jpg_size);
 // Bypass mode: store the JPEG data directly into brunsli format. *len should
 // contain the maximum storage space available. Upon return, *len is updated to
 // the actual size used in 'data'.
-bool BrunsliEncodeJpegBypass(const uint8_t* jpg_data, size_t jpg_len,
+bool BrunsliEncodeJpegBypass(const uint8_t* jpg_data, size_t jpg_data_len,
                              uint8_t* data, size_t* len);
 
 }  // namespace brunsli

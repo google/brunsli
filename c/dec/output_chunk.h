@@ -48,7 +48,7 @@ struct OutputChunk {
   OutputChunk(const uint8_t* data, size_t size) : next(data), len(size) {}
 
   // Owning
-  OutputChunk(size_t size) {
+  explicit OutputChunk(size_t size = 0) {
     buffer.reset(new std::vector<uint8_t>(size));
     next = buffer->data();
     len = size;

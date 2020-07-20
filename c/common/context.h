@@ -135,17 +135,26 @@ static const uint16_t kNumNonzeroContextSkip[kNumSchemes] = {8,   15,  31, 61,
  * Each value corresponds to DCT coefficient and is a sum of flags:
  *  - 1: context should be calculated using ACPredictContextRow
  *  - 2: context should be calculated using ACPredictContextCol
- *  - 4: context should be calculated using WeightedAverageContext
  */
-static const uint8_t kContextType[64] = {
+static const uint8_t kContextAlgorithm[128] = {
+    // JPEG XL layout
+    0, 1, 1, 1, 1, 0, 0, 0,  //
+    2, 3, 1, 1, 1, 0, 0, 0,  //
+    2, 2, 0, 0, 0, 0, 0, 0,  //
+    2, 2, 0, 0, 0, 0, 0, 0,  //
+    2, 2, 0, 0, 0, 0, 0, 0,  //
+    0, 0, 0, 0, 0, 0, 0, 0,  //
+    0, 0, 0, 0, 0, 0, 0, 0,  //
+    0, 0, 0, 0, 0, 0, 0, 0,
+    // Legacy layout
     0, 1, 1, 1, 1, 1, 1, 1,  //
-    2, 4, 4, 4, 4, 4, 4, 4,  //
-    2, 4, 4, 4, 4, 4, 4, 4,  //
-    2, 4, 4, 4, 4, 4, 4, 4,  //
-    2, 4, 4, 4, 4, 4, 4, 4,  //
-    2, 4, 4, 4, 4, 4, 4, 4,  //
-    2, 4, 4, 4, 4, 4, 4, 4,  //
-    2, 4, 4, 4, 4, 4, 4, 4,
+    2, 0, 0, 0, 0, 0, 0, 0,  //
+    2, 0, 0, 0, 0, 0, 0, 0,  //
+    2, 0, 0, 0, 0, 0, 0, 0,  //
+    2, 0, 0, 0, 0, 0, 0, 0,  //
+    2, 0, 0, 0, 0, 0, 0, 0,  //
+    2, 0, 0, 0, 0, 0, 0, 0,  //
+    2, 0, 0, 0, 0, 0, 0, 0,
 };
 
 inline int ZeroDensityContext(int nonzeros_left, int k, int bits) {

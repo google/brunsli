@@ -29,6 +29,7 @@
 #include "./brunsli_input.h"
 #include "./context_map_decode.h"
 #include "./histogram_decode.h"
+#include "./huffman_table.h"
 #include <brunsli/jpeg_data_writer.h>
 #include "./state.h"
 #include "./state_internal.h"
@@ -763,6 +764,7 @@ struct AcBlockCookie {
   const coeff_t* BRUNSLI_RESTRICT prev_col_coeffs;
   Prob* BRUNSLI_RESTRICT is_zero_prob;
   const uint32_t* BRUNSLI_RESTRICT order;
+  const uint8_t* BRUNSLI_RESTRICT context_modes;
   const int* BRUNSLI_RESTRICT mult_col;
   const int* BRUNSLI_RESTRICT mult_row;
   int prev_row_delta;
@@ -803,7 +805,7 @@ static size_t BRUNSLI_NOINLINE DecodeAcBlock(const AcBlockCookie& cookie) {
     int sign = 1;
     const int k_nat = c.order[k];
     if (!is_zero) {
-      const int context_type = kContextType[k_nat];
+      const int context_type = c.context_modes[k_nat];
       int avg_ctx = 0;
       int sign_ctx = kMaxAverageContext;
       if ((context_type & 1) && (c.y > 0)) {
@@ -814,7 +816,7 @@ static size_t BRUNSLI_NOINLINE DecodeAcBlock(const AcBlockCookie& cookie) {
         size_t offset = k_nat & ~7;
         ACPredictContextCol(c.prev_col_coeffs + offset, c.coeffs + offset,
                             c.mult_row + offset, &avg_ctx, &sign_ctx);
-      } else if (context_type & 4) {
+      } else if (!context_type) {
         avg_ctx = WeightedAverageContext(c.prev_abs + k, c.prev_row_delta);
         sign_ctx =
             c.prev_sgn[k] * 3 + c.prev_sgn[static_cast<int>(k) - kDCTBlockSize];
@@ -898,6 +900,8 @@ BrunsliStatus DecodeAC(State* state, WordSource* in) {
   c.ans = &s.ans_decoder;
   c.br = &s.bit_reader;
   c.entropy_codes = state->entropy_codes;
+  c.context_modes =
+      kContextAlgorithm + (state->use_legacy_context_model ? 64 : 0);
 
   for (int mcu_y = ac_dc_state.next_mcu_y; mcu_y < mcu_rows; ++mcu_y) {
     for (size_t i = ac_dc_state.next_component; i < num_components; ++i) {
@@ -1191,11 +1195,17 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
           break;
         }
 
-        if (version != 0) {  // unknown mode
+        // Wrong mode = fallback + something.
+        if ((version & 1u) != 0) {
+          return Fail(state, BRUNSLI_INVALID_BRN);
+        }
+        // Unknown mode - only 3 bits are defined.
+        if ((version & ~0x7u) != 0) {
           return Fail(state, BRUNSLI_INVALID_BRN);
         }
 
-        // Otherwise version == 0 i.e. regular brunsli.
+        // Otherwise regular brunsli.
+        state->use_legacy_context_model = !(version & 2);
 
         // Do not allow "original_jpg" for regular Brunsli files.
         s.section.tags_met |= 1u << kBrunsliOriginalJpgTag;
@@ -1253,7 +1263,7 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
   }
 
   LeaveSection(&s.section);
-  return jpg->version == 1 ? Stage::FALLBACK : Stage::SECTION;
+  return (jpg->version == 1) ? Stage::FALLBACK : Stage::SECTION;
 }
 
 static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {
@@ -1789,6 +1799,10 @@ static BrunsliStatus DecodeHistogramDataSection(State* state, JPEGData* jpg) {
     BRUNSLI_DCHECK(!jpg->components.empty());
     s.num_contexts = jpg->components.size();
     hs.stage = HistogramDataState::READ_SCHEME;
+    /* Optimization: hint arena about maximal used alphabet size: 272.
+     * 648 = 272 + 376, where 376 is a "universal" overhead for max-15-bit
+     * root-8-bit 2-level Huffman tables. */
+    hs.arena.reserve(648);
   }
   PrepareBitReader(br, state);
   if (RemainingSectionLength(state) <= GetBytesAvailable(state)) {
@@ -1866,7 +1880,7 @@ static BrunsliStatus DecodeHistogramDataSection(State* state, JPEGData* jpg) {
     }
     size_t alphabet_size = s.num_histograms + hs.max_run_length_prefix;
     hs.entropy.reset(new HuffmanDecodingData);
-    if (!hs.entropy->ReadFromBitStream(alphabet_size, br)) {
+    if (!hs.entropy->ReadFromBitStream(alphabet_size, br, &hs.arena)) {
       return suspend_bit_reader(BRUNSLI_INVALID_BRN);
     }
     hs.i = 0;
@@ -1904,6 +1918,7 @@ static BrunsliStatus DecodeHistogramDataSection(State* state, JPEGData* jpg) {
     hs.stage = HistogramDataState::DONE;
   }
 
+  hs.arena.reset();
   BRUNSLI_DCHECK(hs.stage == HistogramDataState::DONE);
   return BRUNSLI_OK;
 }
@@ -2534,6 +2549,11 @@ BrunsliDecoder::Status BrunsliDecoder::Decode(size_t* available_in,
       return BrunsliDecoder::NEEDS_MORE_OUTPUT;
 
     case SerializationStatus::ERROR:
+      return BrunsliDecoder::ERROR;
+
+    default:
+      /* Unreachable */
+      BRUNSLI_DCHECK(false);
       return BrunsliDecoder::ERROR;
   }
 }

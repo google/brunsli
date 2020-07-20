@@ -82,6 +82,7 @@ class State {
   // "JPEGDecodingState" view.
   const uint8_t* context_map;
   const ANSDecodingData* entropy_codes;
+  bool use_legacy_context_model = false;
 
   bool is_storage_allocated = false;
   std::vector<ComponentMeta> meta;

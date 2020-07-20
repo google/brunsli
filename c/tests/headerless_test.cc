@@ -23,6 +23,7 @@ using ::brunsli::internal::dec::State;
 
 TEST(DecodeTest, TestHeaderless) {
   JPEGData jpg;
+  // Vanilla context modelling.
   jpg.version = 0;
   jpg.width = 16;
   jpg.height = 16;
@@ -41,6 +42,8 @@ TEST(DecodeTest, TestHeaderless) {
   size_t src_offset = kSmallBrunsliSignatuteSize + kSmallBrunsliHeaderSize;
 
   State state;
+  // Vanilla context modelling.
+  state.use_legacy_context_model = true;
   state.stage = Stage::SECTION;
   state.tags_met = (1 << kBrunsliSignatureTag) | (1 << kBrunsliHeaderTag) |
                    (1 << kBrunsliOriginalJpgTag);

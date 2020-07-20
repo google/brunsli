@@ -317,6 +317,7 @@ struct HistogramDataState {
   std::unique_ptr<HuffmanDecodingData> entropy;
   size_t i;
   std::vector<uint32_t> counts;
+  Arena<HuffmanCode> arena;
 };
 
 struct Buffer {

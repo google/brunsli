@@ -219,7 +219,7 @@ struct JPEGComponent {
 struct JPEGData {
   JPEGData() : width(0),
                height(0),
-               version(0),
+               version(2),  // Use new context modelling by default.
                max_h_samp_factor(1),
                max_v_samp_factor(1),
                MCU_rows(0),

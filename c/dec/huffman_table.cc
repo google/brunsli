@@ -7,6 +7,7 @@
 #include "./huffman_table.h"
 
 #include <cstring> /* for memcpy */
+#include <vector>
 
 #include "../common/constants.h"
 #include <brunsli/types.h>
@@ -49,9 +50,9 @@ static inline size_t NextTableBitSize(const uint16_t* const count, size_t len,
   return len - root_bits;
 }
 
-bool BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
-                       const uint8_t* const code_lengths,
-                       size_t code_lengths_size, uint16_t* count) {
+uint32_t BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
+                           const uint8_t* const code_lengths,
+                           size_t code_lengths_size, uint16_t* count) {
   HuffmanCode code;    /* current table entry */
   HuffmanCode* table;  /* next available space in table */
   size_t len;          /* current code length */
@@ -63,15 +64,15 @@ bool BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
   size_t table_bits;   /* key length of current table */
   int table_size;      /* size of current table */
   int total_size;      /* sum of root table size and 2nd level table sizes */
-  /* symbols sorted by code length */
-  int sorted[kMaxContextMapAlphabetSize];
   /* offsets in sorted table for each length */
   uint16_t offset[kMaxHuffmanBits + 1];
   size_t max_length = 1;
 
-  if (code_lengths_size > kMaxContextMapAlphabetSize) {
-    return 0;
-  }
+  if (code_lengths_size > 1u << kMaxHuffmanBits) return 0;
+
+  /* symbols sorted by code length */
+  std::vector<uint16_t> sorted_storage(code_lengths_size);
+  uint16_t* sorted = sorted_storage.data();
 
   /* generate offsets into sorted symbol table by code length */
   {

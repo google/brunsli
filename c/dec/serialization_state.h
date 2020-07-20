@@ -10,7 +10,6 @@
 #include <deque>
 #include <vector>
 
-#include "./jpeg_bit_writer.h"
 #include <brunsli/jpeg_data.h>
 #include <brunsli/types.h>
 #include "./output_chunk.h"
@@ -25,59 +24,19 @@ struct HuffmanCodeTable {
 namespace internal {
 namespace dec {
 
-// Maximum number of correction bits to buffer.
-const int kJPEGMaxCorrectionBits = 1u << 16;
+// Handles the packing of bits into output bytes.
+struct BitWriter {
+  bool healthy;
+  std::deque<OutputChunk>* output;
+  OutputChunk chunk;
+  uint8_t* data;
+  size_t pos;
+  uint64_t put_buffer;
+  int put_bits;
+};
 
 // Holds data that is buffered between 8x8 blocks in progressive mode.
-class DCTCodingState {
- public:
-  DCTCodingState() {
-    refinement_bits_.reserve(kJPEGMaxCorrectionBits);
-  }
-
-  void Init() {
-    eob_run_ = 0;
-    cur_ac_huff_ = nullptr;
-    refinement_bits_.clear();
-  }
-
-  // Emit all buffered data to the bit stream using the given Huffman code and
-  // bit writer.
-  void Flush(BitWriter* bw) {
-    if (eob_run_ > 0) {
-      int nbits = Log2FloorNonZero(eob_run_);
-      int symbol = nbits << 4u;
-      bw->WriteBits(cur_ac_huff_->depth[symbol], cur_ac_huff_->code[symbol]);
-      if (nbits > 0) {
-        bw->WriteBits(nbits, eob_run_ & ((1 << nbits) - 1));
-      }
-      eob_run_ = 0;
-    }
-    for (size_t i = 0; i < refinement_bits_.size(); ++i) {
-      bw->WriteBits(1, refinement_bits_[i]);
-    }
-    refinement_bits_.clear();
-  }
-
-  // Buffer some more data at the end-of-band (the last non-zero or newly
-  // non-zero coefficient within the [Ss, Se] spectral band).
-  void BufferEndOfBand(const HuffmanCodeTable& ac_huff,
-                       const std::vector<int>* new_bits, BitWriter* bw) {
-    if (eob_run_ == 0) {
-      cur_ac_huff_ = &ac_huff;
-    }
-    ++eob_run_;
-    if (new_bits) {
-      refinement_bits_.insert(refinement_bits_.end(), new_bits->begin(),
-                              new_bits->end());
-    }
-    if (eob_run_ == 0x7fff ||
-        refinement_bits_.size() > kJPEGMaxCorrectionBits - kDCTBlockSize + 1) {
-      Flush(bw);
-    }
-  }
-
- private:
+struct DCTCodingState {
   // The run length of end-of-band symbols in a progressive scan.
   int eob_run_;
   // The huffman table to be used when flushing the state.
