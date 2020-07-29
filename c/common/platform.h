@@ -23,6 +23,7 @@
 #include <iomanip>
 #include <ios>
 #include <iostream>
+#include <vector>
 
 // Implicitly enable BRUNSLI_DEBUG when sanitizers are on.
 #if !defined(BRUNSLI_DEBUG) && (BRUNSLI_SANITIZED || !defined(NDEBUG))
@@ -509,6 +510,18 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 
 namespace brunsli {
 void BrunsliDumpAndAbort(const char* f, int l, const char* fn);
+static BRUNSLI_INLINE void Append(std::vector<uint8_t>* dst,
+                                  const uint8_t* begin, const uint8_t* end) {
+  dst->insert(dst->end(), begin, end);
+}
+static BRUNSLI_INLINE void Append(std::vector<uint8_t>* dst,
+                                  const uint8_t* begin, size_t length) {
+  Append(dst, begin, begin + length);
+}
+static BRUNSLI_INLINE void Append(std::vector<uint8_t>* dst,
+                                  const std::vector<uint8_t>& src) {
+  Append(dst, src.data(), src.size());
+}
 }  // namespace brunsli
 
 // TODO(eustas): use "predict false" to move the code out of hot path.
@@ -540,6 +553,9 @@ inline int Log2FloorNonZero(uint32_t n) {
 #define BRUNSLI_UNUSED(X) (void)(X)
 
 BRUNSLI_UNUSED_FUNCTION void BrunsliSuppressUnusedFunctions(void) {
+  BRUNSLI_UNUSED(
+      static_cast<void (*)(std::vector<uint8_t>*, const std::vector<uint8_t>&)>(
+          &brunsli::Append));
   BRUNSLI_UNUSED(&BrunsliSuppressUnusedFunctions);
   BRUNSLI_UNUSED(&BrunsliUnalignedRead16);
   BRUNSLI_UNUSED(&BrunsliUnalignedWrite16);

@@ -323,6 +323,7 @@ static const uint8_t kDefaultACValues[256] = {
 };
 
 // Common app-data chunks
+extern const uint8_t AppData_0xe0[17];
 extern const uint8_t AppData_0xe2[3161];  // special byte at offset 84
 extern const uint8_t AppData_0xec[18];    // special byte at offset 15
 extern const uint8_t AppData_0xee[15];    // special byte at offset 10

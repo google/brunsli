@@ -313,7 +313,7 @@ bool EncodeSOF(const JPEGData& jpg, uint8_t marker, SerializationState* state) {
 
 bool EncodeSOS(const JPEGData& jpg, const JPEGScanInfo& scan_info,
                SerializationState* state) {
-  const size_t n_scans = scan_info.components.size();
+  const size_t n_scans = scan_info.num_components;
   const size_t marker_len = 6 + 2 * n_scans;
   state->output_queue.emplace_back(marker_len + 2);
   uint8_t* data = state->output_queue.back().buffer->data();
@@ -668,9 +668,17 @@ SerializationStatus BRUNSLI_NOINLINE DoEncodeScan(const JPEGData& jpg,
   const int restart_interval =
       state->seen_dri_marker ? jpg.restart_interval : 0;
 
-  const auto get_next_extra_zero_run_index = [&ss, &scan_info]() {
+  const auto get_next_extra_zero_run_index = [&ss, &scan_info]() -> int {
     if (ss.extra_zero_runs_pos < scan_info.extra_zero_runs.size()) {
       return scan_info.extra_zero_runs[ss.extra_zero_runs_pos].block_idx;
+    } else {
+      return -1;
+    }
+  };
+
+  const auto get_next_reset_point = [&ss, &scan_info]() -> int {
+    if (ss.next_reset_point_pos < scan_info.reset_points.size()) {
+      return scan_info.reset_points[ss.next_reset_point_pos++];
     } else {
       return -1;
     }
@@ -685,6 +693,8 @@ SerializationStatus BRUNSLI_NOINLINE DoEncodeScan(const JPEGData& jpg,
     ss.block_scan_index = 0;
     ss.extra_zero_runs_pos = 0;
     ss.next_extra_zero_run_index = get_next_extra_zero_run_index();
+    ss.next_reset_point_pos = 0;
+    ss.next_reset_point = get_next_reset_point();
     ss.mcu_y = 0;
     memset(ss.last_dc_coeff, 0, sizeof(ss.last_dc_coeff));
     ss.stage = EncodeScanState::BODY;
@@ -696,7 +706,7 @@ SerializationStatus BRUNSLI_NOINLINE DoEncodeScan(const JPEGData& jpg,
 
   // "Non-interleaved" means color data comes in separate scans, in other words
   // each scan can contain only one color component.
-  const bool is_interleaved = (scan_info.components.size() > 1);
+  const bool is_interleaved = (scan_info.num_components > 1);
   const JPEGComponent& base_component =
       jpg.components[scan_info.components[0].comp_idx];
   // h_group / v_group act as numerators for converting number of blocks to
@@ -746,7 +756,7 @@ SerializationStatus BRUNSLI_NOINLINE DoEncodeScan(const JPEGData& jpg,
         memset(ss.last_dc_coeff, 0, sizeof(ss.last_dc_coeff));
       }
       // Encode one MCU
-      for (size_t i = 0; i < scan_info.components.size(); ++i) {
+      for (size_t i = 0; i < scan_info.num_components; ++i) {
         const JPEGComponentScanInfo& si = scan_info.components[i];
         const JPEGComponent& c = jpg.components[si.comp_idx];
         const HuffmanCodeTable& dc_huff = state->dc_huff_table[si.dc_tbl_idx];
@@ -758,9 +768,9 @@ SerializationStatus BRUNSLI_NOINLINE DoEncodeScan(const JPEGData& jpg,
             int block_y = ss.mcu_y * n_blocks_y + iy;
             int block_x = mcu_x * n_blocks_x + ix;
             int block_idx = block_y * c.width_in_blocks + block_x;
-            if (scan_info.reset_points.find(ss.block_scan_index) !=
-                scan_info.reset_points.end()) {
+            if (ss.block_scan_index == ss.next_reset_point) {
               Flush(coding_state, bw);
+              ss.next_reset_point = get_next_reset_point();
             }
             int num_zero_runs = 0;
             if (ss.block_scan_index == ss.next_extra_zero_run_index) {

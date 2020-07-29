@@ -173,12 +173,8 @@ bool DecodeLimitedVarint(VarintState* s, BrunsliBitReader* br,
   }
 }
 
-std::string GenerateApp0Marker(uint8_t app0_status) {
-  static const uint8_t kStaticApp0Data[17] = {
-      0xe0, 0x00, 0x10, 'J',  'F',  'I',  'F',  0x00, 0x01,
-      0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00};
-  std::string app0_marker(reinterpret_cast<const char*>(kStaticApp0Data),
-                          sizeof(kStaticApp0Data));
+std::vector<uint8_t> GenerateApp0Marker(uint8_t app0_status) {
+  std::vector<uint8_t> app0_marker(AppData_0xe0, AppData_0xe0 + 17);
   app0_marker[9] = app0_status & 1u ? 2 : 1;
   app0_status >>= 1u;
   app0_marker[10] = app0_status & 0x3u;
@@ -189,17 +185,17 @@ std::string GenerateApp0Marker(uint8_t app0_status) {
   return app0_marker;
 }
 
-std::string GenerateAppMarker(uint8_t marker, uint8_t code) {
-  std::string s;
+std::vector<uint8_t> GenerateAppMarker(uint8_t marker, uint8_t code) {
+  std::vector<uint8_t> s;
   if (marker == 0x80) {
-    s = std::string(reinterpret_cast<const char*>(AppData_0xe2), 3161);
+    s = std::vector<uint8_t>(AppData_0xe2, AppData_0xe2 + 3161);
     s[84] = code;
   } else if (marker == 0x81) {
-    s = std::string(reinterpret_cast<const char*>(AppData_0xec), 18);
+    s = std::vector<uint8_t>(AppData_0xec, AppData_0xec + 18);
     s[15] = code;
   } else {
     BRUNSLI_DCHECK(marker == 0x82);
-    s = std::string(reinterpret_cast<const char*>(AppData_0xee), 15);
+    s = std::vector<uint8_t>(AppData_0xee, AppData_0xee + 15);
     s[10] = code;
   }
   return s;
@@ -213,7 +209,7 @@ bool ProcessMetaData(const uint8_t* data, size_t len, MetadataState* state,
       case MetadataState::READ_MARKER: {
         state->marker = static_cast<uint8_t>(data[pos++]);
         if (state->marker == 0xD9) {
-          jpg->tail_data = std::string();
+          jpg->tail_data = std::vector<uint8_t>();
           state->stage = MetadataState::READ_TAIL;
           continue;
         } else if (state->marker < 0x40) {
@@ -240,7 +236,7 @@ bool ProcessMetaData(const uint8_t* data, size_t len, MetadataState* state,
       }
 
       case MetadataState::READ_TAIL: {
-        jpg->tail_data.append(data + pos, data + len);
+        Append(&jpg->tail_data, data + pos, data + len);
         pos = len;
         continue;
       }
@@ -264,8 +260,7 @@ bool ProcessMetaData(const uint8_t* data, size_t len, MetadataState* state,
         if (marker_len < 2) return false;
         state->remaining_multibyte_length = marker_len - 2;
         uint8_t head[3] = {state->marker, state->length_hi, lo};
-        std::vector<std::string>* dest =
-            (state->marker == 0xFE) ? &jpg->com_data : &jpg->app_data;
+        auto* dest = (state->marker == 0xFE) ? &jpg->com_data : &jpg->app_data;
         dest->emplace_back(head, head + 3);
         state->multibyte_sink = &dest->back();
         // Turn state machine to default state in case there is no payload in
@@ -280,7 +275,7 @@ bool ProcessMetaData(const uint8_t* data, size_t len, MetadataState* state,
       case MetadataState::READ_MULTIBYTE: {
         size_t chunk_size =
             std::min(state->remaining_multibyte_length, len - pos);
-        state->multibyte_sink->append(data + pos, data + pos + chunk_size);
+        Append(state->multibyte_sink, data + pos, chunk_size);
         state->remaining_multibyte_length -= chunk_size;
         pos += chunk_size;
         if (state->remaining_multibyte_length == 0) {
@@ -457,14 +452,14 @@ BrunsliStatus DecodeScanInfo(State* state, JPEGData* jpg) {
         si->Se = BrunsliBitReaderRead(br, 6);
         si->Ah = BrunsliBitReaderRead(br, 4);
         si->Al = BrunsliBitReaderRead(br, 4);
-        si->components.resize(BrunsliBitReaderRead(br, 2) + 1);
+        si->num_components = BrunsliBitReaderRead(br, 2) + 1;
         js.j = 0;
         js.stage = JpegInternalsState::READ_SCAN_COMPONENT;
         continue;
       }
       case JpegInternalsState::READ_SCAN_COMPONENT: {
         JPEGScanInfo* si = &jpg->scan_info[js.i];
-        if (js.j < si->components.size()) {
+        if (js.j < si->num_components) {
           if (!BrunsliBitReaderCanRead(br, 6)) return BRUNSLI_NOT_ENOUGH_DATA;
           si->components[js.j].comp_idx = BrunsliBitReaderRead(br, 2);
           si->components[js.j].dc_tbl_idx = BrunsliBitReaderRead(br, 2);
@@ -491,7 +486,7 @@ BrunsliStatus DecodeScanInfo(State* state, JPEGData* jpg) {
         JPEGScanInfo* si = &jpg->scan_info[js.i];
         if (!DecodeVarint(&js.varint, br, 28)) return BRUNSLI_NOT_ENOUGH_DATA;
         int block_idx = js.last_block_idx + js.varint.value + 1;
-        si->reset_points.insert(block_idx);
+        si->reset_points.emplace_back(block_idx);
         js.last_block_idx = block_idx;
         // TODO(eustas): limit to exact number of blocks.
         if (js.last_block_idx > (1 << 30)) {
@@ -1602,11 +1597,10 @@ static BrunsliStatus DecodeJPEGInternalsSection(State* state, JPEGData* jpg) {
       }
 
       case JpegInternalsState::READ_INTERMARKER_DATA: {
-        std::string& dest = jpg->inter_marker_data.back();
+        auto& dest = jpg->inter_marker_data.back();
         size_t piece_limit = js.intermarker_length - dest.size();
         size_t piece_size = std::min(piece_limit, GetBytesAvailable(state));
-        dest.append(reinterpret_cast<const char*>(state->data + state->pos),
-                    piece_size);
+        Append(&dest, state->data + state->pos, piece_size);
         SkipBytes(state, piece_size);
         if (dest.size() < js.intermarker_length) {
           BRUNSLI_DCHECK(GetBytesAvailable(state) == 0);

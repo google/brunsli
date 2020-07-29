@@ -16,6 +16,11 @@ const uint8_t kBrunsliSignature[kBrunsliSignatureSize] = {
 
 // Common app-data chunks
 
+const uint8_t AppData_0xe0[17] = {
+  0xe0, 0x00, 0x10, 'J',  'F',  'I',  'F',  0x00, 0x01,
+  0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00
+};
+
 // APP12 'Ducky' marker
 const uint8_t AppData_0xec[18] = {
   236, 0, 17, 'D', 'u', 'c', 'k', 'y', 0,

@@ -63,6 +63,8 @@ struct EncodeScanState {
   DCTCodingState coding_state;
   size_t extra_zero_runs_pos;
   int next_extra_zero_run_index;
+  size_t next_reset_point_pos;
+  int next_reset_point;
 };
 
 struct SerializationState {

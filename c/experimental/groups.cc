@@ -245,8 +245,12 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
     for (size_t i = 0; i < jpg.inter_marker_data.size(); ++i) {
       part_size += 5 + jpg.inter_marker_data[i].size();
     }
-    for (const std::string& chunk : jpg.app_data) part_size += chunk.size();
-    for (const std::string& chunk : jpg.com_data) part_size += chunk.size();
+    for (const std::vector<uint8_t>& chunk : jpg.app_data) {
+      part_size += chunk.size();
+    }
+    for (const std::vector<uint8_t>& chunk : jpg.com_data) {
+      part_size += chunk.size();
+    }
     part_size += jpg.tail_data.size();
     // TODO(eustas): take into account histograms.
     part.resize(part_size);

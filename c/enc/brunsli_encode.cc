@@ -69,10 +69,10 @@ size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg) {
   // Rough estimate is 1.2 * uncompressed size plus some more for the header.
   size_t hdr_size = 1 << 20;
   hdr_size += EstimateAuxDataSize(jpg);
-  for (const std::string& data : jpg.app_data) {
+  for (const auto& data : jpg.app_data) {
     hdr_size += data.size();
   }
-  for (const std::string& data : jpg.com_data) {
+  for (const auto& data : jpg.com_data) {
     hdr_size += data.size();
   }
   hdr_size += jpg.tail_data.size();
@@ -101,16 +101,13 @@ void EncodeBase128Fix(size_t val, size_t len, uint8_t* data) {
   }
 }
 
-bool TransformApp0Marker(const std::string& s, std::string* out) {
-  if (s.size() != 17) {
-    return false;
-  }
-  if (static_cast<uint8_t>(s[0]) == 0xe0 &&     // APP0
-      s[1] == 0 && s[2] == 16 &&                // length
-      s.substr(3, 4) == "JFIF" && s[7] == 0 &&  // null-terminated identifier
-      s[8] == 1 && (s[9] == 1 || s[9] == 2) &&  // version / 1.1 or 1.2
-      static_cast<uint8_t>(s[10]) < 4 &&        // density units
-      s[15] == 0 && s[16] == 0) {               // thumbnail size / no thumbnail
+bool TransformApp0Marker(const std::vector<uint8_t>& s,
+                         std::vector<uint8_t>* out) {
+  if (s.size() != 17) return false;
+  if (memcmp(s.data(), AppData_0xe0, 9) != 0) return false;
+  if ((s[9] == 1 || s[9] == 2) &&  // version / 1.1 or 1.2
+      s[10] < 4 &&                 // density units
+      s[15] == 0 && s[16] == 0) {  // thumbnail size / no thumbnail
     const uint8_t x_dens_hi = s[11];
     const uint8_t x_dens_lo = s[12];
     int x_dens = (x_dens_hi << 8) + x_dens_lo;
@@ -125,17 +122,19 @@ bool TransformApp0Marker(const std::string& s, std::string* out) {
     }
     if (density_ix >= 0) {
       uint8_t app0_status = (s[9] - 1) | s[10] << 1 | density_ix << 3;
-      *out = std::string(1, app0_status);
+      *out = std::vector<uint8_t>(1);
+      out->at(0) = app0_status;
       return true;
     }
   }
   return false;
 }
 
-bool TransformApp2Marker(const std::string& s, std::string* out) {
-  if (s.size() == 3161 && !memcmp(&s[0], AppData_0xe2, 84) &&
-      !memcmp(&s[85], AppData_0xe2 + 85, 3161 - 85)) {
-    std::string code(2, 0);
+bool TransformApp2Marker(const std::vector<uint8_t>& s,
+                         std::vector<uint8_t>* out) {
+  if (s.size() == 3161 && !memcmp(s.data(), AppData_0xe2, 84) &&
+      !memcmp(s.data() + 85, AppData_0xe2 + 85, 3161 - 85)) {
+    std::vector<uint8_t> code(2);
     code[0] = 0x80;
     code[1] = s[84];
     *out = code;
@@ -144,10 +143,11 @@ bool TransformApp2Marker(const std::string& s, std::string* out) {
   return false;
 }
 
-bool TransformApp12Marker(const std::string& s, std::string* out) {
-  if (s.size() == 18 && !memcmp(&s[0], AppData_0xec, 15) &&
-      !memcmp(&s[16], AppData_0xec + 16, 18 - 16)) {
-    std::string code(2, 0);
+bool TransformApp12Marker(const std::vector<uint8_t>& s,
+                          std::vector<uint8_t>* out) {
+  if (s.size() == 18 && !memcmp(s.data(), AppData_0xec, 15) &&
+      !memcmp(s.data() + 16, AppData_0xec + 16, 18 - 16)) {
+    std::vector<uint8_t> code(2);
     code[0] = 0x81;
     code[1] = s[15];
     *out = code;
@@ -156,10 +156,11 @@ bool TransformApp12Marker(const std::string& s, std::string* out) {
   return false;
 }
 
-bool TransformApp14Marker(const std::string& s, std::string* out) {
+bool TransformApp14Marker(const std::vector<uint8_t>& s,
+                          std::vector<uint8_t>* out) {
   if (s.size() == 15 && !memcmp(&s[0], AppData_0xee, 10) &&
       !memcmp(&s[11], AppData_0xee + 11, 15 - 11)) {
-    std::string code(2, 0);
+    std::vector<uint8_t> code(2);
     code[0] = 0x82;
     code[1] = s[10];
     *out = code;
@@ -168,9 +169,9 @@ bool TransformApp14Marker(const std::string& s, std::string* out) {
   return false;
 }
 
-std::string TransformAppMarker(const std::string& s,
-                               size_t* transformed_marker_count) {
-  std::string out;
+std::vector<uint8_t> TransformAppMarker(const std::vector<uint8_t>& s,
+                                        size_t* transformed_marker_count) {
+  std::vector<uint8_t> out;
   if (TransformApp0Marker(s, &out)) {
     (*transformed_marker_count)++;
     return out;
@@ -374,17 +375,15 @@ bool EncodeScanInfo(const JPEGScanInfo& si, Storage* storage) {
   WriteBits(6, si.Se, storage);
   WriteBits(4, si.Ah, storage);
   WriteBits(4, si.Al, storage);
-  WriteBits(2, si.components.size() - 1, storage);
-  for (size_t i = 0; i < si.components.size(); ++i) {
+  WriteBits(2, si.num_components - 1, storage);
+  for (size_t i = 0; i < si.num_components; ++i) {
     const JPEGComponentScanInfo& csi = si.components[i];
     WriteBits(2, csi.comp_idx, storage);
     WriteBits(2, csi.dc_tbl_idx, storage);
     WriteBits(2, csi.ac_tbl_idx, storage);
   }
   int last_block_idx = -1;
-  for (std::set<int>::const_iterator it = si.reset_points.begin();
-       it != si.reset_points.end(); ++it) {
-    int block_idx = *it;
+  for (const auto& block_idx : si.reset_points) {
     WriteBits(1, 1, storage);
     BRUNSLI_DCHECK(block_idx >= last_block_idx + 1);
     EncodeVarint(block_idx - last_block_idx - 1, 28, storage);
@@ -493,11 +492,11 @@ bool EncodeAuxData(const JPEGData& jpg, Storage* storage) {
   }
   JumpToByteBoundary(storage);
   for (size_t i = 0; i < jpg.inter_marker_data.size(); ++i) {
-    const std::string& s = jpg.inter_marker_data[i];
+    const auto& s = jpg.inter_marker_data[i];
     uint8_t buffer[(sizeof(size_t) * 8 + 6) / 7];
     size_t len = EncodeBase128(s.size(), buffer);
     storage->AppendBytes(buffer, len);
-    storage->AppendBytes(reinterpret_cast<const uint8_t*>(s.data()), s.size());
+    storage->AppendBytes(s.data(), s.size());
   }
   return true;
 }
@@ -828,23 +827,24 @@ bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
                     size_t* len) {
   BRUNSLI_UNUSED(state);
   // Concatenate all the (possibly transformed) metadata pieces into one string.
-  std::string metadata;
+  std::vector<uint8_t> metadata;
   size_t transformed_marker_count = 0;
   for (size_t i = 0; i < jpg.app_data.size(); ++i) {
-    const std::string& s = jpg.app_data[i];
-    metadata.append(TransformAppMarker(s, &transformed_marker_count));
+    const auto& s = jpg.app_data[i];
+    Append(&metadata, TransformAppMarker(s, &transformed_marker_count));
   }
   if (transformed_marker_count > kBrunsliShortMarkerLimit) {
     BRUNSLI_LOG_ERROR() << "Too many short markers: "
                         << transformed_marker_count << BRUNSLI_ENDL();
     return false;
   }
-  for (const std::string& s : jpg.com_data) {
-    metadata.append(s);
+  for (const auto& s : jpg.com_data) {
+    Append(&metadata, s);
   }
   if (!jpg.tail_data.empty()) {
-    metadata.append(1, 0xd9);
-    metadata.append(jpg.tail_data);
+    const uint8_t marker[] = {0xD9};
+    Append(&metadata, marker, 1);
+    Append(&metadata, jpg.tail_data);
   }
   if (metadata.empty()) {
     *len = 0;
@@ -860,11 +860,9 @@ bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
 
   // Write the compressed metadata directly to the output.
   size_t compressed_size = *len - pos;
-  const uint8_t* metadata_ptr =
-      reinterpret_cast<const uint8_t*>(metadata.data());
   if (!BrotliEncoderCompress(kBrotliQuality, kBrotliWindowBits,
-                             BROTLI_DEFAULT_MODE, metadata.size(), metadata_ptr,
-                             &compressed_size, &data[pos])) {
+                             BROTLI_DEFAULT_MODE, metadata.size(),
+                             metadata.data(), &compressed_size, &data[pos])) {
     BRUNSLI_LOG_ERROR() << "Brotli compression failed:"
                         << " input size = " << metadata.size()
                         << " pos = " << pos << " len = " << *len

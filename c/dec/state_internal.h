@@ -166,7 +166,7 @@ struct MetadataState {
   uint8_t marker;
   uint8_t length_hi;
   size_t remaining_multibyte_length;
-  std::string* multibyte_sink;
+  std::vector<uint8_t>* multibyte_sink;
   size_t stage = READ_MARKER;
 
   BrotliDecoderStateStruct* brotli = nullptr;

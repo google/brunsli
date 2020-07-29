@@ -9,8 +9,7 @@
 #ifndef BRUNSLI_COMMON_JPEG_DATA_H_
 #define BRUNSLI_COMMON_JPEG_DATA_H_
 
-#include <set>
-#include <string>
+#include <array>
 #include <vector>
 
 #include <brunsli/types.h>
@@ -119,35 +118,27 @@ enum struct JPEGReadError {
 
 // Quantization values for an 8x8 pixel block.
 struct JPEGQuantTable {
-  JPEGQuantTable() : values(kDCTBlockSize), precision(0),
-                     index(0), is_last(true) {}
-
-  std::vector<int32_t> values;
-  int precision;
+  std::array<int32_t, kDCTBlockSize> values;
+  int precision = 0;
   // The index of this quantization table as it was parsed from the input JPEG.
   // Each DQT marker segment contains an 'index' field, and we save this index
   // here. Valid values are 0 to 3.
-  int index;
+  int index = 0;
   // Set to true if this table is the last one within its marker segment.
-  bool is_last;
+  bool is_last = true;
 };
 
 // Huffman code and decoding lookup table used for DC and AC coefficients.
 struct JPEGHuffmanCode {
-  JPEGHuffmanCode() : counts(kJpegHuffmanMaxBitLength + 1),
-                      values(kJpegHuffmanAlphabetSize + 1),
-                      slot_id(0),
-                      is_last(true) {}
-
   // Bit length histogram.
-  std::vector<int> counts;
+  std::array<int, kJpegHuffmanMaxBitLength + 1> counts = {};
   // Symbol values sorted by increasing bit lengths.
-  std::vector<int> values;
+  std::array<int, kJpegHuffmanAlphabetSize + 1> values = {};
   // The index of the Huffman code in the current set of Huffman codes. For AC
   // component Huffman codes, 0x10 is added to the index.
-  int slot_id;
+  int slot_id = 0;
   // Set to true if this Huffman code is the last one within its marker segment.
-  bool is_last;
+  bool is_last = true;
 };
 
 // Huffman table indexes used for one component of one scan.
@@ -168,13 +159,14 @@ struct JPEGScanInfo {
   int Se;
   int Ah;
   int Al;
-  std::vector<JPEGComponentScanInfo> components;
+  size_t num_components = 0;
+  std::array<JPEGComponentScanInfo, 4> components;
 
   // Extra information required for bit-precise JPEG file reconstruction.
 
-  // Set of block indexes where the jpeg encoder has to flush the end-of-block
+  // Set of block indexes where the JPEG encoder has to flush the end-of-block
   // runs and refinement bits.
-  std::set<int> reset_points;
+  std::vector<int> reset_points;
   // The number of extra zero runs (Huffman symbol 0xf0) before the end of
   // block (if nonzero), indexed by block index.
   // All of these symbols can be omitted without changing the pixel values, but
@@ -238,15 +230,15 @@ struct JPEGData {
   int MCU_rows;
   int MCU_cols;
   int restart_interval;
-  std::vector<std::string> app_data;
-  std::vector<std::string> com_data;
+  std::vector<std::vector<uint8_t>> app_data;
+  std::vector<std::vector<uint8_t>> com_data;
   std::vector<JPEGQuantTable> quant;
   std::vector<JPEGHuffmanCode> huffman_code;
   std::vector<JPEGComponent> components;
   std::vector<JPEGScanInfo> scan_info;
   std::vector<uint8_t> marker_order;
-  std::vector<std::string> inter_marker_data;
-  std::string tail_data;
+  std::vector<std::vector<uint8_t>> inter_marker_data;
+  std::vector<uint8_t> tail_data;
   const uint8_t* original_jpg;
   size_t original_jpg_size;
   JPEGReadError error;

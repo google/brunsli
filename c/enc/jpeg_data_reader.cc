@@ -161,7 +161,7 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
   BRUNSLI_VERIFY_INPUT(comps_in_scan, 1, jpg->components.size(), COMPS_IN_SCAN);
 
   JPEGScanInfo scan_info;
-  scan_info.components.resize(comps_in_scan);
+  scan_info.num_components = comps_in_scan;
   BRUNSLI_VERIFY_LEN(2 * comps_in_scan);
   std::vector<bool> ids_seen(256, false);
   for (int i = 0; i < comps_in_scan; ++i) {
@@ -397,8 +397,8 @@ bool ProcessAPP(const uint8_t* data, const size_t len, size_t* pos,
   BRUNSLI_VERIFY_INPUT(marker_len, 2, 65535, MARKER_LEN);
   BRUNSLI_VERIFY_LEN(marker_len - 2);
   // Save the marker type together with the app data.
-  std::string app_str(reinterpret_cast<const char*>(&data[*pos - 3]),
-                      marker_len + 1);
+  const uint8_t* app_str_start = data + *pos - 3;
+  std::vector<uint8_t> app_str(app_str_start, app_str_start + marker_len + 1);
   *pos += marker_len - 2;
   jpg->app_data.push_back(app_str);
   return true;
@@ -411,8 +411,8 @@ bool ProcessCOM(const uint8_t* data, const size_t len, size_t* pos,
   size_t marker_len = ReadUint16(data, pos);
   BRUNSLI_VERIFY_INPUT(marker_len, 2, 65535, MARKER_LEN);
   BRUNSLI_VERIFY_LEN(marker_len - 2);
-  std::string com_str(reinterpret_cast<const char*>(&data[*pos - 3]),
-                      marker_len + 1);
+  const uint8_t* com_str_start = data + *pos - 3;
+  std::vector<uint8_t> com_str(com_str_start, com_str_start + marker_len + 1);
   *pos += marker_len - 2;
   jpg->com_data.push_back(com_str);
   return true;
@@ -823,7 +823,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
     return false;
   }
   JPEGScanInfo* scan_info = &jpg->scan_info.back();
-  bool is_interleaved = (scan_info->components.size() > 1);
+  bool is_interleaved = (scan_info->num_components > 1);
   int MCUs_per_row;
   int MCU_rows;
   if (is_interleaved) {
@@ -848,7 +848,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
   const int Se = is_progressive ? scan_info->Se : 63;
   const uint16_t scan_bitmask = Ah == 0 ? (0xffff << Al) : (1u << Al);
   const uint16_t refinement_bitmask = (1 << Al) - 1;
-  for (int i = 0; i < scan_info->components.size(); ++i) {
+  for (int i = 0; i < scan_info->num_components; ++i) {
     int comp_idx = scan_info->components[i].comp_idx;
     for (int k = Ss; k <= Se; ++k) {
       if (scan_progression[comp_idx][k] & scan_bitmask) {
@@ -899,7 +899,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
         --restarts_to_go;
       }
       // Decode one MCU.
-      for (int i = 0; i < scan_info->components.size(); ++i) {
+      for (int i = 0; i < scan_info->num_components; ++i) {
         JPEGComponentScanInfo* si = &scan_info->components[i];
         JPEGComponent* c = &jpg->components[si->comp_idx];
         const HuffmanTableEntry* dc_lut =
@@ -929,7 +929,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
               }
             }
             if (reset_state) {
-              scan_info->reset_points.insert(block_scan_index);
+              scan_info->reset_points.emplace_back(block_scan_index);
             }
             if (num_zero_runs > 0) {
               JPEGScanInfo::ExtraZeroRunInfo info;
@@ -1031,7 +1031,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
       // Add a fake marker to indicate arbitrary in-between-markers data.
       jpg->marker_order.push_back(0xff);
       jpg->inter_marker_data.push_back(
-          std::string(reinterpret_cast<const char*>(&data[pos]), num_skipped));
+          std::vector<uint8_t>(data + pos, data + pos + num_skipped));
       pos += num_skipped;
     }
     BRUNSLI_EXPECT_MARKER();
@@ -1124,8 +1124,7 @@ bool ReadJpeg(const uint8_t* data, const size_t len, JpegReadMode mode,
   // Supplemental checks.
   if (mode == JPEG_READ_ALL) {
     if (pos < len) {
-      jpg->tail_data.assign(reinterpret_cast<const char*>(&data[pos]),
-                            len - pos);
+      jpg->tail_data = std::vector<uint8_t>(data + pos, data + len);
     }
     if (!FixupIndexes(jpg)) {
       return false;
