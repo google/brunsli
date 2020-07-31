@@ -28,6 +28,12 @@ void SetDepth(const HuffmanTree& p,
   }
 }
 
+// Sort the root nodes, least popular first.
+static BRUNSLI_INLINE bool Compare(const HuffmanTree& v0,
+                                   const HuffmanTree& v1) {
+  return v0.total_count < v1.total_count;
+}
+
 // This function will create a Huffman tree.
 //
 // The catch here is that the tree cannot be arbitrarily deep.
@@ -58,18 +64,19 @@ void CreateHuffmanTree(const uint32_t* data,
     for (size_t i = length; i != 0;) {
       --i;
       if (data[i]) {
-        const uint32_t count = std::max(data[i], count_limit);
+        const uint32_t count = std::max(data[i], count_limit - 1);
         tree.push_back(HuffmanTree(count, -1, static_cast<int16_t>(i)));
       }
     }
 
     const size_t n = tree.size();
     if (n == 1) {
-      depth[tree[0].index_right_or_value] = 1;  // Only one element.
+      // Fake value; will be fixed on upper level.
+      depth[tree[0].index_right_or_value] = 1;
       break;
     }
 
-    std::stable_sort(tree.begin(), tree.end(), SortHuffmanTree);
+    std::stable_sort(tree.begin(), tree.end(), Compare);
 
     // The nodes are:
     // [0, n): the sorted leaf nodes that we start with.

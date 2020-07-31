@@ -293,6 +293,7 @@ void BuildAndStoreHuffmanTree(const uint32_t* histogram, const size_t length,
   }
 
   if (count <= 1) {
+    // Output symbol bits and depths are initialized with 0, nothing to do.
     WriteBits(4, 1, storage);
     WriteBits(max_bits, s4[0], storage);
     return;

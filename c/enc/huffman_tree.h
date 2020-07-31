@@ -25,11 +25,6 @@ struct HuffmanTree {
   int16_t index_right_or_value;
 };
 
-// Sort the root nodes, least popular first.
-inline bool SortHuffmanTree(const HuffmanTree& v0, const HuffmanTree& v1) {
-  return v0.total_count < v1.total_count;
-}
-
 void SetDepth(const HuffmanTree& p, HuffmanTree* pool,
               uint8_t* depth, uint8_t level);
 

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "../common/constants.h"
+#include "../common/platform.h"
 #include <brunsli/types.h>
 #include "./bit_reader.h"
 #include "./huffman_table.h"
@@ -91,12 +92,102 @@ int ReadHuffmanCodeLengths(const uint8_t* code_length_code_lengths,
   return BrunsliBitReaderIsHealthy(br);
 }
 
+static BRUNSLI_INLINE bool ReadSimpleCode(size_t alphabet_size,
+                                          BrunsliBitReader* br,
+                                          HuffmanCode* table) {
+  size_t max_bits =
+      (alphabet_size > 1u) ? Log2FloorNonZero(alphabet_size - 1u) + 1 : 0;
+
+  size_t num_symbols = BrunsliBitReaderRead(br, 2) + 1;
+
+  uint16_t symbols[4] = {0};
+  for (size_t i = 0; i < num_symbols; ++i) {
+    uint16_t symbol = BrunsliBitReaderRead(br, max_bits);
+    if (symbol >= alphabet_size) {
+      return false;
+    }
+    symbols[i] = symbol;
+  }
+
+  for (size_t i = 0; i < num_symbols - 1; ++i) {
+    for (size_t j = i + 1; j < num_symbols; ++j) {
+      if (symbols[i] == symbols[j]) return false;
+    }
+  }
+
+  // 4 symbols have to option to encode.
+  if (num_symbols == 4) num_symbols += BrunsliBitReaderRead(br, 1);
+
+  const auto swap_symbols = [&symbols] (size_t i, size_t j) {
+    uint16_t t = symbols[j];
+    symbols[j] = symbols[i];
+    symbols[i] = t;
+  };
+
+  size_t table_size = 1;
+  switch (num_symbols) {
+    case 1:
+      table[0] = {0, symbols[0]};
+      break;
+    case 2:
+      if (symbols[0] > symbols[1]) swap_symbols(0, 1);
+      table[0] = {1, symbols[0]};
+      table[1] = {1, symbols[1]};
+      table_size = 2;
+      break;
+    case 3:
+      if (symbols[1] > symbols[2]) swap_symbols(1, 2);
+      table[0] = {1, symbols[0]};
+      table[2] = {1, symbols[0]};
+      table[1] = {2, symbols[1]};
+      table[3] = {2, symbols[2]};
+      table_size = 4;
+      break;
+    case 4: {
+      for (size_t i = 0; i < 3; ++i) {
+        for (size_t j = i + 1; j < 4; ++j) {
+          if (symbols[i] > symbols[j]) swap_symbols(i, j);
+        }
+      }
+      table[0] = {2, symbols[0]};
+      table[2] = {2, symbols[1]};
+      table[1] = {2, symbols[2]};
+      table[3] = {2, symbols[3]};
+      table_size = 4;
+      break;
+    }
+    case 5: {
+      if (symbols[2] > symbols[3]) swap_symbols(2, 3);
+      table[0] = {1, symbols[0]};
+      table[1] = {2, symbols[1]};
+      table[2] = {1, symbols[0]};
+      table[3] = {3, symbols[2]};
+      table[4] = {1, symbols[0]};
+      table[5] = {2, symbols[1]};
+      table[6] = {1, symbols[0]};
+      table[7] = {3, symbols[3]};
+      table_size = 8;
+      break;
+    }
+    default: {
+      // Unreachable.
+      return false;
+    }
+  }
+
+  const uint32_t goal_size = 1u << kHuffmanTableBits;
+  while (table_size != goal_size) {
+    memcpy(&table[table_size], &table[0],
+           (size_t)table_size * sizeof(table[0]));
+    table_size <<= 1;
+  }
+
+  return BrunsliBitReaderIsHealthy(br);
+}
+
 bool HuffmanDecodingData::ReadFromBitStream(
-    int alphabet_size, BrunsliBitReader* br,
+    size_t alphabet_size, BrunsliBitReader* br,
     Arena<HuffmanCode>* arena) {
-  int ok = 1;
-  int table_size = 0;
-  int simple_code_or_skip;
   Arena<HuffmanCode> local_arena;
   if (arena == nullptr) arena = &local_arena;
 
@@ -106,88 +197,47 @@ bool HuffmanDecodingData::ReadFromBitStream(
   /* simple_code_or_skip is used as follows:
      1 for simple code;
      0 for no skipping, 2 skips 2 code lengths, 3 skips 3 code lengths */
-  simple_code_or_skip = (int)BrunsliBitReaderRead(br, 2);
-  if (simple_code_or_skip == 1) {
-    /* Read symbols, codes & code lengths directly. */
-    int i;
-    int max_bits_counter = alphabet_size - 1;
-    int max_bits = 0;
-    int symbols[4] = {0};
-    const int num_symbols = (int)BrunsliBitReaderRead(br, 2) + 1;
-    while (max_bits_counter) {
-      max_bits_counter >>= 1;
-      ++max_bits;
-    }
-    for (i = 0; i < num_symbols; ++i) {
-      symbols[i] = (int)BrunsliBitReaderRead(br, max_bits) % alphabet_size;
-      code_lengths[symbols[i]] = 2;
-    }
-    code_lengths[symbols[0]] = 1;
-    switch (num_symbols) {
-      case 1:
-        break;
-      case 3:
-        ok = ((symbols[0] != symbols[1]) && (symbols[0] != symbols[2]) &&
-              (symbols[1] != symbols[2]));
-        break;
-      case 2:
-        ok = (symbols[0] != symbols[1]);
-        code_lengths[symbols[1]] = 1;
-        break;
-      case 4:
-        ok = ((symbols[0] != symbols[1]) && (symbols[0] != symbols[2]) &&
-              (symbols[0] != symbols[3]) && (symbols[1] != symbols[2]) &&
-              (symbols[1] != symbols[3]) && (symbols[2] != symbols[3]));
-        if (BrunsliBitReaderRead(br, 1)) {
-          code_lengths[symbols[2]] = 3;
-          code_lengths[symbols[3]] = 3;
-        } else {
-          code_lengths[symbols[0]] = 2;
-        }
-        break;
-      default:
-        // Unreachable.
-        return false;
-    }
-  } else { /* Decode Huffman-coded code lengths. */
-    int i;
-    uint8_t code_length_code_lengths[kCodeLengthCodes] = {0};
-    int space = 32;
-    int num_codes = 0;
-    /* Static Huffman code for the code length code lengths */
-    static const HuffmanCode huff[16] = {
-        {2, 0}, {2, 4}, {2, 3}, {3, 2}, {2, 0}, {2, 4}, {2, 3}, {4, 1},
-        {2, 0}, {2, 4}, {2, 3}, {3, 2}, {2, 0}, {2, 4}, {2, 3}, {4, 5},
-    };
-    for (i = simple_code_or_skip; i < kCodeLengthCodes && space > 0; ++i) {
-      const int code_len_idx = kCodeLengthCodeOrder[i];
-      const HuffmanCode* p = huff;
-      uint8_t v;
-      p += BrunsliBitReaderGet(br, 4);
-      BrunsliBitReaderDrop(br, p->bits);
-      v = (uint8_t)p->value;
-      code_length_code_lengths[code_len_idx] = v;
-      if (v != 0) {
-        space -= (32u >> v);
-        ++num_codes;
-      }
-    }
-    ok = (num_codes == 1 || space == 0) &&
-         ReadHuffmanCodeLengths(code_length_code_lengths, alphabet_size,
-                                &code_lengths[0], br);
+  uint32_t simple_code_or_skip = BrunsliBitReaderRead(br, 2);
+  if (simple_code_or_skip == 1u) {
+    table_.resize(1u << kHuffmanTableBits);
+    return ReadSimpleCode(alphabet_size, br, table_.data());
   }
-  if (!BrunsliBitReaderIsHealthy(br)) return false;
+
+  uint8_t code_length_code_lengths[kCodeLengthCodes] = {0};
+  int space = 32;
+  int num_codes = 0;
+  /* Static Huffman code for the code length code lengths */
+  static const HuffmanCode huff[16] = {
+      {2, 0}, {2, 4}, {2, 3}, {3, 2}, {2, 0}, {2, 4}, {2, 3}, {4, 1},
+      {2, 0}, {2, 4}, {2, 3}, {3, 2}, {2, 0}, {2, 4}, {2, 3}, {4, 5},
+  };
+  for (size_t i = simple_code_or_skip; i < kCodeLengthCodes && space > 0; ++i) {
+    const int code_len_idx = kCodeLengthCodeOrder[i];
+    const HuffmanCode* p = huff;
+    uint8_t v;
+    p += BrunsliBitReaderGet(br, 4);
+    BrunsliBitReaderDrop(br, p->bits);
+    v = (uint8_t)p->value;
+    code_length_code_lengths[code_len_idx] = v;
+    if (v != 0) {
+      space -= (32u >> v);
+      ++num_codes;
+    }
+  }
+  bool ok = (num_codes == 1 || space == 0) &&
+       ReadHuffmanCodeLengths(code_length_code_lengths, alphabet_size,
+                              &code_lengths[0], br);
+
+  if (!ok || !BrunsliBitReaderIsHealthy(br)) return false;
   uint16_t counts[16] = {0};
-  for (int i = 0; i < alphabet_size; ++i) {
+  for (size_t i = 0; i < alphabet_size; ++i) {
     ++counts[code_lengths[i]];
   }
-  if (ok) {
-    arena->reserve(alphabet_size + 376);
-    table_size = BuildHuffmanTable(arena->data(), kHuffmanTableBits,
-                                   &code_lengths[0], alphabet_size, &counts[0]);
-    table_ =
-        std::vector<HuffmanCode>(arena->data(), arena->data() + table_size);
-  }
+  arena->reserve(alphabet_size + 376);
+  uint32_t table_size =
+      BuildHuffmanTable(arena->data(), kHuffmanTableBits, &code_lengths[0],
+                        alphabet_size, &counts[0]);
+  table_ = std::vector<HuffmanCode>(arena->data(), arena->data() + table_size);
   return (table_size > 0);
 }
 

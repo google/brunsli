@@ -47,7 +47,7 @@ struct HuffmanDecodingData {
   // pre-allocated table with the corresponding 2-level Huffman decoding table.
   // |arena| is used as an intermediate output for BuildHuffmanTable.
   // Returns false if the Huffman code lengths can not de decoded.
-  bool ReadFromBitStream(int alphabet_size, BrunsliBitReader* br,
+  bool ReadFromBitStream(size_t alphabet_size, BrunsliBitReader* br,
                          Arena<HuffmanCode>* arena = nullptr);
 
   uint16_t ReadSymbol(BrunsliBitReader* br) const;
