@@ -39,3 +39,8 @@ Run the following commands to clone, configure and build Brunsli:
     git submodule update --init --recursive
     cmake -DCMAKE_BUILD_TYPE=Release -B out
     cmake --build out --config Release
+
+## Prebuilt binaries
+
+For some platforms (e.g. Windows) libraries and executables are uploaded as "artifacts" as a part of continous integration process.
+Unfortunately, there is no static link to access those. Please follow the [GitHub manual](https://docs.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts#downloading-and-deleting-artifacts-after-a-workflow-run-is-complete).
