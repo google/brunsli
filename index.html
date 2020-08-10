@@ -82,7 +82,7 @@
     </p>
   </div></div>
 
-  <div id="demo"><div class="w3-container w3-content w3-center" style="max-width:1200px">
+  <div id="demo" class="w3-hide"><div class="w3-container w3-content w3-center" style="max-width:1200px">
     <h4>Demo</h4>
     <div class="w3-input w3-large dropboard" id="dropboard">
       <div style="opacity: 0;font-size: 0; margin: -7.5px">
@@ -267,7 +267,11 @@ function processBrunsli(fileName, brunsliData, brunsliSize) {
   logDownloadLink(fileName + '.jpg', output);
 }
 document.addEventListener('DOMContentLoaded', () => {
-brunsliModule = BrunsliCodecModule();
+let brunsliModuleLoader = BrunsliCodecModule();
+brunsliModuleLoader.then(wasmModule => {
+  brunsliModule = wasmModule;
+  document.getElementById("demo").classList.remove("w3-hide");
+});
 dropboard.addEventListener('dragover', onDragOver, false);
 dropboard.addEventListener('drop', onDrop, false);
 dropboard.addEventListener('click', onClick, false);
