@@ -12,13 +12,10 @@
 #include <brunsli/types.h>
 #include "./write_bits.h"
 
-namespace brunsli {
+// TODO(eustas): remove after landing changes to JPEG XL
+#include "./huffman_encode.h"
 
-// Builds a Huffman tree for the given histogram, and encodes it into storage
-// in a format that can be read by HuffmanDecodingData::ReadFromBitstream.
-void BuildAndStoreHuffmanTree(const uint32_t* histogram, const size_t length,
-                              uint8_t* depth, uint16_t* bits,
-                              Storage* storage);
+namespace brunsli {
 
 // Encodes the given context map to the bit stream. The number of different
 // histogram ids is given by num_clusters.
