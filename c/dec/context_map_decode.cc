@@ -24,13 +24,12 @@ void MoveToFront(uint8_t* v, uint8_t index) {
   v[0] = value;
 }
 
-void InverseMoveToFrontTransform(uint8_t* v, int v_len) {
+void InverseMoveToFrontTransform(uint8_t* v, size_t v_len) {
   uint8_t mtf[256];
-  int i;
-  for (i = 0; i < 256; ++i) {
-    mtf[i] = (uint8_t)i;
+  for (size_t i = 0; i < 256; ++i) {
+    mtf[i] = static_cast<uint8_t>(i);
   }
-  for (i = 0; i < v_len; ++i) {
+  for (size_t i = 0; i < v_len; ++i) {
     uint8_t index = v[i];
     v[i] = mtf[index];
     if (index) MoveToFront(mtf, index);
@@ -51,7 +50,7 @@ BrunsliStatus DecodeContextMap(const HuffmanDecodingData& entropy,
     if (!BrunsliBitReaderCanRead(br, 15 + max_run_length_prefix + 1)) {
       return BRUNSLI_NOT_ENOUGH_DATA;
     }
-    size_t code = entropy.ReadSymbol(br);
+    uint32_t code = entropy.ReadSymbol(br);
     if (code == 0) {
       map[i] = 0;
       ++i;

@@ -35,10 +35,10 @@ TEST(ContextTest, GoldenACPredictContext) {
   ASSERT_EQ(VanillaACPredictContext(1024), kMaxAverageContext);
   for (int i = -4096; i <= 4096; ++i) {
     int vanilla_ctx = VanillaACPredictContext(i);
-    int vanilla_avg_ctx = std::abs(vanilla_ctx);
-    int vanilla_sign_ctx = kMaxAverageContext + vanilla_ctx;
-    int avg_ctx;
-    int sign_ctx;
+    size_t vanilla_avg_ctx = std::abs(vanilla_ctx);
+    size_t vanilla_sign_ctx = kMaxAverageContext + vanilla_ctx;
+    size_t avg_ctx;
+    size_t sign_ctx;
     ACPredictContext(i, &avg_ctx, &sign_ctx);
     EXPECT_EQ(vanilla_avg_ctx, avg_ctx);
     EXPECT_EQ(vanilla_sign_ctx, sign_ctx);

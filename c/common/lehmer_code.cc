@@ -14,19 +14,19 @@ namespace brunsli {
 void ComputeLehmerCode(const uint32_t* sigma, const size_t len,
                        uint32_t* code) {
   std::vector<uint32_t> items(len);
-  for (size_t i = 0; i < len; ++i) items[i] = i;
+  for (size_t i = 0; i < len; ++i) items[i] = static_cast<uint32_t>(i);
   for (size_t i = 0; i < len; ++i) {
     std::vector<uint32_t>::iterator it =
         std::find(items.begin(), items.end(), sigma[i]);
     BRUNSLI_DCHECK(it != items.end());
-    code[i] = it - items.begin();
+    code[i] = static_cast<uint32_t>(it - items.begin());
     items.erase(it);
   }
 }
 
 bool DecodeLehmerCode(const uint32_t* code, size_t len, uint32_t* sigma) {
   std::vector<uint32_t> items(len);
-  for (size_t i = 0; i < len; ++i) items[i] = i;
+  for (size_t i = 0; i < len; ++i) items[i] = static_cast<uint32_t>(i);
   for (size_t i = 0; i < len; ++i) {
     uint32_t index = code[i];
     if (index >= items.size()) return false;
