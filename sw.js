@@ -6,8 +6,8 @@ self.addEventListener('fetch', onFetch);
 
 function shouldUpgradeRequest(request) {
   if (request.method != 'GET') return false;
-  if (request.referrer.includes('no-jxl')) return false;
-  if (request.url.includes('no-jxl')) return false;
+  if (request.referrer.includes('no-brn')) return false;
+  if (request.url.includes('no-brn')) return false;
   if (request.headers.get('Accept').indexOf('image/') == -1) return false;
   if (request.destination != "image") return false;
   return true;
@@ -31,8 +31,8 @@ async function wrapRequest(request) {
   let contentType = originalResponse.headers.get('Content-Type');
   if (contentType != 'image/x-j') return originalResponse;
   await waitForBrunsli();
-  let jxlStream = await originalResponse.body;
-  let jpegStream = jxlStream.pipeThrough(new BrunsliTransformer());
+  let brnStream = await originalResponse.body;
+  let jpegStream = brnStream.pipeThrough(new BrunsliTransformer());
   let modifiedResponseHeaders = new Headers(originalResponse.headers);
   modifiedResponseHeaders.set('Content-Type', 'image/jpeg');
   return new Response(jpegStream, { headers: modifiedResponseHeaders });

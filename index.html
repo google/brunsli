@@ -48,8 +48,8 @@
 <div class="w3-top">
   <div class="w3-bar w3-black w3-card">
     <a href="#brunsli" class="w3-bar-item w3-button">
-      <img alt="JPEG XL logo" src="favicon-96.png" width="22" style="vertical-align: bottom; margin: 0 4px 0 0">
-      JXL Lossless Recompression
+      <img alt="Brunsli logo" src="favicon-96.png" width="22" style="vertical-align: bottom; margin: 0 4px 0 0">
+      JPEG Lossless Recompression
     </a>
     <a href="#demo" class="w3-bar-item w3-button">Demo</a>
   </div>
@@ -57,11 +57,11 @@
 
 <div class="w3-content" style="max-width:2880px;margin-top:38px">
   <div class="w3-light-gray" id="brunsli"><div class="w3-container w3-content w3-center" style="max-width:1200px">
-    <h4>JPEG XL Lossless Recompression<br/>.jpg ⇄ .jxl</h4>
+    <h4>JPEG Lossless Recompression<br/>.jpg ⇄ .brn</h4>
     <p class="w3-opacity"><i>Future of image compression with utmost respect to our digital heritage.</i></p>
     <p class="w3-justify">
-      JPEG files can be transformed into the <a href="https://jpeg.org/jpegxl/index.html">JPEG XL</a> form without
-      quality loss, while reducing their size by 22<nbsp/>%. JPEG XL preserves all the data in a more efficient
+      JPEG files can be transformed into the Brunsli form without
+      quality loss, while reducing their size by 22<nbsp/>%. Brunsli preserves all the data in a more efficient
       container, where the integrity of an original photograph is maintained  byte-by-byte — without damage to our
       digital cultural heritage.
     </p>
@@ -70,15 +70,6 @@
       conversion process runs locally in your browser using <a href="https://webassembly.org/">WebAssembly</a>
       technology, no images are uploaded to servers. This demo only works with <i>.jpg</i> files, there is no
       <i>.png</i> nor <i>.gif</i> support at the moment.
-    </p>
-    <p class="w3-justify">
-      Lossless recompression improves JPEG XL’s compatibility with existing clients such as older generation phones and
-      browsers not yet having dedicated JPEG XL support. The lossless recompressing feature simplifies the ecosystem
-      migration to JPEG XL: servers can store a single JPEG XL file to serve both JPEG and JPEG XL clients, and multiple
-      efficiency and transfer speed improvements will be available in an ecosystem having a rich mixture of old and new
-      clients. The format has several flexibility considerations for interoperability and migration of JPEG to JPEG XL,
-      and incremental steps of quality improvement can be taken while remaining compatible with both the old and new
-      formats.
     </p>
   </div></div>
 
@@ -89,7 +80,7 @@
         <input type="file" id="fileSelector" name="files[]" multiple />
       </div>
       <span class='w3-show'>Drop your <span class="w3-text-blue">.jpg</span></span>
-      <span id="more-actions" class="w3-hide w3-animate-opacity">or <span class="w3-text-green">.jxl</span></span>
+      <span id="more-actions" class="w3-hide w3-animate-opacity">or <span class="w3-text-green">.brn</span></span>
       <span class='w3-show'>file here.</span>
       <div style="visibility: hidden;font-size: 0; margin: -7.5px">
         <input type="file" id="dummy" name="files[]" multiple />
@@ -232,7 +223,7 @@ function processJpeg(fileName, jpegData, jpegSize) {
   let brunsli = brunsliModule._JpegToBrunsli(jpegData, jpegSize);
   let t1 = performance.now();
   if (!brunsli) {
-    log('w3-text-red', [text("JXL Recompression failed")]);
+    log('w3-text-red', [text("Brunsli Recompression failed")]);
     return;
   }
   let brunsliData = brunsliModule._GetBrunsliData(brunsli);
@@ -243,10 +234,10 @@ function processJpeg(fileName, jpegData, jpegSize) {
   brunsliModule._FreeBrunsli(brunsli);
   log('w3-text-gray', [text("Output size: " + brunsliSize)]);
   log('w3-text-gray', [text("Processing time: " + (((t1 - t0)|0) / 1000.0) + "s")]);
-  logDownloadLink(fileName + '.jxl', output);
+  logDownloadLink(fileName + '.brn', output);
 }
 function processBrunsli(fileName, brunsliData, brunsliSize) {
-  log('w3-text-gray', [text("Processing " + fileName + " as JXL")]);
+  log('w3-text-gray', [text("Processing " + fileName + " as Brunsli")]);
   log('w3-text-gray', [text("Input size: " + brunsliSize)]);
   let t0 = performance.now();
   let jpeg = brunsliModule._BrunsliToJpeg(brunsliData, brunsliSize);

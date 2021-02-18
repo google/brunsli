@@ -20,14 +20,14 @@ let names = [
 let name_idx = 0;
 let interactive = false;
 let metas = {
-  "img-jxl": {"load_start": 0, "title": "JXL"},
+  "img-brn": {"load_start": 0, "title": "Brunsli"},
   "img-jpg": {"load_start": 0, "title": "JPG"}
 };
 let salt = Date.now();
 
 function makeInteractive() {
   interactive = true;
-  document.getElementById("img-jxl").addEventListener("load", onImageLoad);
+  document.getElementById("img-brn").addEventListener("load", onImageLoad);
   document.getElementById("img-jpg").addEventListener("load", onImageLoad);
 
   document.onkeypress = function(e) {
@@ -58,8 +58,8 @@ function loadImages() {
   if (!interactive) makeInteractive();
   let suffix = ".jpg";
   if (window.location.search.includes('?progressive')) suffix = ".p" + suffix;
-  loadImage("img-jxl", names[name_idx] + suffix);
-  loadImage("img-jpg", names[name_idx] + suffix + "?no-jxl");
+  loadImage("img-brn", names[name_idx] + suffix);
+  loadImage("img-jpg", names[name_idx] + suffix + "?no-brn");
   name_idx = (name_idx + 1) % names.length;
 }
 
@@ -134,9 +134,9 @@ document.addEventListener("touchend", e => onTouchEnd(e), false);
 <div class="w3-row">
  <div class="w3-half w3-padding">
   <div class="w3-card">
-   <img id="img-jxl" style="width:100%">
+   <img id="img-brn" style="width:100%">
    <div class="w3-container">
-    <h4 id="img-jxl-title">JXL</h4>
+    <h4 id="img-brn-title">Brunsli</h4>
    </div>
   </div>
  </div>
