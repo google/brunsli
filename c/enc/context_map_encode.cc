@@ -27,9 +27,9 @@ void StoreVarLenUint8(size_t n, Storage* storage) {
     WriteBits(1, 0, storage);
   } else {
     WriteBits(1, 1, storage);
-    size_t nbits = Log2FloorNonZero(n);
+    size_t nbits = Log2FloorNonZero(static_cast<uint32_t>(n));
     WriteBits(3, nbits, storage);
-    WriteBits(nbits, n - (1 << nbits), storage);
+    WriteBits(nbits, n - (size_t(1) << nbits), storage);
   }
 }
 
@@ -81,7 +81,8 @@ void RunLengthCodeZeros(const std::vector<uint32_t>& v_in,
     while (i < v_in.size() && v_in[i] == 0) ++i;
     max_reps = std::max(i - i0, max_reps);
   }
-  uint32_t max_prefix = max_reps > 0 ? Log2FloorNonZero(max_reps) : 0;
+  uint32_t max_prefix =
+      max_reps > 0 ? Log2FloorNonZero(static_cast<uint32_t>(max_reps)) : 0;
   max_prefix = std::min(max_prefix, *max_run_length_prefix);
   *max_run_length_prefix = max_prefix;
   for (size_t i = 0; i < v_in.size();) {

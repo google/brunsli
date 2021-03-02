@@ -241,7 +241,7 @@ bool BuildHuffmanCodeTable(const JPEGHuffmanCode& huff,
     if (p + i > kJpegHuffmanAlphabetSize + 1) {
       return false;
     }
-    while (i--) huff_size[p++] = l;
+    while (i--) huff_size[p++] = static_cast<uint32_t>(l);
   }
 
   if (p == 0) {
@@ -290,16 +290,16 @@ bool EncodeSOF(const JPEGData& jpg, uint8_t marker, SerializationState* state) {
   state->output_queue.emplace_back(marker_len + 2);
   uint8_t* data = state->output_queue.back().buffer->data();
   size_t pos = 0;
-  data[pos++] = 0xFF;
+  data[pos++] = 0xFFu;
   data[pos++] = marker;
-  data[pos++] = marker_len >> 8u;
-  data[pos++] = marker_len & 0xFFu;
+  data[pos++] = static_cast<uint8_t>(marker_len >> 8u);
+  data[pos++] = static_cast<uint8_t>(marker_len);
   data[pos++] = kJpegPrecision;
   data[pos++] = jpg.height >> 8u;
   data[pos++] = jpg.height & 0xFFu;
   data[pos++] = jpg.width >> 8u;
   data[pos++] = jpg.width & 0xFFu;
-  data[pos++] = n_comps;
+  data[pos++] = static_cast<uint8_t>(n_comps);
   for (size_t i = 0; i < n_comps; ++i) {
     data[pos++] = jpg.components[i].id;
     data[pos++] = ((jpg.components[i].h_samp_factor << 4u) |
@@ -318,11 +318,11 @@ bool EncodeSOS(const JPEGData& jpg, const JPEGScanInfo& scan_info,
   state->output_queue.emplace_back(marker_len + 2);
   uint8_t* data = state->output_queue.back().buffer->data();
   size_t pos = 0;
-  data[pos++] = 0xFF;
-  data[pos++] = 0xDA;
-  data[pos++] = marker_len >> 8u;
-  data[pos++] = marker_len & 0xFFu;
-  data[pos++] = n_scans;
+  data[pos++] = 0xFFu;
+  data[pos++] = 0xDAu;
+  data[pos++] = static_cast<uint8_t>(marker_len >> 8u);
+  data[pos++] = static_cast<uint8_t>(marker_len);
+  data[pos++] = static_cast<uint8_t>(n_scans);
   for (size_t i = 0; i < n_scans; ++i) {
     const JPEGComponentScanInfo& si = scan_info.components[i];
     if (si.comp_idx >= jpg.components.size()) return false;
@@ -350,10 +350,10 @@ bool EncodeDHT(const JPEGData& jpg, SerializationState* state) {
   state->output_queue.emplace_back(marker_len + 2);
   uint8_t* data = state->output_queue.back().buffer->data();
   size_t pos = 0;
-  data[pos++] = 0xFF;
-  data[pos++] = 0xC4;
-  data[pos++] = marker_len >> 8u;
-  data[pos++] = marker_len & 0xFFu;
+  data[pos++] = 0xFFu;
+  data[pos++] = 0xC4u;
+  data[pos++] = static_cast<uint8_t>(marker_len >> 8u);
+  data[pos++] = static_cast<uint8_t>(marker_len);
   while (true) {
     const size_t huffman_code_index = state->dht_index++;
     if (huffman_code_index >= huffman_code.size()) {

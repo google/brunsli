@@ -17,7 +17,7 @@ namespace brunsli {
 
 /* Returns reverse(reverse(key, len) + 1, len), where reverse(key, len) is the
    bit-wise reversal of the len least significant bits of key. */
-static inline int GetNextKey(int key, int len) {
+static inline int GetNextKey(int key, size_t len) {
   int step = 1u << (len - 1);
   while (key & step) {
     step >>= 1;
@@ -39,8 +39,8 @@ static inline void ReplicateValue(HuffmanCode* table, int step, int end,
    of bit lengths for the remaining symbols, len is the code length of the next
    processed symbol */
 static inline size_t NextTableBitSize(const uint16_t* const count, size_t len,
-                                      int root_bits) {
-  size_t left = 1u << (len - root_bits);
+                                      size_t root_bits) {
+  size_t left = size_t(1) << (len - root_bits);
   while (len < kMaxHuffmanBits) {
     if (left <= count[len]) break;
     left -= count[len];
@@ -50,7 +50,7 @@ static inline size_t NextTableBitSize(const uint16_t* const count, size_t len,
   return len - root_bits;
 }
 
-uint32_t BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
+uint32_t BuildHuffmanTable(HuffmanCode* root_table, size_t root_bits,
                            const uint8_t* const code_lengths,
                            size_t code_lengths_size, uint16_t* count) {
   HuffmanCode code;    /* current table entry */
@@ -89,7 +89,7 @@ uint32_t BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
   /* sort symbols by length, by symbol order within each length */
   for (symbol = 0; symbol < code_lengths_size; symbol++) {
     if (code_lengths[symbol] != 0) {
-      sorted[offset[code_lengths[symbol]]++] = symbol;
+      sorted[offset[code_lengths[symbol]]++] = static_cast<uint16_t>(symbol);
     }
   }
 

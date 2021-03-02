@@ -16,8 +16,8 @@
 
 namespace brunsli {
 
-static const int kMaxAverageContext = 8;
-static const int kNumAvrgContexts = kMaxAverageContext + 1;
+static const size_t kMaxAverageContext = 8;
+static const size_t kNumAvrgContexts = kMaxAverageContext + 1u;
 // 6 bits allow encoding values 0..63; this range represents the possible
 // quantities of non-zero AC coefficients in the DCT block.
 static const size_t kNumNonZeroBits = 6u;
@@ -157,7 +157,8 @@ static const uint8_t kContextAlgorithm[128] = {
     2, 0, 0, 0, 0, 0, 0, 0,
 };
 
-inline int ZeroDensityContext(int nonzeros_left, int k, int bits) {
+inline uint16_t ZeroDensityContext(size_t nonzeros_left, size_t k,
+                                   size_t bits) {
   return kNumNonzeroContext[bits][nonzeros_left] + kFreqContext[bits][k];
 }
 
@@ -216,7 +217,7 @@ void ComputeACPredictMultipliers(const int* quant, int* mult_row,
                                  int* mult_col);
 
 // Computes average and sign context from the AC prediction.
-inline void ACPredictContext(int64_t p, int* avg_ctx, int* sgn) {
+inline void ACPredictContext(int64_t p, size_t* avg_ctx, size_t* sgn) {
   int multiplier;
   if (p >= 0) {
     multiplier = 1;
@@ -224,7 +225,7 @@ inline void ACPredictContext(int64_t p, int* avg_ctx, int* sgn) {
     multiplier = -1;
     p = -p;
   }
-  int ctx;
+  size_t ctx;
   if (p >= (1u << kMaxAverageContext)) {
     ctx = kMaxAverageContext;
   } else {
@@ -236,7 +237,7 @@ inline void ACPredictContext(int64_t p, int* avg_ctx, int* sgn) {
 }
 
 inline void ACPredictContextCol(const coeff_t* prev, const coeff_t* cur,
-                                const int* mult, int* avg_ctx, int* sgn) {
+                                const int* mult, size_t* avg_ctx, size_t* sgn) {
   coeff_t terms[8];
   terms[0] = 0;
   terms[1] = cur[1] + prev[1];
@@ -258,7 +259,7 @@ inline void ACPredictContextCol(const coeff_t* prev, const coeff_t* cur,
 }
 
 inline void ACPredictContextRow(const coeff_t* prev, const coeff_t* cur,
-                               const int* mult, int* avg_ctx, int* sgn) {
+                               const int* mult, size_t* avg_ctx, size_t* sgn) {
   coeff_t terms[8];
   terms[0] = 0;
   terms[1] = cur[8] + prev[8];
@@ -302,7 +303,7 @@ inline uint8_t NumNonzerosContext(const uint8_t* prev, int x, int y) {
     prediction = (prev[x - 1] + prev[x] + 1) / 2;
   }
   BRUNSLI_DCHECK(prediction <= kNumNonZeroTreeSize);
-  return prediction / kNumNonZeroQuant;
+  return static_cast<uint8_t>(prediction / kNumNonZeroQuant);
 }
 
 // Context for the emptyness of a block is the number of non-empty blocks in the

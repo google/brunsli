@@ -19,7 +19,7 @@ struct HuffmanCode {
 /* Builds Huffman lookup table assuming code lengths are in symbol order. */
 /* Returns 0 in case of error (invalid tree or memory error), otherwise
    populated size of table. */
-uint32_t BuildHuffmanTable(HuffmanCode* root_table, int root_bits,
+uint32_t BuildHuffmanTable(HuffmanCode* root_table, size_t root_bits,
                            const uint8_t* code_lengths,
                            size_t code_lengths_size, uint16_t* count);
 

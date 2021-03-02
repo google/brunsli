@@ -19,6 +19,15 @@
 #include <highwayhash/data_parallel.h>
 #endif
 
+#if defined(_WIN32)
+#define fopen ms_fopen
+static FILE* ms_fopen(const char* filename, const char* mode) {
+  FILE* result = 0;
+  fopen_s(&result, filename, mode);
+  return result;
+}
+#endif  /* WIN32 */
+
 size_t StringWriter(void* data, const uint8_t* buf, size_t count) {
   std::string* output = reinterpret_cast<std::string*>(data);
   output->append(reinterpret_cast<const char*>(buf), count);

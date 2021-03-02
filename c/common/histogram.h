@@ -7,11 +7,13 @@
 #ifndef BRUNSLI_COMMON_HISTOGRAM_H_
 #define BRUNSLI_COMMON_HISTOGRAM_H_
 
+#include <brunsli/types.h>
+
 namespace brunsli {
 
 // Returns the precision (number of bits) that should be used to store
 // a histogram count such that Log2Floor(count) == logcount.
-inline int GetPopulationCountPrecision(int logcount) {
+inline uint32_t GetPopulationCountPrecision(uint32_t logcount) {
   return (logcount + 1) >> 1;
 }
 

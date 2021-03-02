@@ -32,7 +32,7 @@ struct ComponentMeta {
   size_t context_offset;
   int32_t h_samp;
   int32_t v_samp;
-  int32_t context_bits;
+  size_t context_bits;
   int32_t ac_stride;
   int32_t b_stride;
   int32_t width_in_blocks;

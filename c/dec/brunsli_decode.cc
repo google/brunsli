@@ -360,20 +360,21 @@ static BrunsliStatus DecodeHuffmanCode(State* state, JPEGData* jpg) {
         JPEGHuffmanCode* huff = &jpg->huffman_code.back();
         if (js.i <= js.max_len) {
           size_t shift = kJpegHuffmanMaxBitLength - js.i;
-          int count_limit =
+          size_t count_limit =
               std::min(js.max_count - js.total_count, js.space >> shift);
           if (count_limit > 0) {
-            int nbits = Log2FloorNonZero(count_limit) + 1;
+            int nbits =
+                Log2FloorNonZero(static_cast<uint32_t>(count_limit)) + 1;
             if (!BrunsliBitReaderCanRead(br, nbits)) {
               return BRUNSLI_NOT_ENOUGH_DATA;
             }
-            int count = BrunsliBitReaderRead(br, nbits);
+            size_t count = BrunsliBitReaderRead(br, nbits);
             if (count > count_limit) {
               return BRUNSLI_INVALID_BRN;
             }
-            huff->counts[js.i] = count;
+            huff->counts[js.i] = static_cast<int>(count);
             js.total_count += count;
-            js.space -= count * (1u << shift);
+            js.space -= count * (static_cast<size_t>(1) << shift);
           }
           ++js.i;
           continue;
@@ -485,7 +486,8 @@ BrunsliStatus DecodeScanInfo(State* state, JPEGData* jpg) {
       case JpegInternalsState::READ_SCAN_RESET_POINT_DATA: {
         JPEGScanInfo* si = &jpg->scan_info[js.i];
         if (!DecodeVarint(&js.varint, br, 28)) return BRUNSLI_NOT_ENOUGH_DATA;
-        int block_idx = js.last_block_idx + js.varint.value + 1;
+        int block_idx =
+            js.last_block_idx + static_cast<int>(js.varint.value) + 1;
         si->reset_points.emplace_back(block_idx);
         js.last_block_idx = block_idx;
         // TODO(eustas): limit to exact number of blocks.
@@ -515,7 +517,7 @@ BrunsliStatus DecodeScanInfo(State* state, JPEGData* jpg) {
       }
       case JpegInternalsState::READ_SCAN_ZERO_RUN_DATA: {
         if (!DecodeVarint(&js.varint, br, 28)) return BRUNSLI_NOT_ENOUGH_DATA;
-        int block_idx = js.last_block_idx + js.varint.value;
+        int block_idx = js.last_block_idx + static_cast<int>(js.varint.value);
         if (block_idx > js.last_block_idx) maybe_add_zero_run();
         ++js.last_num;
         js.last_block_idx = block_idx;
@@ -640,7 +642,7 @@ BrunsliStatus DecodeDC(State* state, WordSource* in) {
       ComponentStateDC* c = &comps[i];
       const ComponentMeta& m = meta[i];
       const uint8_t* context_map = state->context_map + i * kNumAvrgContexts;
-      const size_t ac_stride = m.ac_stride;
+      const int ac_stride = static_cast<int>(m.ac_stride);
       const size_t b_stride = m.b_stride;
       const int width = m.width_in_blocks;
       int y = mcu_y * m.v_samp + ac_dc_state.next_iy;
@@ -687,7 +689,7 @@ BrunsliStatus DecodeDC(State* state, WordSource* in) {
               if (code < kNumDirectCodes) {
                 abs_val = code + 1;
               } else {
-                const size_t nbits = code - kNumDirectCodes;
+                int nbits = code - kNumDirectCodes;
                 Prob* BRUNSLI_RESTRICT p_first_extra_bit =
                     &c->first_extra_bit_prob[nbits];
                 int first_extra_bit =
@@ -695,7 +697,7 @@ BrunsliStatus DecodeDC(State* state, WordSource* in) {
                 p_first_extra_bit->Add(first_extra_bit);
                 int extra_bits_val = first_extra_bit << nbits;
                 if (nbits > 0) {
-                  extra_bits_val |= br.ReadBits(nbits, in);
+                  extra_bits_val |= static_cast<int>(br.ReadBits(nbits, in));
                 }
                 abs_val = kNumDirectCodes - 1 + (2 << nbits) + extra_bits_val;
               }
@@ -764,7 +766,7 @@ struct AcBlockCookie {
   const int* BRUNSLI_RESTRICT mult_row;
   int prev_row_delta;
   Prob* BRUNSLI_RESTRICT sign_prob;
-  int context_bits;
+  size_t context_bits;
   const uint8_t* BRUNSLI_RESTRICT context_map;
   const ANSDecodingData* BRUNSLI_RESTRICT entropy_codes;
   Prob* BRUNSLI_RESTRICT first_extra_bit_prob;
@@ -790,8 +792,8 @@ static size_t BRUNSLI_NOINLINE DecodeAcBlock(const AcBlockCookie& cookie) {
   for (size_t k = last_nz; k > 0; --k) {
     int is_zero = 0;
     if (k < last_nz) {
-      const int bucket = kNonzeroBuckets[num_nonzeros - 1];
-      const int is_zero_ctx = bucket * kDCTBlockSize + k;
+      size_t bucket = kNonzeroBuckets[num_nonzeros - 1];
+      size_t is_zero_ctx = bucket * kDCTBlockSize + k;
       Prob& p = c.is_zero_prob[is_zero_ctx];
       is_zero = ac.ReadBit(p.get_proba(), in);
       p.Add(is_zero);
@@ -800,9 +802,9 @@ static size_t BRUNSLI_NOINLINE DecodeAcBlock(const AcBlockCookie& cookie) {
     int sign = 1;
     const int k_nat = c.order[k];
     if (!is_zero) {
-      const int context_type = c.context_modes[k_nat];
-      int avg_ctx = 0;
-      int sign_ctx = kMaxAverageContext;
+      size_t context_type = c.context_modes[k_nat];
+      size_t avg_ctx = 0;
+      size_t sign_ctx = kMaxAverageContext;
       if ((context_type & 1) && (c.y > 0)) {
         size_t offset = k_nat & 7;
         ACPredictContextRow(c.prev_row_coeffs + offset, c.coeffs + offset,
@@ -822,10 +824,10 @@ static size_t BRUNSLI_NOINLINE DecodeAcBlock(const AcBlockCookie& cookie) {
       sign_p.Add(sign);
       c.prev_sgn[k] = sign + 1;
       sign = 1 - 2 * sign;
-      const int z_dens_ctx =
+      const size_t z_dens_ctx =
           ZeroDensityContext(num_nonzeros, k, c.context_bits);
-      const int histo_ix = z_dens_ctx * kNumAvrgContexts + avg_ctx;
-      const int entropy_ix = c.context_map[histo_ix];
+      size_t histo_ix = z_dens_ctx * kNumAvrgContexts + avg_ctx;
+      size_t entropy_ix = c.context_map[histo_ix];
       int code = ans.ReadSymbol(c.entropy_codes[entropy_ix], in);
       if (code < kNumDirectCodes) {
         abs_val = code + 1;
@@ -1179,8 +1181,8 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
         const size_t version_and_comp_count =
             hs.varint_values[kBrunsliHeaderVersionCompTag];
 
-        const int version = version_and_comp_count >> 2u;
-        jpg->version = version;
+        const size_t version = version_and_comp_count >> 2u;
+        jpg->version = static_cast<int>(version);
 
         if (version == 1) {  // fallback mode
           // TODO(eustas): do we need this?
@@ -1218,8 +1220,8 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
         if (width > kMaxDimPixels || height > kMaxDimPixels) {
           return Fail(state, BRUNSLI_INVALID_BRN);
         }
-        jpg->width = width;
-        jpg->height = height;
+        jpg->width = static_cast<int>(width);
+        jpg->height = static_cast<int>(height);
 
         const size_t num_components = (version_and_comp_count & 3u) + 1u;
         jpg->components.resize(num_components);
@@ -1721,7 +1723,7 @@ static BrunsliStatus DecodeQuantDataSection(State* state, JPEGData* jpg) {
         if (!DecodeVarint(&qs.vs, br, 16)) {
           return suspend_bit_reader(BRUNSLI_NOT_ENOUGH_DATA);
         }
-        const int diff = qs.vs.value + 1;
+        int diff = static_cast<int>(qs.vs.value) + 1;
         qs.delta += qs.sign * diff;
         qs.stage = QuantDataState::APPLY_DIFF;
         continue;
@@ -1815,7 +1817,7 @@ static BrunsliStatus DecodeHistogramDataSection(State* state, JPEGData* jpg) {
       return suspend_bit_reader(BRUNSLI_NOT_ENOUGH_DATA);
     }
     for (size_t i = 0; i < num_components; ++i) {
-      int scheme = BrunsliBitReaderRead(br, 3);
+      size_t scheme = BrunsliBitReaderRead(br, 3);
       if (scheme >= kNumSchemes) return suspend_bit_reader(BRUNSLI_INVALID_BRN);
       ComponentMeta& m = state->meta[i];
       m.context_bits = scheme;

@@ -49,7 +49,7 @@ struct Histogram {
   Histogram();
   void Clear();
   void AddHistogram(const Histogram& other);
-  void Add(int val);
+  void Add(size_t val);
   void Merge(const Histogram& other);
 
   int data_[BRUNSLI_ANS_MAX_SYMBOLS];
@@ -59,8 +59,8 @@ struct Histogram {
 
 class EntropyCodes {
  public:
-  EntropyCodes(const std::vector<Histogram>& histograms, int num_bands,
-               const std::vector<int>& offsets);
+  EntropyCodes(const std::vector<Histogram>& histograms, size_t num_bands,
+               const std::vector<size_t>& offsets);
   // GCC declares it won't apply RVO, even if it actually does.
   // EntropyCodes(const EntropyCodes&) = delete;
   void EncodeContextMap(Storage* storage) const;
@@ -68,7 +68,7 @@ class EntropyCodes {
   const ANSTable* GetANSTable(int context) const;
 
  private:
-  static const int kMaxNumberOfHistograms = 256;
+  static const size_t kMaxNumberOfHistograms = 256;
 
   std::vector<Histogram> clustered_;
   std::vector<uint32_t> context_map_;
@@ -79,13 +79,13 @@ class EntropyCodes {
 class EntropySource {
  public:
   EntropySource() : num_bands_(0) {}
-  void Resize(int num_bands);
-  void AddCode(int code, int histo_ix);
+  void Resize(size_t num_bands);
+  void AddCode(size_t code, size_t histo_ix);
   void Merge(const EntropySource& other);
-  std::unique_ptr<EntropyCodes> Finish(const std::vector<int>& offsets);
+  std::unique_ptr<EntropyCodes> Finish(const std::vector<size_t>& offsets);
 
  private:
-  int num_bands_;
+  size_t num_bands_;
   std::vector<Histogram> histograms_;
 };
 
@@ -93,9 +93,9 @@ class EntropySource {
 class DataStream {
  public:
   DataStream();
-  void Resize(int max_num_code_words);
+  void Resize(size_t max_num_code_words);
   void ResizeForBlock();
-  void AddCode(int code, int band, int context, EntropySource* s);
+  void AddCode(size_t code, size_t band, size_t context, EntropySource* s);
   void AddBits(int nbits, int bits);
   void FlushArithmeticCoder();
   void FlushBitWriter();

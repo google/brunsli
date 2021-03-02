@@ -63,7 +63,7 @@ size_t BrunsliBitReaderSuspend(BrunsliBitReader* br);
  */
 void BrunsliBitReaderFinish(BrunsliBitReader* br);
 
-size_t BrunsliBitReaderIsHealthy(BrunsliBitReader* br);
+bool BrunsliBitReaderIsHealthy(BrunsliBitReader* br);
 
 static BRUNSLI_INLINE uint32_t BrunsliBitReaderBitMask(uint32_t n) {
   return ~((0xFFFFFFFFu) << n);
@@ -103,7 +103,7 @@ void BrunsliBitReaderSetOptimistic(BrunsliBitReader* br);
  *
  * Guaranteed to work correctly only in normalized state.
  */
-bool BrunsliBitReaderCanRead(BrunsliBitReader* br, uint32_t n_bits);
+bool BrunsliBitReaderCanRead(BrunsliBitReader* br, size_t n_bits);
 
 static BRUNSLI_INLINE uint32_t BrunsliBitReaderGet(BrunsliBitReader* br,
                                                    uint32_t n_bits) {

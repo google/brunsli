@@ -25,7 +25,7 @@ struct BrunsliBitReader;
  *
  * @returns false on decoding error
  */
-bool ReadHistogram(size_t precision_bits, std::vector<uint32_t>* counts,
+bool ReadHistogram(uint32_t precision_bits, std::vector<uint32_t>* counts,
                    BrunsliBitReader* br);
 
 }  // namespace brunsli

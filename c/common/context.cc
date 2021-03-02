@@ -12,7 +12,8 @@
 namespace brunsli {
 
 static const double kSqrt2 = 1.414213562;
-static const int kSqrt2FixedPoint = kSqrt2 * kACPredictPrecision;
+static const int kSqrt2FixedPoint =
+    static_cast<int>(kSqrt2 * kACPredictPrecision);
 
 void ComputeACPredictMultipliers(const int* quant,
                                  int* mult_row,

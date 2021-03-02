@@ -467,7 +467,8 @@ struct BitReaderState {
     FillBitWindow();
     uint64_t val = (val_ >> (bits_left_ - nbits)) & ((1ULL << nbits) - 1);
     bits_left_ -= nbits;
-    return val;
+    BRUNSLI_DCHECK(val < (1 << 31));
+    return static_cast<int>(val);
   }
 
   // Sets *pos to the next stream position where parsing should continue.
