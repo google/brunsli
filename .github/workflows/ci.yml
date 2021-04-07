@@ -16,14 +16,15 @@ jobs:
   build:
     runs-on: ${{ matrix.os }}-latest
     strategy:
+      fail-fast: false
       matrix:
         include:
         - os: ubuntu
           env: CC=/usr/bin/clang-9 CXX=/usr/bin/clang++-9
         - os: ubuntu
-          env: CC=/usr/bin/gcc-7 CXX=/usr/bin/g++-7
+          env: CC=/usr/bin/clang-10 CXX=/usr/bin/clang++-10
         - os: ubuntu
-          env: CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8
+          env: CC=/usr/bin/clang-11 CXX=/usr/bin/clang++-11
         - os: ubuntu
           env: CC=/usr/bin/gcc-9 CXX=/usr/bin/g++-9
         - os: ubuntu
