@@ -76,7 +76,9 @@ size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg) {
     hdr_size += data.size();
   }
   hdr_size += jpg.tail_data.size();
-  return 1.2 * jpg.width * jpg.height * jpg.components.size() + hdr_size;
+  size_t num_pixels = jpg.width * jpg.height * jpg.components.size();
+  // TODO(eustas): are we certain about the multiplier?
+  return static_cast<size_t>(num_pixels * 1.2) + hdr_size;
 }
 
 size_t Base128Size(size_t val) {
@@ -515,7 +517,7 @@ void Histogram::AddHistogram(const Histogram& other) {
   total_count_ += other.total_count_;
 }
 
-void Histogram::Add(int val) {
+void Histogram::Add(size_t val) {
   BRUNSLI_DCHECK(val < BRUNSLI_ANS_MAX_SYMBOLS);
   ++data_[val];
   ++total_count_;
@@ -544,17 +546,17 @@ void ComputeCoeffOrder(const BlockI32& num_zeros, uint32_t* order) {
   }
 }
 
-void EntropySource::Resize(int num_bands) {
+void EntropySource::Resize(size_t num_bands) {
   num_bands_ = num_bands;
   histograms_.resize(num_bands * kNumAvrgContexts);
 }
 
-void EntropySource::AddCode(int code, int histo_ix) {
+void EntropySource::AddCode(size_t code, size_t histo_ix) {
   histograms_[histo_ix].Add(code);
 }
 
 std::unique_ptr<EntropyCodes> EntropySource::Finish(
-    const std::vector<int>& offsets) {
+    const std::vector<size_t>& offsets) {
   std::vector<Histogram> histograms;
   histograms.swap(histograms_);
   return std::unique_ptr<EntropyCodes>(
@@ -569,7 +571,8 @@ void EntropySource::Merge(const EntropySource& other) {
 }
 
 EntropyCodes::EntropyCodes(const std::vector<Histogram>& histograms,
-                           int num_bands, const std::vector<int>& offsets) {
+                           size_t num_bands,
+                           const std::vector<size_t>& offsets) {
   brunsli::ClusterHistograms(histograms, kNumAvrgContexts, num_bands, offsets,
                              kMaxNumberOfHistograms, &clustered_,
                              &context_map_);
@@ -602,7 +605,7 @@ DataStream::DataStream()
       bw_val_(0),
       bw_bitpos_(0) {}
 
-void DataStream::Resize(int max_num_code_words) {
+void DataStream::Resize(size_t max_num_code_words) {
   code_words_.resize(max_num_code_words);
 }
 
@@ -610,16 +613,18 @@ void DataStream::ResizeForBlock() {
   if (pos_ + kSlackForOneBlock > code_words_.size()) {
     static const double kGrowMult = 1.2;
     const size_t new_size =
-        kGrowMult * code_words_.capacity() + kSlackForOneBlock;
+        static_cast<size_t>(kGrowMult * code_words_.capacity()) +
+        kSlackForOneBlock;
     code_words_.resize(new_size);
   }
 }
 
-void DataStream::AddCode(int code, int band, int context, EntropySource* s) {
-  int histo_ix = band * kNumAvrgContexts + context;
+void DataStream::AddCode(size_t code, size_t band, size_t context,
+                         EntropySource* s) {
+  size_t histo_ix = band * kNumAvrgContexts + context;
   CodeWord word;
-  word.context = histo_ix;
-  word.code = code;
+  word.context = static_cast<uint32_t>(histo_ix);
+  word.code = static_cast<uint32_t>(code);
   word.nbits = 0;
   word.value = 0;
   BRUNSLI_DCHECK(pos_ < code_words_.size());
@@ -717,7 +722,7 @@ void EncodeNumNonzeros(size_t val, Prob* p, DataStream* data_stream) {
   size_t ctx = 1;
 
   for (size_t mask = 1 << (kNumNonZeroBits - 1); mask != 0; mask >>= 1) {
-    const size_t bit = (val & mask) != 0;
+    const int bit = ((val & mask) != 0);
     data_stream->AddBit(bst + ctx, bit);
     ctx = 2 * ctx + bit;
   }
@@ -1006,7 +1011,7 @@ int SelectContextBits(size_t num_symbols) {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3,
       3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6, 6, 6, 6, 6,
   };
-  int log2_size = Log2FloorNonZero(num_symbols);
+  size_t log2_size = Log2FloorNonZero(static_cast<uint32_t>(num_symbols));
   int scheme = kContextBits[log2_size];
   BRUNSLI_DCHECK(scheme < kNumSchemes);
   return scheme;
@@ -1069,14 +1074,14 @@ void EncodeDC(State* state) {
   DataStream& data_stream = state->data_stream_dc;
 
   std::vector<ComponentStateDC> comps(num_components);
-  int total_num_blocks = 0;
+  size_t total_num_blocks = 0;
   for (int i = 0; i < num_components; ++i) {
     const ComponentMeta& m = meta[i];
     comps[i].SetWidth(m.width_in_blocks);
     total_num_blocks += m.width_in_blocks * m.height_in_blocks;
   }
   entropy_source.Resize(num_components);
-  data_stream.Resize(3 * total_num_blocks + 128);
+  data_stream.Resize(3u * total_num_blocks + 128u);
 
   // We encode image components in the following interleaved manner:
   //   v_samp[0] rows of 8x8 blocks from component 0
@@ -1124,9 +1129,10 @@ void EncodeDC(State* state) {
               const int avrg_ctx = WeightedAverageContextDC(prev_abs, x);
               const int sign_ctx = prev_sgn[x] * 3 + prev_sgn[x - 1];
               data_stream.AddBit(&c->sign_prob[sign_ctx], sign - 1);
-              const int zdens_ctx = i;
+              const size_t zdens_ctx = i;
               if (absval <= kNumDirectCodes) {
-                data_stream.AddCode(absval - 1, zdens_ctx, avrg_ctx,
+                data_stream.AddCode(absval - 1, zdens_ctx,
+                                    static_cast<uint32_t>(avrg_ctx),
                                     &entropy_source);
               } else {
                 int nbits = Log2FloorNonZero(absval - kNumDirectCodes + 1) - 1;
@@ -1163,14 +1169,12 @@ void EncodeAC(State* state) {
   const uint8_t* context_modes =
       kContextAlgorithm + (state->use_legacy_context_model ? 64 : 0);
 
-  int num_code_words = 0;
-  int total_num_blocks = 0;
+  size_t num_code_words = 0;
   std::vector<ComponentState> comps(num_components);
   for (size_t i = 0; i < num_components; ++i) {
     const ComponentMeta& m = meta[i];
     const size_t num_blocks = m.width_in_blocks * m.height_in_blocks;
-    num_code_words += 2 * m.approx_total_nonzeros + 1024 + 3 * num_blocks;
-    total_num_blocks += num_blocks;
+    num_code_words += 2u * m.approx_total_nonzeros + 1024u + 3u * num_blocks;
 
     // TODO(eustas): what is better - use shared order or "group" order?
     ComputeCoeffOrder(m.num_zeros, &comps[i].order[0]);
@@ -1255,42 +1259,43 @@ void EncodeAC(State* state) {
               const int absval = sign ? -coeff : coeff;
 
               const int k_nat = cur_order[k];
-              const int context_type = context_modes[k_nat];
-              int avrg_ctx = 0;
-              int sign_ctx = kMaxAverageContext;
+              size_t context_type = context_modes[k_nat];
+              size_t avg_ctx = 0;
+              size_t sign_ctx = kMaxAverageContext;
               if ((context_type & 1) && (y > 0)) {
                 if (y > 0) {
                   size_t offset = k_nat & 7;
                   ACPredictContextRow(
                       prev_row_coeffs + offset, encoded_coeffs + offset,
-                      &c->mult_col[offset * 8], &avrg_ctx, &sign_ctx);
+                      &c->mult_col[offset * 8], &avg_ctx, &sign_ctx);
                 }
               } else if ((context_type & 2) && (x > 0)) {
                 if (x > 0) {
                   size_t offset = k_nat & ~7;
                   ACPredictContextCol(
                       prev_col_coeffs + offset, encoded_coeffs + offset,
-                      &c->mult_row[offset], &avrg_ctx, &sign_ctx);
+                      &c->mult_row[offset], &avg_ctx, &sign_ctx);
                 }
               } else if (!context_type) {
-                avrg_ctx = WeightedAverageContext(prev_abs + k, prev_row_delta);
+                avg_ctx = WeightedAverageContext(prev_abs + k, prev_row_delta);
                 sign_ctx = prev_sgn[k] * 3 + prev_sgn[k - kDCTBlockSize];
               }
               sign_ctx = sign_ctx * kDCTBlockSize + k;
               Prob* const sign_p = &c->sign_prob[sign_ctx];
               data_stream.AddBit(sign_p, sign);
               prev_sgn[k] = sign + 1;
-              const int zdens_ctx =
+              const size_t zdens_ctx =
                   m.context_offset +
                   ZeroDensityContext(num_nzeros, k, cur_ctx_bits);
               if (absval <= kNumDirectCodes) {
-                data_stream.AddCode(absval - 1, zdens_ctx, avrg_ctx,
+                data_stream.AddCode(absval - 1, zdens_ctx, avg_ctx,
                                     &entropy_source);
               } else {
                 const int base_code = absval - kNumDirectCodes + 1;
                 const int nbits = Log2FloorNonZero(base_code) - 1;
                 data_stream.AddCode(kNumDirectCodes + nbits, zdens_ctx,
-                                    avrg_ctx, &entropy_source);
+                                    static_cast<uint32_t>(avg_ctx),
+                                    &entropy_source);
                 const int extra_bits = base_code - (2 << nbits);
                 const int first_extra_bit = (extra_bits >> nbits) & 1;
                 Prob* const p = &c->first_extra_bit_prob[k * 10 + nbits];
@@ -1327,7 +1332,7 @@ std::unique_ptr<EntropyCodes> PrepareEntropyCodes(State* state) {
   std::vector<ComponentMeta>& meta = state->meta;
   const size_t num_components = meta.size();
   // Prepend DC context group (starts at 0).
-  std::vector<int> group_context_offsets(1 + num_components);
+  std::vector<size_t> group_context_offsets(1 + num_components);
   for (size_t i = 0; i < num_components; ++i) {
     group_context_offsets[i + 1] = meta[i].context_offset;
   }
@@ -1421,7 +1426,7 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg, uint8_t* data, size_t* len) {
   // Groups workflow: distribute context_bits.
 
   // First `num_components` contexts are used for DC.
-  int32_t num_contexts = num_components;
+  size_t num_contexts = num_components;
   for (size_t i = 0; i < num_components; ++i) {
     meta[i].context_offset = num_contexts;
     num_contexts += kNumNonzeroContextSkip[meta[i].context_bits];

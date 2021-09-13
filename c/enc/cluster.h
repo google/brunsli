@@ -98,14 +98,12 @@ void CompareAndPushToQueue(const HistogramType* out,
   }
 }
 
-template<typename HistogramType>
-int HistogramCombine(HistogramType* out,
-                     int* cluster_size,
-                     uint32_t* symbols,
-                     int symbols_size,
-                     int max_clusters) {
+template <typename HistogramType>
+size_t HistogramCombine(HistogramType* out, int* cluster_size,
+                        uint32_t* symbols, size_t symbols_size,
+                        size_t max_clusters) {
   double cost_diff_threshold = 0.0;
-  int min_cluster_size = 1;
+  size_t min_cluster_size = 1;
 
   // Uniquify the list of symbols.
   std::vector<int> clusters(symbols, symbols + symbols_size);
@@ -138,7 +136,7 @@ int HistogramCombine(HistogramType* out,
     out[best_idx1].AddHistogram(out[best_idx2]);
     out[best_idx1].bit_cost_ = pairs[0].cost_combo;
     cluster_size[best_idx1] += cluster_size[best_idx2];
-    for (int i = 0; i < symbols_size; ++i) {
+    for (size_t i = 0; i < symbols_size; ++i) {
       if (symbols[i] == best_idx2) {
         symbols[i] = best_idx1;
       }
@@ -197,7 +195,7 @@ double HistogramBitCostDistance(const HistogramType& histogram,
 // Find the best 'out' histogram for each of the 'in' histograms.
 // Note: we assume that out[]->bit_cost_ is already up-to-date.
 template<typename HistogramType>
-void HistogramRemap(const HistogramType* in, int in_size,
+void HistogramRemap(const HistogramType* in, size_t in_size,
                     HistogramType* out, uint32_t* symbols) {
   // Uniquify the list of symbols.
   std::vector<int> all_symbols(symbols, symbols + in_size);
@@ -205,8 +203,8 @@ void HistogramRemap(const HistogramType* in, int in_size,
   all_symbols.resize(std::unique(all_symbols.begin(), all_symbols.end()) -
                      all_symbols.begin());
 
-  for (int i = 0; i < in_size; ++i) {
-    int best_out = i == 0 ? symbols[0] : symbols[i - 1];
+  for (size_t i = 0; i < in_size; ++i) {
+    int best_out = (i == 0) ? symbols[0] : symbols[i - 1];
     double best_bits = HistogramBitCostDistance(in[i], out[best_out]);
     for (auto k : all_symbols) {
       const double cur_bits = HistogramBitCostDistance(in[i], out[k]);
@@ -222,7 +220,7 @@ void HistogramRemap(const HistogramType* in, int in_size,
   for (auto k : all_symbols) {
     out[k].Clear();
   }
-  for (int i = 0; i < in_size; ++i) {
+  for (size_t i = 0; i < in_size; ++i) {
     out[symbols[i]].AddHistogram(in[i]);
   }
 }
@@ -253,12 +251,12 @@ void HistogramReindex(std::vector<HistogramType>* out,
 // indicate which of the 'out' histograms is the best approximation.
 template<typename HistogramType>
 void ClusterHistograms(const std::vector<HistogramType>& in,
-                       int num_contexts, int num_blocks,
-                       const std::vector<int> block_group_offsets,
-                       int max_histograms,
+                       size_t num_contexts, size_t num_blocks,
+                       const std::vector<size_t> block_group_offsets,
+                       size_t max_histograms,
                        std::vector<HistogramType>* out,
                        std::vector<uint32_t>* histogram_symbols) {
-  const int in_size = num_contexts * num_blocks;
+  const size_t in_size = num_contexts * num_blocks;
   std::vector<int> cluster_size(in_size, 1);
   out->resize(in_size);
   histogram_symbols->resize(in_size);
@@ -270,24 +268,25 @@ void ClusterHistograms(const std::vector<HistogramType>& in,
 
   // Collapse similar histograms within a block type.
   if (num_contexts > 1) {
-    for (int i = 0; i < num_blocks; ++i) {
+    for (size_t i = 0; i < num_blocks; ++i) {
       HistogramCombine(&(*out)[0], &cluster_size[0],
                        &(*histogram_symbols)[i * num_contexts], num_contexts,
                        max_histograms);
     }
   }
 
-  static const int kMinClustersForHistogramRemap = 24;
+  static const size_t kMinClustersForHistogramRemap = 24;
 
-  int num_clusters = 0;
+  size_t num_clusters = 0;
   if (block_group_offsets.size() > 1) {
     // Collapse similar histograms within block groups.
-    for (int i = 0; i < block_group_offsets.size(); ++i) {
-      int offset = block_group_offsets[i] * num_contexts;
-      int next_offset = i + 1 < block_group_offsets.size() ?
-                     block_group_offsets[i + 1] * num_contexts : in_size;
-      int length = next_offset - offset;
-      int nclusters =
+    for (size_t i = 0; i < block_group_offsets.size(); ++i) {
+      size_t offset = block_group_offsets[i] * num_contexts;
+      size_t next_offset = i + 1 < block_group_offsets.size()
+                               ? block_group_offsets[i + 1] * num_contexts
+                               : in_size;
+      size_t length = next_offset - offset;
+      size_t nclusters =
           HistogramCombine(&(*out)[0], &cluster_size[0],
                            &(*histogram_symbols)[offset], length,
                            max_histograms);

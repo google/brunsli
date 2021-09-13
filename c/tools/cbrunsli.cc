@@ -18,6 +18,15 @@
 #include <highwayhash/data_parallel.h>
 #endif
 
+#if defined(_WIN32)
+#define fopen ms_fopen
+static FILE* ms_fopen(const char* filename, const char* mode) {
+  FILE* result = 0;
+  fopen_s(&result, filename, mode);
+  return result;
+}
+#endif  /* WIN32 */
+
 bool ReadFileInternal(FILE* file, std::string* content) {
   if (fseek(file, 0, SEEK_END) != 0) {
     fprintf(stderr, "Failed to seek end of input file.\n");

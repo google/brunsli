@@ -27,7 +27,7 @@ static const int kBrunsliMaxDCAbsVal = 2054;
 // size is 256 + 16 = 272. (We can have 256 clusters and 16 run length codes).
 static const size_t kMaxContextMapAlphabetSize = 272;
 
-static const size_t kHuffmanTableBits = 8u;
+static const uint32_t kHuffmanTableBits = 8u;
 static const size_t kMaxHuffmanBits = 15u;
 
 // Total number of short markers allowed. Short marker represents popular marker
