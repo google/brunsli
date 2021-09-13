@@ -16,9 +16,9 @@ bool ANSDecodingData::Init(const std::vector<uint32_t>& counts) {
   size_t pos = 0;
   for (size_t i = 0; i < counts.size(); ++i) {
     for (size_t j = 0; j < counts[i]; ++j, ++pos) {
-      map_[pos].symbol_ = i;
-      map_[pos].freq_ = counts[i];
-      map_[pos].offset_ = j;
+      map_[pos].symbol_ = static_cast<uint8_t>(i);
+      map_[pos].freq_ = static_cast<uint16_t>(counts[i]);
+      map_[pos].offset_ = static_cast<uint16_t>(j);
     }
   }
   return (pos == BRUNSLI_ANS_TAB_SIZE);

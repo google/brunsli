@@ -30,7 +30,7 @@ void BuildJpegHuffmanTable(const int* count, const int* symbols,
   HuffmanTableEntry* table;  // next available space in table
   int len;         // current code length
   int idx;         // symbol index
-  int key;         // prefix code
+  size_t key;      // prefix code
   int reps;        // number of replicate key values in current table
   int low;         // low bits for current root entry
   int table_bits;  // key length of current table
@@ -86,7 +86,7 @@ void BuildJpegHuffmanTable(const int* count, const int* symbols,
         table_size = 1 << table_bits;
         low = 0;
         lut[key].bits = table_bits + kJpegHuffmanRootTableBits;
-        lut[key].value = (table - lut) - key;
+        lut[key].value = static_cast<uint16_t>((table - lut) - key);
         ++key;
       }
       code.bits = len - kJpegHuffmanRootTableBits;

@@ -210,31 +210,40 @@ double PopulationCost(const int* data, int total_count) {
       return 7;
     }
     ++length;
-    const uint64_t max0 = (total * length) >> BRUNSLI_ANS_LOG_TAB_SIZE;
-    const uint64_t max1 = (max0 * length) >> BRUNSLI_ANS_LOG_TAB_SIZE;
-    const uint32_t min_base = (total + max0 + max1) >> BRUNSLI_ANS_LOG_TAB_SIZE;
+    const uint64_t max0 =
+        (total * length) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
+    const uint64_t max1 =
+        (max0 * length) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
+    const uint64_t min_base =
+        (total + max0 + max1) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
     total += min_base * count;
     const int64_t kFixBits = 32;
     const int64_t kFixOne = 1LL << kFixBits;
     const int64_t kDescaleBits = kFixBits - BRUNSLI_ANS_LOG_TAB_SIZE;
     const int64_t kDescaleOne = 1LL << kDescaleBits;
-    const int64_t kDescaleMask = kDescaleOne - 1;
-    const uint32_t mult = kFixOne / total;
-    const uint32_t error = kFixOne % total;
+    const int64_t kDescaleMask = kDescaleOne - 1LL;
+    // TODO(eustas): is it OK if |mult| is 0?
+    const uint32_t mult = static_cast<uint32_t>(kFixOne / total);
+    // TODO(eustas): is it OK if |kFixOne < total|?
+    const uint32_t error = static_cast<uint32_t>(kFixOne % total);
     uint32_t cumul = error;
     if (error < kDescaleOne) {
       cumul += (kDescaleOne - error) >> 1;
     }
     if (data[0] > 0) {
       uint64_t c = (uint64_t)(data[0] + min_base) * mult + cumul;
-      double log2count = FastLog2(c >> kDescaleBits);
+      uint64_t c_descaled = c >> kDescaleBits;
+      BRUNSLI_DCHECK(c_descaled < uint64_t(1) << 31);
+      double log2count = FastLog2(static_cast<int>(c_descaled));
       entropy_bits -= data[0] * log2count;
       cumul = c & kDescaleMask;
     }
     for (int i = 1; i < length; ++i) {
       if (data[i] > 0) {
         uint64_t c = (uint64_t)(data[i] + min_base) * mult + cumul;
-        double log2count = FastLog2(c >> kDescaleBits);
+        uint64_t c_descaled = c >> kDescaleBits;
+        BRUNSLI_DCHECK(c_descaled < uint64_t(1) << 31);
+        double log2count = FastLog2(static_cast<int>(c_descaled));
         int log2floor = static_cast<int>(log2count);
         entropy_bits -= data[i] * log2count;
         histogram_bits += log2floor;

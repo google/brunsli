@@ -47,9 +47,10 @@ class PermutationCoder {
 
   // number of bits needed to represent the next code.
   int num_bits() const {
-    size_t num_values = values_.size();
+    uint32_t num_values = static_cast<uint32_t>(values_.size());
     BRUNSLI_DCHECK(num_values > 0);
-    return num_values <= 1 ? 0 : (Log2FloorNonZero(num_values - 1) + 1);
+    if (num_values <= 1) return 0;
+    return static_cast<int>(Log2FloorNonZero(num_values - 1) + 1);
   }
 
   // Copy value at position 'code' and remove it. Returns false in
@@ -71,7 +72,7 @@ class PermutationCoder {
     if (it == values_.end()) {
       return false;  // invalid/non-existing value was passed.
     }
-    *code = it - values_.begin();
+    *code = static_cast<int>(it - values_.begin());
     *nbits = num_bits();
     values_.erase(it);
     return true;
