@@ -26,7 +26,7 @@ TEST(LehmerCodeTest, TestPermutation) {
   const size_t kSize = 1000;
   const size_t kNumIterations = 10;
   for (int nbits = 0; nbits < 8; ++nbits) {
-    const int max_value = 1 << nbits;
+    const size_t max_value = 1u << nbits;
     uint32_t seed = 624;
     std::vector<int> values(kSize);
     for (size_t iter = 0; iter < kNumIterations; ++iter) {
@@ -53,7 +53,8 @@ TEST(LehmerCodeTest, TestPermutation) {
           int cur_code, cur_num_bits;
           const bool ok = p.RemoveValue(v, &cur_code, &cur_num_bits);
           if (!ok) {
-            ASSERT_TRUE(v >= max_value || v < 0 || value_already_used[v]);
+            ASSERT_TRUE(v >= static_cast<int>(max_value) || v < 0 ||
+                        value_already_used[v]);
           } else {
             ASSERT_TRUE(cur_num_bits <= last_num_bits)
                 << "number of code bits should decrease.";

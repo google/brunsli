@@ -31,7 +31,7 @@ java_library(
     srcs = glob(["*Test*.java"]),
     deps = [
         ":codec",
-        "@junit_junit//jar",
+        "@maven//:junit_junit",
     ],
 )
 
