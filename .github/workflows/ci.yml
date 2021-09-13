@@ -14,27 +14,54 @@ defaults:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}-latest
+    runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-        - os: ubuntu
+        - name: clang-9
           env: CC=/usr/bin/clang-9 CXX=/usr/bin/clang++-9
-        - os: ubuntu
+          os: ubuntu-18.04
+
+        - name: clang-10
+          env: CC=/usr/bin/clang-10 CXX=/usr/bin/clang++-10
+          os: ubuntu-20.04
+
+        - name: clang-11
+          env: CC=/usr/bin/clang-11 CXX=/usr/bin/clang++-11
+          os: ubuntu-20.04
+
+        - name: clang-12
+          env: CC=/usr/bin/clang-12 CXX=/usr/bin/clang++-12
+          os: ubuntu-20.04
+
+        - name: gcc-7
           env: CC=/usr/bin/gcc-7 CXX=/usr/bin/g++-7
-        - os: ubuntu
-          env: CC=/usr/bin/gcc-8 CXX=/usr/bin/g++-8
-        - os: ubuntu
+          os: ubuntu-18.04
+
+        - name: gcc-9
           env: CC=/usr/bin/gcc-9 CXX=/usr/bin/g++-9
-        - os: ubuntu
+          os: ubuntu-18.04
+
+        - name: gcc-10
           env: CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10
-        - os: ubuntu
+          os: ubuntu-18.04
+
+        - name: android:arm64-v8a
           cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25
-        - os: ubuntu
-          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_NATIVE_API_LEVEL=25
-        - os: windows
+          os: ubuntu-latest
+
+        - name: android:arm64-v8a
+          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25
+          os: ubuntu-latest
+
+        - name: win:default
           upload_artifacts: true
-        - os: macos
+          os: windows-latest
+
+        - name: osx:default
+          os: macos-latest
+
     steps:
     - name: checkout
       uses: actions/checkout@v2
