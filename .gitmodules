@@ -1,9 +1,6 @@
 [submodule "third_party/brotli"]
 	path = third_party/brotli
 	url = https://github.com/google/brotli.git
-[submodule "third_party/googletest"]
-	path = third_party/googletest
-	url = https://github.com/google/googletest
 [submodule "third_party/highwayhash"]
 	path = third_party/highwayhash
 	url = https://github.com/google/highwayhash.git

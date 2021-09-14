@@ -4,7 +4,6 @@
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT.
 
-
 file(GLOB BRUNSLI_COMMON_SOURCES
   c/common/*.cc
 )
@@ -171,3 +170,40 @@ set_target_properties(cbrunsli dbrunsli ${BRUNSLI_LIBRARIES} PROPERTIES
   LIBRARY_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/artifacts"
   RUNTIME_OUTPUT_DIRECTORY_RELEASE "${CMAKE_BINARY_DIR}/artifacts"
 )
+
+if (${BUILD_TESTING})
+
+include(GoogleTest)
+
+set(BRUNSLI_TEST_ITEMS
+    bit_reader
+    build_huffman_table
+    c_api
+    context
+    distributions
+    fallback
+    headerless
+    huffman_tree
+    lehmer_code
+    quant_matrix
+)
+
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tests)
+foreach (TEST_ITEM IN LISTS BRUNSLI_TEST_ITEMS)
+  set(TEST_NAME ${TEST_ITEM}_test)
+  add_executable(${TEST_NAME}
+    c/tests/${TEST_NAME}.cc
+    c/dec/decode.cc  # "static" brunslidec-c
+    c/enc/encode.cc  # "static" brunslienc-c
+    c/tests/test_utils.cc  # test utils
+  )
+  target_link_libraries(${TEST_NAME}
+    brunslicommon-static
+    brunslidec-static
+    brunslienc-static
+    gtest_main
+  )
+  gtest_discover_tests(${TEST_NAME})
+endforeach()
+
+endif()  # BUILD_TESTING

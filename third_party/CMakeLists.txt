@@ -11,7 +11,3 @@ if (NOT TARGET brotlicommon-static)
   endif ()
   add_subdirectory(brotli EXCLUDE_FROM_ALL)
 endif ()
-
-if (NOT TARGET gtest_main)
-  add_subdirectory(googletest EXCLUDE_FROM_ALL)
-endif ()
