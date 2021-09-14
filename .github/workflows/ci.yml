@@ -14,68 +14,96 @@ defaults:
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
         include:
-        - name: clang-9
+        - name: cmake:clang-9
+          mode: cmake
           env: CC=/usr/bin/clang-9 CXX=/usr/bin/clang++-9
           os: ubuntu-18.04
 
-        - name: clang-10
+        - name: cmake:clang-10
+          mode: cmake
           env: CC=/usr/bin/clang-10 CXX=/usr/bin/clang++-10
           os: ubuntu-20.04
 
-        - name: clang-11
+        - name: cmake:clang-11
+          mode: cmake
           env: CC=/usr/bin/clang-11 CXX=/usr/bin/clang++-11
           os: ubuntu-20.04
 
-        - name: clang-12
+        - name: cmake:clang-12
+          mode: cmake
           env: CC=/usr/bin/clang-12 CXX=/usr/bin/clang++-12
           os: ubuntu-20.04
 
-        - name: gcc-7
+        - name: cmake:gcc-7
+          mode: cmake
           env: CC=/usr/bin/gcc-7 CXX=/usr/bin/g++-7
           os: ubuntu-18.04
 
-        - name: gcc-9
+        - name: cmake:gcc-9
+          mode: cmake
           env: CC=/usr/bin/gcc-9 CXX=/usr/bin/g++-9
           os: ubuntu-18.04
 
-        - name: gcc-10
+        - name: cmake:gcc-10
+          mode: cmake
           env: CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10
           os: ubuntu-18.04
 
-        - name: android:arm64-v8a
+        - name: cmake:android:arm64-v8a
+          mode: cmake
           cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25
-          os: ubuntu-latest
 
-        - name: android:arm64-v8a
+        - name: cmake:android:arm64-v8a
+          mode: cmake
           cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25
-          os: ubuntu-latest
 
-        - name: win:default
+        - name: cmake:win:default
+          mode: cmake
           upload_artifacts: true
           os: windows-latest
 
-        - name: osx:default
+        - name: cmake:osx:default
+          mode: cmake
           os: macos-latest
 
+        - name: bazel:c
+          mode: bazel
+          bazel_project_root: .
+
+        - name: bazel:java
+          mode: bazel
+          bazel_project_root: java
+
     steps:
-    - name: checkout
+    - name: Checkout
       uses: actions/checkout@v2
       with:
         submodules: recursive
 
-    - name: configure
+    - name: Configure @ CMake
+      if: ${{ matrix.mode == 'cmake' }}
       run: ${{ matrix.env }} cmake -DCMAKE_BUILD_TYPE=Release ${{ matrix.cmake_params }} -B out
 
-    - name: build
+    - name: Build @ CMake
+      if: ${{ matrix.mode == 'cmake' }}
       run: cmake --build out --config Release -j 2
 
-    - name: test
+    - name: Test @ CMake
+      if: ${{ matrix.mode == 'cmake' }}
       run: cd out && ctest -j 2
+
+    - name: Build @ Bazel
+      if: ${{ matrix.mode == 'bazel' }}
+      run: cd ${{ matrix.bazel_project_root }} && bazel build -c opt ...:all
+
+    - name: Test @ Bazel
+      if: ${{ matrix.mode == 'bazel' }}
+      run: cd ${{ matrix.bazel_project_root }} && bazel test -c opt ...:all
 
     - name: upload
       if: ${{ matrix.upload_artifacts }}

@@ -24,7 +24,7 @@ int VanillaACPredictContext(int64_t p_orig) {
   }
   p = static_cast<uint64_t>(-p_orig) << 1;
   if (p > kMaxPred) {
-    return -kMaxAverageContext;
+    return -static_cast<int>(kMaxAverageContext);
   } else {
     return -Log2FloorNonZero(++p);
   }

@@ -223,33 +223,34 @@ cc_binary(
     ] + EXPERIMENTAL_DEPS,
 )
 
-cc_test(
-    name = "bit_reader_test",
-    srcs = ["c/tests/bit_reader_test.cc"],
+TESTS = [
+    "bit_reader",
+    "build_huffman_table",
+    "c_api",
+    "context",
+    "distributions",
+    "fallback",
+    "headerless",
+    "huffman_tree",
+    "lehmer_code",
+    "quant_matrix",
+    # "stream_decode", # fix brotli dependency
+]
+
+[cc_test(
+    name = item + "_test",
+    srcs = [
+        "c/tests/" + item + "_test.cc",
+        "c/tests/test_utils.cc",
+        "c/tests/test_utils.h",
+    ],
     copts = ["-Iexternal/gtest/include"],
     deps = [
         ":brunslicommon",
         ":brunslidec",
-        "@gtest//:gtest_main",
+        ":brunslienc",
+        ":brunslidec_c",
+        ":brunslienc_c",
+        "@com_google_googletest//:gtest_main",
     ],
-)
-
-cc_test(
-    name = "huffman_tree_test",
-    srcs = ["c/tests/huffman_tree_test.cc"],
-    copts = ["-Iexternal/gtest/include"],
-    deps = [
-        ":brunslidec",
-        "@gtest//:gtest_main",
-    ],
-)
-
-cc_test(
-    name = "lehmer_code_test",
-    srcs = ["c/tests/lehmer_code_test.cc"],
-    copts = ["-Iexternal/gtest/include"],
-    deps = [
-        ":brunslicommon",
-        "@gtest//:gtest_main",
-    ],
-)
+) for item in TESTS]
