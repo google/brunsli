@@ -1,5 +1,5 @@
 ### Introduction
-![CMake build](https://github.com/google/brunsli/workflows/CMake%20build/badge.svg?branch=master)
+![CMake build](https://github.com/google/brunsli/workflows/Build-Test-Upload/badge.svg?branch=master)
 
 
 Brunsli is a lossless JPEG repacking library.

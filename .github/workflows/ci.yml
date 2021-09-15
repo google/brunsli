@@ -1,4 +1,4 @@
-name: CMake build
+name: Build-Test-Upload
 
 on:
   push:
@@ -56,11 +56,17 @@ jobs:
 
         - name: cmake:android:arm64-v8a
           mode: cmake
-          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25
+          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25 -DBUILD_TESTING=off
 
         - name: cmake:android:arm64-v8a
           mode: cmake
-          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25
+          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25 -DBUILD_TESTING=off
+
+        - name: cmake:wasm
+          mode: cmake
+          wasm: true
+          cmake_params: -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" -DBUILD_TESTING=off
+          env: source ~/emsdk/emsdk_env.sh &&
 
         - name: cmake:win:default
           mode: cmake
@@ -84,6 +90,29 @@ jobs:
       uses: actions/checkout@v2
       with:
         submodules: recursive
+
+    - name: Cache EMSDK
+      if: ${{ matrix.wasm }}
+      id: cache-emsdk
+      uses: actions/cache@v1
+      with:
+        path: ~/emsdk
+        key: ${{ runner.os }}-emsdk
+
+    - name: Install EMSDK
+      if: ${{ matrix.wasm && steps.cache-emsdk.outputs.cache-hit != 'true' }}
+      run: |
+        cd ~/
+        git clone https://github.com/emscripten-core/emsdk.git
+        cd emsdk
+        git pull
+        ./emsdk install latest
+
+    - name: Post-install EMSDK
+      if: ${{ matrix.wasm }}
+      run: |
+        cd ~/emsdk
+        ./emsdk activate latest
 
     - name: Configure @ CMake
       if: ${{ matrix.mode == 'cmake' }}
