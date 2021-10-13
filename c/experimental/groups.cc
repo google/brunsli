@@ -50,6 +50,64 @@ void SequentialExecutor(const Runnable& runnable, size_t num_tasks) {
   for (size_t i = 0; i < num_tasks; ++i) runnable(i);
 }
 
+ParallelExecutor::ParallelExecutor(size_t num_threads)
+    : num_threads(num_threads) {
+  const auto worker = [this]() {
+    while (true) {
+      {
+        std::unique_lock<std::mutex> lock(this->lock);
+        start_latch.wait(lock, [this] { return next_task.load() < num_tasks; });
+        busy_count++;
+        if (terminate) {
+          finish_latch.notify_one();
+          return;
+        }
+      }
+      while (true) {
+        size_t my_task = next_task++;
+        if (my_task >= num_tasks) break;
+        (*runnable)(my_task);
+      }
+      {
+        std::lock_guard<std::mutex> lock(this->lock);
+        busy_count--;
+        finish_latch.notify_one();
+      }
+    }
+  };
+  futures.reserve(num_threads);
+  for (size_t i = 0; i < num_threads; ++i) {
+    futures.push_back(std::async(std::launch::async, worker));
+  }
+}
+
+ParallelExecutor::~ParallelExecutor() {
+  std::unique_lock<std::mutex> lock(this->lock);
+  terminate = true;
+  next_task.store(1);
+  this->num_tasks = 1;
+  this->runnable = nullptr;
+  start_latch.notify_all();
+  finish_latch.wait(lock, [this] { return busy_count.load() == num_threads; });
+}
+
+Executor ParallelExecutor::getExecutor() {
+  return [this](const Runnable& runnable, size_t num_tasks) {
+    return execute(runnable, num_tasks);
+  };
+}
+
+void ParallelExecutor::execute(const Runnable& runnable, size_t num_tasks) {
+  std::unique_lock<std::mutex> lock(this->lock);
+  next_task.store(0);
+  this->num_tasks = num_tasks;
+  this->runnable = &runnable;
+  start_latch.notify_all();
+  finish_latch.wait(lock, [this, num_tasks] {
+    return (next_task.load() >= num_tasks) && (busy_count.load() == 0);
+  });
+}
+
 bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
                   size_t ac_group_dim, size_t dc_group_dim,
                   Executor* executor) {
