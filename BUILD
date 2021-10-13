@@ -127,7 +127,7 @@ cc_library(
     copts = STRICT_C_OPTIONS,
     deps = [
         ":brunslicommon",
-        "@brotli//:brotlidec",
+        "@org_brotli//:brotlidec",
     ],
 )
 
@@ -138,7 +138,7 @@ cc_library(
     copts = STRICT_C_OPTIONS,
     deps = [
         ":brunslicommon",
-        "@brotli//:brotlienc",
+        "@org_brotli//:brotlienc",
     ],
 )
 
@@ -170,10 +170,7 @@ config_setting(
 )
 
 EXPERIMENTAL_DEPS = select({
-    ":experimental": [
-        ":groups",
-        "@highwayhash//:highwayhash_inc",
-    ],
+    ":experimental": [":groups"],
     "//conditions:default": [],
 })
 

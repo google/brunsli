@@ -15,7 +15,6 @@
 
 #if defined(BRUNSLI_EXPERIMENTAL_GROUPS)
 #include "../experimental/groups.h"
-#include <highwayhash/data_parallel.h>
 #endif
 
 #if defined(_WIN32)
@@ -126,11 +125,8 @@ bool ProcessFile(const std::string& file_name,
 
 #if defined(BRUNSLI_EXPERIMENTAL_GROUPS)
     {
-      highwayhash::ThreadPool thread_pool(4);
-      brunsli::Executor executor = [&](const brunsli::Runnable& runnable,
-                                       size_t num_tasks) {
-        thread_pool.Run(0, num_tasks, runnable);
-      };
+      brunsli::ParallelExecutor pool(4);
+      brunsli::Executor executor = pool.getExecutor();
       ok = brunsli::EncodeGroups(jpg, output_data, &output_size, 32, 128,
                                  &executor);
     }
