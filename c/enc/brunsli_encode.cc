@@ -1461,6 +1461,63 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg, uint8_t* data, size_t* len) {
   return BrunsliSerialize(&state, jpg, 0, data, len);
 }
 
+#if defined(BRUNSLI_EXTRA_API)
+// The memory usage of BrunsliEncodeJpeg() looks roughly like this:
+//   +-----------------+------------------------+
+//   | BrotliCompress  | State::entropy_source  |
+//   | (brotli_peak)   | (entropy_source_size)  |
+//   +-----------------+------------------------+
+//                     | State::data_stream_dc  |
+//                     | State::data_stream_ac  |
+//                     | (data_stream_size)     |
+//                     +------------------------+
+//                     | vector<ComponentState> |
+//                     | (component_state_size) |
+//                     +------------------------+
+size_t EstimateBrunsliEncodePeakMemoryUsage(size_t jpg_size,
+                                            const JPEGData& jpg) {
+  std::vector<uint8_t> tmp;
+  size_t metadata_size = 0;
+  for (const auto& s : jpg.app_data) {
+    metadata_size += TransformApp0Marker(s, &tmp) ? tmp.size() : s.size();
+  }
+  for (const auto& s : jpg.com_data) {
+    metadata_size += s.size();
+  }
+  size_t brotli_peak = 0;
+  if (metadata_size > 1) {
+    brotli_peak = BrotliEncoderEstimatePeakMemoryUsage(
+        kBrotliQuality, kBrotliWindowBits, metadata_size);
+  }
+  size_t ncomp = jpg.components.size();
+  size_t total_num_blocks = 0;
+  size_t component_state_size = 0;
+  for (size_t i = 0; i < ncomp; ++i) {
+    const JPEGComponent& c = jpg.components[i];
+    total_num_blocks += c.num_blocks;
+    component_state_size += ComponentState::SizeInBytes(c.width_in_blocks);
+  }
+  // Since we do not have access to the coefficient data at this point, we
+  // estimate the number of nonzero coefficients by assuming that each of them
+  // takes about 5 bits compressed in the jpeg format.
+  size_t nonzeros_per_block = std::max(
+      size_t{1}, std::min(size_t{64}, (jpg_size * 8) / (total_num_blocks * 5)));
+  size_t nonzeros = nonzeros_per_block * total_num_blocks;
+  int context_bits = SelectContextBits(nonzeros);
+  size_t ncontexts = ncomp * (kNumNonzeroContextSkip[context_bits] + 1);
+  // We have ncontexts * kNumAvrgContext histograms for both the raw and
+  // clustered histogram set.
+  size_t entropy_source_size =
+      2 * ncontexts * kNumAvrgContexts * sizeof(Histogram);
+  size_t ncodewords = std::max(
+      size_t{1} << 18, 2 * nonzeros + 6 * total_num_blocks + ncomp * 1024);
+  size_t data_stream_size = ncodewords * 8;  // 8 = sizeof(DataStream::CodeWord)
+  size_t brunsli_peak =
+      entropy_source_size + data_stream_size + component_state_size;
+  return std::max(brotli_peak, brunsli_peak);
+}
+#endif  // defined(BRUNSLI_EXTRA_API)
+
 // bypass mode
 const size_t kMaxBypassHeaderSize = 5 * 6;  // = 5x tag + EncodeBase128() call.
 size_t GetBrunsliBypassSize(size_t jpg_size) {

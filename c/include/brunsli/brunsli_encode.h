@@ -19,6 +19,12 @@ namespace brunsli {
 // jpg data in brunsli format.
 size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg);
 
+#if defined(BRUNSLI_EXTRA_API)
+// Returns the estimated peak memory usage (in bytes) of BrunsliEncodeJpeg().
+size_t EstimateBrunsliEncodePeakMemoryUsage(size_t jpg_size,
+                                            const JPEGData& jpg);
+#endif  // defined(BRUNSLI_EXTRA_API)
+
 // Encodes the given jpg to the buffer data[0 ... *len) in brunsli format and
 // sets *len to the encoded size. Returns false on buffer overflow or invalid
 // jpg data.

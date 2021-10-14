@@ -1,3 +1,9 @@
+// Copyright (c) Google LLC 2019
+//
+// Use of this source code is governed by an MIT-style
+// license that can be found in the LICENSE file or at
+// https://opensource.org/licenses/MIT.
+
 #include <string>
 
 #include <brunsli/brunsli_decode.h>
@@ -5,15 +11,14 @@
 #include <brunsli/brunsli_encode.h>
 #include <brunsli/jpeg_data_reader.h>
 
-using namespace brunsli;
-
 extern "C" {
 
 std::string* BrunsliToJpeg(const uint8_t* data, size_t length) {
   std::string* result = nullptr;
-  JPEGData jpg;
-  BrunsliStatus status = BrunsliDecodeJpeg(data, length, &jpg);
-  if (status != BRUNSLI_OK) {
+  brunsli::JPEGData jpg;
+  brunsli::BrunsliStatus status =
+      brunsli::BrunsliDecodeJpeg(data, length, &jpg);
+  if (status != brunsli::BRUNSLI_OK) {
     printf("Decoding Brunsli failed with status %d\n", status);
     return result;
   }
@@ -24,8 +29,8 @@ std::string* BrunsliToJpeg(const uint8_t* data, size_t length) {
     result->append(reinterpret_cast<const char*>(buf), count);
     return count;
   };
-  JPEGOutput writer(write, result);
-  if (!WriteJpeg(jpg, writer)) {
+  brunsli::JPEGOutput writer(write, result);
+  if (!brunsli::WriteJpeg(jpg, writer)) {
     printf("Serializing JPEG failed\n");
     delete result;
     result = nullptr;
@@ -48,7 +53,7 @@ static const size_t kBufferSize = 65536;
 uint32_t* BrunsliDecoderInit() {
   uint32_t* instance = new uint32_t[6];
   // TODO(eustas): check for OOMs
-  BrunsliDecoder* decoder = new BrunsliDecoder();
+  brunsli::BrunsliDecoder* decoder = new brunsli::BrunsliDecoder();
   uint8_t* in = reinterpret_cast<uint8_t*>(malloc(kBufferSize));
   uint8_t* out = reinterpret_cast<uint8_t*>(malloc(kBufferSize));
   instance[0] = reinterpret_cast<uint32_t>(decoder);
@@ -74,25 +79,27 @@ uint32_t* BrunsliDecoderInit() {
  *  2: error
  */
 uint32_t BrunsliDecoderProcess(uint32_t* instance) {
-  BrunsliDecoder* decoder = reinterpret_cast<BrunsliDecoder*>(instance[0]);
+  brunsli::BrunsliDecoder* decoder =
+      reinterpret_cast<brunsli::BrunsliDecoder*>(instance[0]);
   const uint8_t* next_in = reinterpret_cast<uint8_t*>(instance[2]);
   size_t available_in = instance[3];
   uint8_t* next_out = reinterpret_cast<uint8_t*>(instance[4]);
   size_t available_out = kBufferSize;
-  BrunsliDecoder::Status result = decoder->Decode(
+  brunsli::BrunsliDecoder::Status result = decoder->Decode(
       &available_in, &next_in, &available_out, &next_out);
   instance[5] = kBufferSize - available_out;
-  if ((result == BrunsliDecoder::NEEDS_MORE_INPUT) ||
-      (result == BrunsliDecoder::NEEDS_MORE_OUTPUT)) {
+  if ((result == brunsli::BrunsliDecoder::NEEDS_MORE_INPUT) ||
+      (result == brunsli::BrunsliDecoder::NEEDS_MORE_OUTPUT)) {
     return 0;
   }
-  if (result == BrunsliDecoder::DONE) return 1;
+  if (result == brunsli::BrunsliDecoder::DONE) return 1;
   return 2;
 }
 
 void BrunsliDecoderCleanup(uint32_t* instance) {
   if (instance == nullptr) return;
-  BrunsliDecoder* decoder = reinterpret_cast<BrunsliDecoder*>(instance[0]);
+  brunsli::BrunsliDecoder* decoder =
+      reinterpret_cast<brunsli::BrunsliDecoder*>(instance[0]);
   delete decoder;
   uint8_t* in = reinterpret_cast<uint8_t*>(instance[2]);
   delete[] in;
@@ -116,7 +123,7 @@ void FreeJpeg(std::string* jpeg) { delete jpeg; }
 std::string* JpegToBrunsli(const uint8_t* data, size_t length) {
   std::string* result = nullptr;
   brunsli::JPEGData jpg;
-  if (!ReadJpeg(data, length, ::brunsli::JPEG_READ_ALL, &jpg)) {
+  if (!brunsli::ReadJpeg(data, length, brunsli::JPEG_READ_ALL, &jpg)) {
     printf("Parsing JPEG failed\n");
     return result;
   }

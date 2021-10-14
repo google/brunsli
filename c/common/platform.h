@@ -30,7 +30,11 @@
 #define BRUNSLI_DEBUG 1
 #endif
 
+#if defined(BRUNSLI_USE_LOGGING)
+#include "base/logging.h"
+#else  // defined(BRUNSLI_USE_LOGGING)
 #include "stdio.h"
+#endif  // defined(BRUNSLI_USE_LOGGING)
 
 #include "./port.h"
 #include <brunsli/types.h>
@@ -488,8 +492,13 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 #define BRUNSLI_VOID_LOG() if (true) {} else std::cerr
 
 // This macro allows easy logging engine replacement.
+#if defined(BRUNSLI_USE_LOGGING)
+#define BRUNSLI_LOG_(LEVEL) LOG(LEVEL)
+#define BRUNSLI_ENDL() ""
+#else  // defined(BRUNSLI_USE_LOGGING)
 #define BRUNSLI_LOG_(LEVEL) std::cerr
 #define BRUNSLI_ENDL() std::endl
+#endif  // defined(BRUNSLI_USE_LOGGING)
 
 #if defined(BRUNSLI_DISABLE_LOG)
 #define BRUNSLI_LOG_DEBUG() BRUNSLI_VOID_LOG()
