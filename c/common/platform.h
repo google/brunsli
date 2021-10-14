@@ -33,7 +33,7 @@
 #if defined(BRUNSLI_USE_LOGGING)
 #include "base/logging.h"
 #else  // defined(BRUNSLI_USE_LOGGING)
-#include "stdio.h"
+#include <stdio.h>
 #endif  // defined(BRUNSLI_USE_LOGGING)
 
 #include "./port.h"

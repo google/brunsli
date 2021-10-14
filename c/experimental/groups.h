@@ -10,8 +10,8 @@
 #define BRUNSLI_EXPERIMENTAL_GROUPS_H_
 
 #include <functional>
-#include <future>
-#include <mutex>
+#include <future>  // NOLINT(build/c++11)
+#include <mutex>  // NOLINT(build/c++11)
 
 #include <brunsli/jpeg_data.h>
 #include <brunsli/types.h>
