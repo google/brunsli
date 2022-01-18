@@ -24,6 +24,9 @@ Outputs to outfun, outfun must return amount of consumed bytes, any return value
 not equal to the input size is considered an error. It will pass on the outdata
 to outfun.
 */
+#if defined(WIN32) && defined(brunslienc_c_EXPORTS)
+__declspec(dllexport)
+#endif
 int EncodeBrunsli(size_t insize, const unsigned char* in, void* outdata,
     size_t (*outfun)(void* outdata, const unsigned char* buf, size_t size));
 
