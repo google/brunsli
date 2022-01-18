@@ -17,7 +17,7 @@ https://opensource.org/licenses/MIT.
 extern "C" {
 #endif
 
-#if defined(WIN32) && defined(brunslidec_c_EXPORTS)
+#if defined(_MSC_VER) && defined(brunslidec_c_EXPORTS)
 __declspec(dllexport)
 #endif
 typedef size_t (*DecodeBrunsliSink)(void* out_data, const uint8_t* buf,
