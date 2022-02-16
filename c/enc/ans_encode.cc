@@ -44,7 +44,7 @@ void BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
   int num_symbols;
   int symbols[kMaxNumSymbolsForSmallCode] = {0};
   std::vector<int> counts(histogram, histogram + BRUNSLI_ANS_MAX_SYMBOLS);
-  int omit_pos;
+  int omit_pos = 0;  // Initialization is not necessary, but makes MSAN happy.
   NormalizeCounts(&counts[0], &omit_pos, BRUNSLI_ANS_MAX_SYMBOLS,
                   BRUNSLI_ANS_LOG_TAB_SIZE, &num_symbols, symbols);
   ANSBuildInfoTable(&counts[0], BRUNSLI_ANS_MAX_SYMBOLS, table->info_);
