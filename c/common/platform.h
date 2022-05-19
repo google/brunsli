@@ -280,18 +280,6 @@ OR:
 #undef BRUNSLI_X_BIG_ENDIAN
 #endif
 
-#if defined(BRUNSLI_BUILD_PORTABLE)
-#define BRUNSLI_ALIGNED_READ (!!1)
-#elif defined(BRUNSLI_TARGET_X86) || defined(BRUNSLI_TARGET_X64) || \
-    defined(BRUNSLI_TARGET_ARMV7) || defined(BRUNSLI_TARGET_ARMV8_ANY) || \
-    defined(BRUNSLI_TARGET_RISCV64)
-/* Allow unaligned read only for white-listed CPUs. */
-#define BRUNSLI_ALIGNED_READ (!!0)
-#else
-#define BRUNSLI_ALIGNED_READ (!!1)
-#endif
-
-#if BRUNSLI_ALIGNED_READ
 /* Portable unaligned memory access: read / write values via memcpy. */
 static BRUNSLI_INLINE uint16_t BrunsliUnalignedRead16(const void* p) {
   uint16_t t;
@@ -315,80 +303,6 @@ static BRUNSLI_INLINE uint64_t BrunsliUnalignedRead64(const void* p) {
 static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
   memcpy(p, &v, sizeof v);
 }
-#else  /* BRUNSLI_ALIGNED_READ */
-/* Unaligned memory access is allowed: just cast pointer to requested type. */
-#if BRUNSLI_SANITIZED
-/* Consider we have an unaligned load/store of 4 bytes from address 0x...05.
-   AddressSanitizer will treat it as a 3-byte access to the range 05:07 and
-   will miss a bug if 08 is the first unaddressable byte.
-   ThreadSanitizer will also treat this as a 3-byte access to 05:07 and will
-   miss a race between this access and some other accesses to 08.
-   MemorySanitizer will correctly propagate the shadow on unaligned stores
-   and correctly report bugs on unaligned loads, but it may not properly
-   update and report the origin of the uninitialized memory.
-   For all three tools, replacing an unaligned access with a tool-specific
-   callback solves the problem. */
-#if defined(__cplusplus)
-extern "C" {
-#endif  /* __cplusplus */
-  uint16_t __sanitizer_unaligned_load16(const void* p);
-  void __sanitizer_unaligned_store16(void* p, uint16_t v);
-  uint32_t __sanitizer_unaligned_load32(const void* p);
-  uint64_t __sanitizer_unaligned_load64(const void* p);
-  void __sanitizer_unaligned_store64(void* p, uint64_t v);
-#if defined(__cplusplus)
-}  /* extern "C" */
-#endif  /* __cplusplus */
-#define BrunsliUnalignedRead16 __sanitizer_unaligned_load16
-#define BrunsliUnalignedWrite16 __sanitizer_unaligned_store16
-#define BrunsliUnalignedRead32 __sanitizer_unaligned_load32
-#define BrunsliUnalignedRead64 __sanitizer_unaligned_load64
-#define BrunsliUnalignedWrite64 __sanitizer_unaligned_store64
-#else  /* BRUNSLI_SANITIZED */
-static BRUNSLI_INLINE uint16_t BrunsliUnalignedRead16(const void* p) {
-  return *(const uint16_t*)p;
-}
-static BRUNSLI_INLINE void BrunsliUnalignedWrite16(void* p, uint16_t v) {
-  *(uint16_t*)p = v;
-}
-static BRUNSLI_INLINE uint32_t BrunsliUnalignedRead32(const void* p) {
-  return *(const uint32_t*)p;
-}
-#if (BRUNSLI_64_BITS)
-static BRUNSLI_INLINE uint64_t BrunsliUnalignedRead64(const void* p) {
-  return *(const uint64_t*)p;
-}
-static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
-  *(uint64_t*)p = v;
-}
-#else  /* BRUNSLI_64_BITS */
-/* Avoid emitting LDRD / STRD, which require properly aligned address. */
-/* If __attribute__(aligned) is available, use that. Otherwise, memcpy. */
-
-#if BRUNSLI_GNUC_HAS_ATTRIBUTE(aligned, 2, 7, 0)
-typedef BRUNSLI_ALIGNED(1) uint64_t brunsli_unaligned_uint64_t;
-
-static BRUNSLI_INLINE uint64_t BrunsliUnalignedRead64(const void* p) {
-  return (uint64_t) ((brunsli_unaligned_uint64_t*) p)[0];
-}
-static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
-  brunsli_unaligned_uint64_t* dwords = (brunsli_unaligned_uint64_t*) p;
-  dwords[0] = (brunsli_unaligned_uint64_t) v;
-}
-#else /* BRUNSLI_GNUC_HAS_ATTRIBUTE(aligned, 2, 7, 0) */
-static BRUNSLI_INLINE uint64_t BrunsliUnalignedRead64(const void* p) {
-  uint64_t v;
-  memcpy(&v, p, sizeof(uint64_t));
-  return v;
-}
-
-static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
-  memcpy(p, &v, sizeof(uint64_t));
-}
-#endif  /* BRUNSLI_GNUC_HAS_ATTRIBUTE(aligned, 2, 7, 0) */
-#endif  /* BRUNSLI_64_BITS */
-#endif  /* BRUNSLI_SANITIZED */
-#endif  /* BRUNSLI_ALIGNED_READ */
 
 #if BRUNSLI_LITTLE_ENDIAN
 /* Straight endianness. Just read / write values. */
