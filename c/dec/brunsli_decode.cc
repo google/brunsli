@@ -1260,7 +1260,7 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
   }
 
   LeaveSection(&s.section);
-  return (jpg->version == 1) ? Stage::FALLBACK : Stage::SECTION;
+  return (jpg->version == kFallbackVersion) ? Stage::FALLBACK : Stage::SECTION;
 }
 
 static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {

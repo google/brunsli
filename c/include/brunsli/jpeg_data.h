@@ -16,6 +16,8 @@
 
 namespace brunsli {
 
+static const int kFallbackVersion = 1;
+
 static const int kDCTBlockSize = 64;
 static const int kMaxComponents = 4;
 static const int kMaxQuantTables = 4;

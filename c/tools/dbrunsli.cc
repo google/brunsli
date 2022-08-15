@@ -131,8 +131,11 @@ bool ProcessFile(const std::string& file_name,
     ok = (status == brunsli::BRUNSLI_OK);
 #endif
 
-    input.clear();
-    input.shrink_to_fit();
+    // Fallback content is not copied, so original input can not be freed.
+    if (jpg.version != brunsli::kFallbackVersion) {
+      input.clear();
+      input.shrink_to_fit();
+    }
     if (!ok) {
       fprintf(stderr, "Failed to parse Brunsli input.\n");
       return false;

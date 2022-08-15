@@ -18,6 +18,7 @@
 #include "../common/constants.h"
 #include "../common/context.h"
 #include "../common/distributions.h"
+#include <brunsli/jpeg_data.h>
 #include "../common/lehmer_code.h"
 #include "../common/platform.h"
 #include "../common/predict.h"
@@ -804,9 +805,9 @@ bool EncodeHeader(const JPEGData& jpg, State* state, uint8_t* data,
                   size_t* len) {
   BRUNSLI_UNUSED(state);
   size_t version = jpg.version;
-  bool is_fallback = (version & 1);
+  bool is_fallback = ((version & 1) == kFallbackVersion);
   // Fallback can not be combined with anything else.
-  if (is_fallback && (version != 1)) return false;
+  if (is_fallback && (version != kFallbackVersion)) return false;
   // Non-fallback image can not be empty.
   if ((!is_fallback && (jpg.width == 0 || jpg.height == 0)) ||
       jpg.components.empty() || jpg.components.size() > kMaxComponents) {
@@ -1550,7 +1551,7 @@ bool BrunsliEncodeJpegBypass(const uint8_t* jpg_data, size_t jpg_data_len,
     jpg.components[0].h_samp_factor = 1;
     jpg.components[0].v_samp_factor = 1;
   }
-  jpg.version = 1;
+  jpg.version = kFallbackVersion;
   jpg.original_jpg = jpg_data;
   jpg.original_jpg_size = jpg_data_len;
 

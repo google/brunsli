@@ -977,7 +977,7 @@ SerializationStatus SerializeJpeg(State* state, const JPEGData& jpg,
           return SerializationStatus::NEEDS_MORE_INPUT;
         }
         // JpegBypass is a very simple / special case.
-        if (jpg.version == 1) {
+        if (jpg.version == kFallbackVersion) {
           if (jpg.original_jpg == nullptr) {
             ss.stage = SerializationState::ERROR;
             break;
@@ -991,7 +991,7 @@ SerializationStatus SerializeJpeg(State* state, const JPEGData& jpg,
         }
 
         // Invalid mode - fallback + something else.
-        if (jpg.version & 1) {
+        if ((jpg.version & 1) == kFallbackVersion) {
           ss.stage = SerializationState::ERROR;
           break;
         }
