@@ -1748,9 +1748,11 @@ static BrunsliStatus DecodeQuantDataSection(State* state, JPEGData* jpg) {
       }
 
       case QuantDataState::UPDATE: {
-        if (jpg->quant[qs.i].precision != qs.data_precision) {
+        if (jpg->quant[qs.i].precision < qs.data_precision) {
           return suspend_bit_reader(BRUNSLI_INVALID_BRN);
         }
+        // jpg->quant[qs.i].precision > qs.data_precision means that original
+        // JPEG1 was inefficiently encoded.
         ++qs.i;
         qs.stage = QuantDataState::READ_STOCK;
         continue;
