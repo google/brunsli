@@ -9,6 +9,7 @@
 #ifndef BRUNSLI_EXPERIMENTAL_GROUPS_H_
 #define BRUNSLI_EXPERIMENTAL_GROUPS_H_
 
+#include <atomic>
 #include <functional>
 #include <future>  // NOLINT(build/c++11)
 #include <mutex>  // NOLINT(build/c++11)
