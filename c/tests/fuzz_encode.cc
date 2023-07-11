@@ -21,10 +21,18 @@
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Encode.
   std::unique_ptr<brunsli::JPEGData> enc_jpg(new brunsli::JPEGData);
+  // TODO(eustas): read header and skip if too many pixels are to be decoded.
   if (!brunsli::ReadJpeg(data, size, brunsli::JPEG_READ_ALL, enc_jpg.get())) {
     return 0;
   }
   size_t enc_output_size = brunsli::GetMaximumBrunsliEncodedSize(*enc_jpg);
+  if (enc_output_size > (100 << 20)) {
+    // Too many pixels; skip.
+    return 0;
+  }
+  // We do not expect that Brunsli output is bigger than JPEG input.
+  enc_output_size = std::min<size_t>(enc_output_size, size + (16 << 20));
+
   std::vector<uint8_t> enc_output(enc_output_size);
   bool enc_ok = brunsli::BrunsliEncodeJpeg(*enc_jpg, enc_output.data(),
                                            &enc_output_size);
