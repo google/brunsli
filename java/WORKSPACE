@@ -20,9 +20,9 @@ local_repository(
 
 http_archive(
     name = "org_brotli",
-    urls = ["https://github.com/google/brotli/archive/e61745a6b7add50d380cfd7d3883dd6c62fc2c71.zip"],
-    sha256 = "4a79fd9fd30bae4d08dab373326cfb21ab0d6b50e0e55564043e35dde7210219",
-    strip_prefix = "brotli-e61745a6b7add50d380cfd7d3883dd6c62fc2c71",
+    urls = ["https://github.com/google/brotli/archive/dbfebd13dcf51e1360f4f943306282b396a3e8cd.zip"],
+    sha256 = "a87127241f52cf7a78f8e56f6c46ebb37e5507fc5dc94e60abf40933c8cec875",
+    strip_prefix = "brotli-dbfebd13dcf51e1360f4f943306282b396a3e8cd",
 )
 
 maven_install(

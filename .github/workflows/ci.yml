@@ -19,11 +19,6 @@ jobs:
       fail-fast: false
       matrix:
         include:
-        - name: cmake:clang-9
-          mode: cmake
-          env: CC=/usr/bin/clang-9 CXX=/usr/bin/clang++-9
-          os: ubuntu-18.04
-
         - name: cmake:clang-10
           mode: cmake
           env: CC=/usr/bin/clang-10 CXX=/usr/bin/clang++-10
@@ -37,30 +32,34 @@ jobs:
         - name: cmake:clang-12
           mode: cmake
           env: CC=/usr/bin/clang-12 CXX=/usr/bin/clang++-12
-          os: ubuntu-20.04
 
-        - name: cmake:gcc-7
+        - name: cmake:clang-13
           mode: cmake
-          env: CC=/usr/bin/gcc-7 CXX=/usr/bin/g++-7
-          os: ubuntu-18.04
+          env: CC=/usr/bin/clang-13 CXX=/usr/bin/clang++-13
+
+        - name: cmake:clang-14
+          mode: cmake
+          env: CC=/usr/bin/clang-14 CXX=/usr/bin/clang++-14
 
         - name: cmake:gcc-9
           mode: cmake
           env: CC=/usr/bin/gcc-9 CXX=/usr/bin/g++-9
-          os: ubuntu-18.04
 
         - name: cmake:gcc-10
           mode: cmake
           env: CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10
-          os: ubuntu-18.04
+
+        - name: cmake:gcc-11
+          mode: cmake
+          env: CC=/usr/bin/gcc-11 CXX=/usr/bin/g++-11
+
+        - name: cmake:gcc-12
+          mode: cmake
+          env: CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12
 
         - name: cmake:android:arm64-v8a
           mode: cmake
-          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25 -DBUILD_TESTING=off
-
-        - name: cmake:android:arm64-v8a
-          mode: cmake
-          cmake_params: -DCMAKE_TOOLCHAIN_FILE=/usr/local/lib/android/sdk/ndk-bundle/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25 -DBUILD_TESTING=off
+          cmake_params: -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25 -DBUILD_TESTING=off
 
         - name: cmake:wasm
           mode: cmake
@@ -128,11 +127,11 @@ jobs:
 
     - name: Build @ Bazel
       if: ${{ matrix.mode == 'bazel' }}
-      run: cd ${{ matrix.bazel_project_root }} && bazel build -c opt ...:all
+      run: cd ${{ matrix.bazel_project_root }} && bazelisk build -c opt ...:all
 
     - name: Test @ Bazel
       if: ${{ matrix.mode == 'bazel' }}
-      run: cd ${{ matrix.bazel_project_root }} && bazel test -c opt ...:all
+      run: cd ${{ matrix.bazel_project_root }} && bazelisk test -c opt ...:all
 
     - name: upload
       if: ${{ matrix.upload_artifacts }}
