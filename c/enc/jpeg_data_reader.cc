@@ -471,6 +471,14 @@ struct BitReaderState {
     return static_cast<int>(val);
   }
 
+  // Returns `true` if stream is definitely broken. `false` does not mean that
+  // stream is OK. Should be used for early problem detection.
+  bool IsUnhealthy() {
+    // It is OK to borrow 8 bytes. Borrowing 16 means that stream is broken.
+    // The offset is doubled due to possible escaping.
+    return pos_ > (next_marker_pos_ + 32);
+  }
+
   // Sets *pos to the next stream position where parsing should continue.
   // Enqueue the padding bits seen (0 or 1).
   // Returns false if there is inconsistent or invalid padding or the stream
@@ -898,6 +906,12 @@ bool ProcessScan(const uint8_t* data, const size_t len,
           }
         }
         --restarts_to_go;
+      }
+      if (br.IsUnhealthy()) {
+        // Data ran out before the scan was complete.
+        BRUNSLI_LOG_INFO() << "Unexpected end of scan." << BRUNSLI_ENDL();
+        jpg->error = JPEGReadError::INVALID_SCAN;
+        return false;
       }
       // Decode one MCU.
       for (int i = 0; i < scan_info->num_components; ++i) {
