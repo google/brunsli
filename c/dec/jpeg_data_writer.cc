@@ -6,6 +6,7 @@
 
 #include <brunsli/jpeg_data_writer.h>
 
+#include <cstddef>
 #include <cstdlib>
 #include <cstring> /* for memset, memcpy */
 #include <deque>
@@ -188,7 +189,8 @@ void DCTCodingStateInit(DCTCodingState* s) {
   s->eob_run_ = 0;
   s->cur_ac_huff_ = nullptr;
   s->refinement_bits_.clear();
-  s->refinement_bits_.reserve(kJPEGMaxCorrectionBits);
+  s->refinement_bits_.reserve(kJPEGMaxCorrectionBits >> 4);  // uint16_t
+  s->refinement_bits_count_ = 0;
 }
 
 // Emit all buffered data to the bit stream using the given Huffman code and
@@ -204,28 +206,56 @@ static BRUNSLI_INLINE void Flush(DCTCodingState* s, BitWriter* bw) {
     }
     s->eob_run_ = 0;
   }
-  for (size_t i = 0; i < s->refinement_bits_.size(); ++i) {
-    WriteBits(bw, 1, s->refinement_bits_[i]);
+  size_t num_words = s->refinement_bits_count_ >> 4;
+  for (size_t i = 0; i < num_words; ++i) {
+    WriteBits(bw, 16, s->refinement_bits_[i]);
+  }
+  size_t tail = s->refinement_bits_count_ & 0xF;
+  if (tail) {
+    WriteBits(bw, tail, s->refinement_bits_.back());
   }
   s->refinement_bits_.clear();
+  s->refinement_bits_count_ = 0;
 }
 
 // Buffer some more data at the end-of-band (the last non-zero or newly
 // non-zero coefficient within the [Ss, Se] spectral band).
 static BRUNSLI_INLINE void BufferEndOfBand(DCTCodingState* s,
                                            const HuffmanCodeTable* ac_huff,
-                                           const std::vector<int>* new_bits,
+                                           const int* new_bits_array,
+                                           size_t new_bits_count,
                                            BitWriter* bw) {
   if (s->eob_run_ == 0) {
     s->cur_ac_huff_ = ac_huff;
   }
   ++s->eob_run_;
-  if (new_bits) {
-    s->refinement_bits_.insert(s->refinement_bits_.end(), new_bits->begin(),
-                               new_bits->end());
+  if (new_bits_count) {
+    uint64_t new_bits = 0;
+    for (size_t i = 0; i < new_bits_count; ++i) {
+      new_bits = (new_bits << 1) | new_bits_array[i];
+    }
+    size_t tail = s->refinement_bits_count_ & 0xF;
+    if (tail) {  // First stuff the tail item
+      size_t stuff_bits_count = std::min(16 - tail, new_bits_count);
+      uint16_t stuff_bits = new_bits >> (new_bits_count - stuff_bits_count);
+      stuff_bits &= ((1u << stuff_bits_count) - 1);
+      s->refinement_bits_.back() =
+          (s->refinement_bits_.back() << stuff_bits_count) | stuff_bits;
+      new_bits_count -= stuff_bits_count;
+      s->refinement_bits_count_ += stuff_bits_count;
+    }
+    while (new_bits_count >= 16) {
+      s->refinement_bits_.push_back(new_bits >> (new_bits_count - 16));
+      new_bits_count -= 16;
+      s->refinement_bits_count_ += 16;
+    }
+    if (new_bits_count) {
+      s->refinement_bits_.push_back(new_bits & ((1u << new_bits_count) - 1));
+      s->refinement_bits_count_ += new_bits_count;
+    }
   }
   if (s->eob_run_ == 0x7FFF ||
-      s->refinement_bits_.size() > kJPEGMaxCorrectionBits - kDCTBlockSize + 1) {
+      s->refinement_bits_count_ > kJPEGMaxCorrectionBits - kDCTBlockSize + 1) {
     Flush(s, bw);
   }
 }
@@ -588,7 +618,7 @@ bool EncodeDCTBlockProgressive(const coeff_t* coeffs,
     }
   }
   if (r > 0) {
-    BufferEndOfBand(coding_state, &ac_huff, nullptr, bw);
+    BufferEndOfBand(coding_state, &ac_huff, nullptr, 0, bw);
     if (!eob_run_allowed) {
       Flush(coding_state, bw);
     }
@@ -618,8 +648,8 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
     }
   }
   int r = 0;
-  std::vector<int> refinement_bits;
-  refinement_bits.reserve(kDCTBlockSize);
+  int refinement_bits[kDCTBlockSize];
+  size_t refinement_bits_count = 0;
   for (int k = Ss; k <= Se; k++) {
     if (abs_values[k] == 0) {
       r++;
@@ -629,13 +659,13 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
       Flush(coding_state, bw);
       WriteBits(bw, ac_huff.depth[0xf0], ac_huff.code[0xf0]);
       r -= 16;
-      for (int bit : refinement_bits) {
-        WriteBits(bw, 1, bit);
+      for (size_t i = 0; i < refinement_bits_count; ++i) {
+        WriteBits(bw, 1, refinement_bits[i]);
       }
-      refinement_bits.clear();
+      refinement_bits_count = 0;
     }
     if (abs_values[k] > 1) {
-      refinement_bits.push_back(abs_values[k] & 1u);
+      refinement_bits[refinement_bits_count++] = abs_values[k] & 1u;
       continue;
     }
     Flush(coding_state, bw);
@@ -643,14 +673,15 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
     int new_non_zero_bit = (coeffs[kJPEGNaturalOrder[k]] < 0) ? 0 : 1;
     WriteBits(bw, ac_huff.depth[symbol], ac_huff.code[symbol]);
     WriteBits(bw, 1, new_non_zero_bit);
-    for (int bit : refinement_bits) {
-      WriteBits(bw, 1, bit);
+    for (size_t i = 0; i < refinement_bits_count; ++i) {
+      WriteBits(bw, 1, refinement_bits[i]);
     }
-    refinement_bits.clear();
+    refinement_bits_count = 0;
     r = 0;
   }
-  if (r > 0 || !refinement_bits.empty()) {
-    BufferEndOfBand(coding_state, &ac_huff, &refinement_bits, bw);
+  if (r > 0 || refinement_bits_count) {
+    BufferEndOfBand(coding_state, &ac_huff, refinement_bits,
+                    refinement_bits_count, bw);
     if (!eob_run_allowed) {
       Flush(coding_state, bw);
     }
