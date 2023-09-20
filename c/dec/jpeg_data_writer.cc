@@ -40,9 +40,6 @@ const int kJpegPrecision = 8;
 // BitWriter: buffer size
 const size_t kBitWriterChunkSize = 16384;
 
-// DCTCodingState: maximum number of correction bits to buffer
-const int kJPEGMaxCorrectionBits = 1u << 16;
-
 // Returns ceil(a/b).
 static BRUNSLI_INLINE int DivCeil(int a, int b) { return (a + b - 1) / b; }
 
@@ -189,7 +186,7 @@ void DCTCodingStateInit(DCTCodingState* s) {
   s->eob_run_ = 0;
   s->cur_ac_huff_ = nullptr;
   s->refinement_bits_.clear();
-  s->refinement_bits_.reserve(kJPEGMaxCorrectionBits >> 4);  // uint16_t
+  s->refinement_bits_.reserve(64);  // 1024 bits most often is more than enough.
   s->refinement_bits_count_ = 0;
 }
 
@@ -220,7 +217,7 @@ static BRUNSLI_INLINE void Flush(DCTCodingState* s, BitWriter* bw) {
 
 // Buffer some more data at the end-of-band (the last non-zero or newly
 // non-zero coefficient within the [Ss, Se] spectral band).
-static BRUNSLI_INLINE void BufferEndOfBand(DCTCodingState* s,
+static BRUNSLI_INLINE bool BufferEndOfBand(DCTCodingState* s,
                                            const HuffmanCodeTable* ac_huff,
                                            const int* new_bits_array,
                                            size_t new_bits_count,
@@ -254,10 +251,15 @@ static BRUNSLI_INLINE void BufferEndOfBand(DCTCodingState* s,
       s->refinement_bits_count_ += new_bits_count;
     }
   }
-  if (s->eob_run_ == 0x7FFF ||
-      s->refinement_bits_count_ > kJPEGMaxCorrectionBits - kDCTBlockSize + 1) {
+  // At most we buffer at most ~258041 bytes; that is less than we have reserved
+  // before; still, let's make sure we don't use more memory ever.
+  if (s->refinement_bits_count_ > 0x7FFF * (kDCTBlockSize - 1)) {
+    return false;
+  }
+  if (s->eob_run_ == 0x7FFF) {
     Flush(s, bw);
   }
+  return true;
 }
 
 bool BuildHuffmanCodeTable(const JPEGHuffmanCode& huff,
@@ -618,6 +620,7 @@ bool EncodeDCTBlockProgressive(const coeff_t* coeffs,
     }
   }
   if (r > 0) {
+    // Ignore result: since we do not buffer bits - it can not fail.
     BufferEndOfBand(coding_state, &ac_huff, nullptr, 0, bw);
     if (!eob_run_allowed) {
       Flush(coding_state, bw);
@@ -680,8 +683,10 @@ bool EncodeRefinementBits(const coeff_t* coeffs,
     r = 0;
   }
   if (r > 0 || refinement_bits_count) {
-    BufferEndOfBand(coding_state, &ac_huff, refinement_bits,
-                    refinement_bits_count, bw);
+    if (!BufferEndOfBand(coding_state, &ac_huff, refinement_bits,
+                         refinement_bits_count, bw)) {
+      return false;
+    }
     if (!eob_run_allowed) {
       Flush(coding_state, bw);
     }
