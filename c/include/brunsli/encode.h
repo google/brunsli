@@ -18,7 +18,7 @@ extern "C" {
 #endif
 
 /*
-Encodes brunsli file to JPEG. Returns 1 on success, 0 on error.
+Encodes JPEG to a brunsli file. Returns 1 on success, 0 on error.
 The input data must be complete (encodes in one shot).
 Outputs to outfun, outfun must return amount of consumed bytes, any return value
 not equal to the input size is considered an error. It will pass on the outdata
