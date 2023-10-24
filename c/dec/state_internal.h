@@ -124,7 +124,7 @@ struct SectionHeaderState {
   enum Stage {
     // Check section tag.
     READ_TAG,
-    // Read (dummy) value.
+    // Read (unused) value.
     READ_VALUE,
     // Read section length.
     ENTER_SECTION,

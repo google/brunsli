@@ -2062,8 +2062,8 @@ static Stage ParseSection(State* state) {
 
       case SectionHeaderState::READ_VALUE: {
         // No known varint tags on top level.
-        size_t dummy;
-        BrunsliStatus status = DecodeBase128(state, &dummy);
+        size_t sink;
+        BrunsliStatus status = DecodeBase128(state, &sink);
         if (status != BRUNSLI_OK) return Fail(state, status);
         result = Stage::SECTION;
         sh.stage = SectionHeaderState::DONE;

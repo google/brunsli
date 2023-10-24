@@ -64,13 +64,13 @@ ngx_module_t ngx_http_brunsli_static_module = {
     &ngx_http_brunsli_static_module_ctx, /* module context */
     ngx_http_brunsli_static_commands,    /* module directives */
     NGX_HTTP_MODULE,                     /* module type */
-    NULL,                                /* init master */
+    NULL,                                /* init main process */
     NULL,                                /* init module */
     NULL,                                /* init process */
     NULL,                                /* init thread */
     NULL,                                /* exit thread */
     NULL,                                /* exit process */
-    NULL,                                /* exit master */
+    NULL,                                /* exit main process */
     NGX_MODULE_V1_PADDING};
 
 static ngx_int_t ngx_http_brunsli_static_handler(ngx_http_request_t *r) {
