@@ -32,6 +32,7 @@ jobs:
         - name: cmake:clang-12
           mode: cmake
           env: CC=/usr/bin/clang-12 CXX=/usr/bin/clang++-12
+          os: ubuntu-20.04
 
         - name: cmake:clang-13
           mode: cmake
@@ -40,6 +41,10 @@ jobs:
         - name: cmake:clang-14
           mode: cmake
           env: CC=/usr/bin/clang-14 CXX=/usr/bin/clang++-14
+
+        - name: cmake:clang-15
+          mode: cmake
+          env: CC=/usr/bin/clang-15 CXX=/usr/bin/clang++-15
 
         - name: cmake:gcc-9
           mode: cmake
@@ -57,6 +62,10 @@ jobs:
           mode: cmake
           env: CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12
 
+        - name: cmake:gcc-13
+          mode: cmake
+          env: CC=/usr/bin/gcc-13 CXX=/usr/bin/g++-13
+
         - name: cmake:android:arm64-v8a
           mode: cmake
           cmake_params: -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25 -DBUILD_TESTING=off
@@ -64,8 +73,9 @@ jobs:
         - name: cmake:wasm
           mode: cmake
           wasm: true
+          # TODO(eustas): enable tests
           cmake_params: -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" -DBUILD_TESTING=off
-          env: source ~/emsdk/emsdk_env.sh &&
+          env: emcmake
 
         - name: cmake:win:default
           mode: cmake
@@ -84,34 +94,40 @@ jobs:
           mode: bazel
           bazel_project_root: java
 
+    env:
+      EM_VERSION: 3.1.51
+      NODE_VERSION: 21
+
     steps:
     - name: Checkout
       uses: actions/checkout@v2
       with:
         submodules: recursive
 
-    - name: Cache EMSDK
+    - name: Install node
       if: ${{ matrix.wasm }}
-      id: cache-emsdk
-      uses: actions/cache@v1
+      uses: actions/setup-node@b39b52d1213e96004bfcb1c61a8a6fa8ab84f3e8 # v4.0.1
       with:
-        path: ~/emsdk
-        key: ${{ runner.os }}-emsdk
+        node-version: ${{env.NODE_VERSION}}
 
-    - name: Install EMSDK
-      if: ${{ matrix.wasm && steps.cache-emsdk.outputs.cache-hit != 'true' }}
-      run: |
-        cd ~/
-        git clone https://github.com/emscripten-core/emsdk.git
-        cd emsdk
-        git pull
-        ./emsdk install latest
+    - name: Get non-EMSDK node path
+      if: ${{ matrix.wasm }}
+      run: which node >> $HOME/.base_node_path
 
-    - name: Post-install EMSDK
+    - name: Install emsdk
+      if: ${{ matrix.wasm }}
+      uses: mymindstorm/setup-emsdk@6ab9eb1bda2574c4ddb79809fc9247783eaf9021 # v14
+      # TODO(eustas): We could cache this action but it doesn't work when running
+      # in a matrix.
+      with:
+        version: ${{env.EM_VERSION}}
+        no-cache: true
+
+    - name: Set EMSDK node version
       if: ${{ matrix.wasm }}
       run: |
-        cd ~/emsdk
-        ./emsdk activate latest
+        echo "NODE_JS='$(cat $HOME/.base_node_path)'" >> $EMSDK/.emscripten
+        emsdk construct_env
 
     - name: Configure @ CMake
       if: ${{ matrix.mode == 'cmake' }}

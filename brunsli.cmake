@@ -80,15 +80,15 @@ target_link_libraries(brunslienc-static PRIVATE
 set(BRUNSLI_LIBRARIES brunslicommon-static brunslidec-static brunslienc-static)
 
 if(NOT BRUNSLI_EMSCRIPTEN)
-add_library(brunslidec-c SHARED
-  c/dec/decode.cc
-)
-target_link_libraries(brunslidec-c PRIVATE brunslidec-static)
-add_library(brunslienc-c SHARED
-  c/enc/encode.cc
-)
-target_link_libraries(brunslienc-c PRIVATE brunslienc-static)
-list(APPEND BRUNSLI_LIBRARIES brunslidec-c brunslienc-c)
+  add_library(brunslidec-c SHARED
+    c/dec/decode.cc
+  )
+  target_link_libraries(brunslidec-c PRIVATE brunslidec-static)
+  add_library(brunslienc-c SHARED
+    c/enc/encode.cc
+  )
+  target_link_libraries(brunslienc-c PRIVATE brunslienc-static)
+  list(APPEND BRUNSLI_LIBRARIES brunslidec-c brunslienc-c)
 endif()  # BRUNSLI_EMSCRIPTEN
 
 foreach(lib IN LISTS BRUNSLI_LIBRARIES)
@@ -108,50 +108,50 @@ target_link_libraries(dbrunsli PRIVATE
   brunslidec-static
 )
 if(BRUNSLI_EMSCRIPTEN)
-set(WASM_MODULES brunslicodec-wasm brunslidec-wasm brunslienc-wasm)
-foreach(module IN LISTS WASM_MODULES)
-add_executable(${module} wasm/codec.cc)
-target_link_libraries(${module} PRIVATE brunslidec-static brunslienc-static)
-endforeach()
-set(WASM_BASE_FLAGS "\
-  -O3 \
-  --closure 1 \
-  -s ALLOW_MEMORY_GROWTH=1 \
-  -flto \
-  --llvm-lto 1 \
-  -s DISABLE_EXCEPTION_CATCHING=1 \
-")
-set(WASM_LINK_FLAGS "\
-  ${WASM_BASE_FLAGS} \
-  -s MODULARIZE=1 \
-  -s FILESYSTEM=0 \
-")
-set_target_properties(cbrunsli PROPERTIES LINK_FLAGS "\
-  ${WASM_BASE_FLAGS} \
-  -s NODERAWFS=1 \
-")
-set_target_properties(dbrunsli PROPERTIES LINK_FLAGS "\
-  ${WASM_BASE_FLAGS} \
-  -s NODERAWFS=1 \
-")
-set(WASM_COMMON_EXPORT "\"_malloc\",\"_free\"")
-set(WASM_DEC_EXPORT "\"_BrunsliToJpeg\",\"_GetJpegData\",\"_GetJpegLength\",\"_FreeJpeg\",\"_BrunsliDecoderInit\",\"_BrunsliDecoderProcess\",\"_BrunsliDecoderCleanup\"")
-set(WASM_ENC_EXPORT "\"_JpegToBrunsli\",\"_GetBrunsliData\",\"_GetBrunsliLength\",\"_FreeBrunsli\"")
-set_target_properties(brunslicodec-wasm PROPERTIES LINK_FLAGS "\
-  ${WASM_LINK_FLAGS}\
-  -s EXPORT_NAME=\"BrunsliCodecModule\"\
-  -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_DEC_EXPORT},${WASM_ENC_EXPORT}]'\
-")
-set_target_properties(brunslidec-wasm PROPERTIES LINK_FLAGS "\
-  ${WASM_LINK_FLAGS}\
-  -s EXPORT_NAME=\"BrunsliDecModule\"\
-  -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_DEC_EXPORT}]'\
-")
-set_target_properties(brunslienc-wasm PROPERTIES LINK_FLAGS "\
-  ${WASM_LINK_FLAGS}\
-  -s EXPORT_NAME=\"BrunsliEncModule\"\
-  -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_ENC_EXPORT}]'\
-")
+  set(WASM_MODULES brunslicodec-wasm brunslidec-wasm brunslienc-wasm)
+  foreach(module IN LISTS WASM_MODULES)
+    add_executable(${module} wasm/codec.cc)
+    target_link_libraries(${module} PRIVATE brunslidec-static brunslienc-static)
+  endforeach()
+  set(WASM_BASE_FLAGS "\
+    -O3 \
+    --closure 1 \
+    -s ALLOW_MEMORY_GROWTH=1 \
+    -flto \
+    --llvm-lto 1 \
+    -s DISABLE_EXCEPTION_CATCHING=1 \
+  ")
+  set(WASM_LINK_FLAGS "\
+    ${WASM_BASE_FLAGS} \
+    -s MODULARIZE=1 \
+    -s FILESYSTEM=0 \
+  ")
+  set_target_properties(cbrunsli PROPERTIES LINK_FLAGS "\
+    ${WASM_BASE_FLAGS} \
+    -s NODERAWFS=1 \
+  ")
+  set_target_properties(dbrunsli PROPERTIES LINK_FLAGS "\
+    ${WASM_BASE_FLAGS} \
+    -s NODERAWFS=1 \
+  ")
+  set(WASM_COMMON_EXPORT "\"_malloc\",\"_free\"")
+  set(WASM_DEC_EXPORT "\"_BrunsliToJpeg\",\"_GetJpegData\",\"_GetJpegLength\",\"_FreeJpeg\",\"_BrunsliDecoderInit\",\"_BrunsliDecoderProcess\",\"_BrunsliDecoderCleanup\"")
+  set(WASM_ENC_EXPORT "\"_JpegToBrunsli\",\"_GetBrunsliData\",\"_GetBrunsliLength\",\"_FreeBrunsli\"")
+  set_target_properties(brunslicodec-wasm PROPERTIES LINK_FLAGS "\
+    ${WASM_LINK_FLAGS}\
+    -s EXPORT_NAME=\"BrunsliCodecModule\"\
+    -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_DEC_EXPORT},${WASM_ENC_EXPORT}]'\
+  ")
+  set_target_properties(brunslidec-wasm PROPERTIES LINK_FLAGS "\
+    ${WASM_LINK_FLAGS}\
+    -s EXPORT_NAME=\"BrunsliDecModule\"\
+    -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_DEC_EXPORT}]'\
+  ")
+  set_target_properties(brunslienc-wasm PROPERTIES LINK_FLAGS "\
+    ${WASM_LINK_FLAGS}\
+    -s EXPORT_NAME=\"BrunsliEncModule\"\
+    -s EXPORTED_FUNCTIONS='[${WASM_COMMON_EXPORT},${WASM_ENC_EXPORT}]'\
+  ")
 endif()  # BRUNSLI_EMSCRIPTEN
 
 # Installation
@@ -176,10 +176,9 @@ set_target_properties(cbrunsli dbrunsli ${BRUNSLI_LIBRARIES} PROPERTIES
 )
 
 if (${BUILD_TESTING})
+  include(GoogleTest)
 
-include(GoogleTest)
-
-set(BRUNSLI_TEST_ITEMS
+  set(BRUNSLI_TEST_ITEMS
     bit_reader
     build_huffman_table
     c_api
@@ -190,24 +189,26 @@ set(BRUNSLI_TEST_ITEMS
     huffman_tree
     lehmer_code
     quant_matrix
-)
-
-file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tests)
-foreach (TEST_ITEM IN LISTS BRUNSLI_TEST_ITEMS)
-  set(TEST_NAME ${TEST_ITEM}_test)
-  add_executable(${TEST_NAME}
-    c/tests/${TEST_NAME}.cc
-    c/dec/decode.cc  # "static" brunslidec-c
-    c/enc/encode.cc  # "static" brunslienc-c
-    c/tests/test_utils.cc  # test utils
   )
-  target_link_libraries(${TEST_NAME}
-    brunslicommon-static
-    brunslidec-static
-    brunslienc-static
-    gtest_main
-  )
-  gtest_discover_tests(${TEST_NAME})
-endforeach()
 
+  file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tests)
+  foreach (TEST_ITEM IN LISTS BRUNSLI_TEST_ITEMS)
+    set(TEST_NAME ${TEST_ITEM}_test)
+    add_executable(${TEST_NAME}
+      c/tests/${TEST_NAME}.cc
+      c/dec/decode.cc  # "static" brunslidec-c
+      c/enc/encode.cc  # "static" brunslienc-c
+      c/tests/test_utils.cc  # test utils
+    )
+    target_compile_definitions(${TEST_NAME} PUBLIC
+      -DTEST_DATA_PATH="${BRUNSLI_TEST_DATA_PATH}"
+    )
+    target_link_libraries(${TEST_NAME}
+      brunslicommon-static
+      brunslidec-static
+      brunslienc-static
+      gtest_main
+    )
+    gtest_discover_tests(${TEST_NAME})
+  endforeach()
 endif()  # BUILD_TESTING

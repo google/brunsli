@@ -242,12 +242,14 @@ TESTS = [
         "c/tests/test_utils.h",
     ],
     copts = ["-Iexternal/gtest/include"],
+    defines = ['BRUNSLI_ROOT_PACKAGE=\'"dev_brunsli"\''],
     deps = [
         ":brunslicommon",
         ":brunslidec",
         ":brunslienc",
         ":brunslidec_c",
         ":brunslienc_c",
+        "@bazel_tools//tools/cpp/runfiles",
         "@com_google_googletest//:gtest_main",
     ],
 ) for item in TESTS]

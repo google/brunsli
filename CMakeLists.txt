@@ -45,6 +45,7 @@ FetchContent_Declare(
   GIT_TAG e61745a6b7add50d380cfd7d3883dd6c62fc2c71 # v1.0.9
 )
 set(BROTLI_DISABLE_TESTS ON CACHE INTERNAL "")
+set(BROTLI_BUILD_TOOLS OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(Brotli)
 
 include(CTest)

@@ -6,6 +6,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
 #include <fstream>
 #include <ios>
 #include <iterator>
@@ -168,24 +169,24 @@ std::vector<std::tuple<std::vector<uint8_t>>> ParseMar(const void* data,
                                                              size_t size) {
   std::vector<std::tuple<std::vector<uint8_t>>> result;
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data);
-  if (size < 8) __builtin_trap();
+  if (size < 8) std::abort();
   uint32_t sig = readU32(bytes);
-  if (sig != 0x4D415231) __builtin_trap();
+  if (sig != 0x4D415231) std::abort();
   uint32_t index = readU32(bytes + 4);
-  if ((index + 4 < index) || (index + 4 > size)) __builtin_trap();
+  if ((index + 4 < index) || (index + 4 > size)) std::abort();
   uint32_t index_size = readU32(bytes + index);
   index += 4;
-  if (index + index_size < index) __builtin_trap();
+  if (index + index_size < index) std::abort();
   uint32_t index_end = index + index_size;
-  if (index_end > size) __builtin_trap();
+  if (index_end > size) std::abort();
   while (index < index_end) {
-    if ((index + 13 < index) || (index + 13 > index_end)) __builtin_trap();
+    if ((index + 13 < index) || (index + 13 > index_end)) std::abort();
     uint32_t offset = readU32(bytes + index);
     uint32_t len = readU32(bytes + index + 4);
-    if (offset + len < offset || offset + len > size) __builtin_trap();
+    if (offset + len < offset || offset + len > size) std::abort();
     index += 12;
     while (bytes[index++]) {
-      if (index == index_end) __builtin_trap();
+      if (index == index_end) std::abort();
     }
     const uint8_t* start = bytes + offset;
     result.emplace_back(std::vector<uint8_t>(start, start + len));
@@ -198,7 +199,7 @@ std::vector<uint8_t> ReadTestData(const std::string& filename) {
   std::ifstream file(full_path, std::ios::binary);
   std::vector<char> str((std::istreambuf_iterator<char>(file)),
                         std::istreambuf_iterator<char>());
-  if (!file.good()) __builtin_trap();
+  if (!file.good()) std::abort();
   const uint8_t* raw = reinterpret_cast<const uint8_t*>(str.data());
   std::vector<uint8_t> data(raw, raw + str.size());
   return data;

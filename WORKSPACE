@@ -16,7 +16,7 @@ http_archive(
 
 http_archive(
     name = "org_brotli",
-    urls = ["https://github.com/google/brotli/archive/dbfebd13dcf51e1360f4f943306282b396a3e8cd.zip"],
-    sha256 = "a87127241f52cf7a78f8e56f6c46ebb37e5507fc5dc94e60abf40933c8cec875",
-    strip_prefix = "brotli-dbfebd13dcf51e1360f4f943306282b396a3e8cd",
+    urls = ["https://github.com/google/brotli/archive/ed738e842d2fbdf2d6459e39267a633c4a9b2f5d.zip"],
+    sha256 = "a68ec12a898abc9cf248f21362620562041b7aab4d623ecd736f39bedf5002a0",
+    strip_prefix = "brotli-ed738e842d2fbdf2d6459e39267a633c4a9b2f5d",
 )
