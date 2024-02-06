@@ -7,6 +7,10 @@
 #ifndef BRUNSLI_TESTS_TEST_UTILS_H_
 #define BRUNSLI_TESTS_TEST_UTILS_H_
 
+#include <cstdint>
+#include <cstddef>
+#include <string>
+#include <tuple>
 #include <vector>
 
 namespace brunsli {
@@ -24,6 +28,31 @@ const size_t kSmallBrunsliHeaderSize = 10;
 
 std::vector<uint8_t> GetFallbackBrunsliFile();
 
+std::vector<std::tuple<std::vector<uint8_t>>> ParseMar(const void* data,
+                                                             size_t size);
+
+std::vector<uint8_t> ReadTestData(const std::string& filename);
+
 }  // namespace brunsli
+
+#if !defined(TEST)
+#define TEST(A, B)    \
+  class A##B##_Test { \
+   private:           \
+    void TestBody();  \
+  };                  \
+  A##B_Test::TestBody()
+#endif
+
+#if !defined(FUZZ_TEST)
+struct FuzzTestSink {
+  template<typename F>
+  FuzzTestSink WithSeeds(F) {
+    return *this;
+  }
+};
+#define FUZZ_TEST(A, B) \
+  const FuzzTestSink unused##A##B = FuzzTestSink()
+#endif
 
 #endif  // BRUNSLI_TESTS_TEST_UTILS_H_

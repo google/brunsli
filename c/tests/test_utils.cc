@@ -4,8 +4,21 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <cstddef>
+#include <cstdint>
+#include <fstream>
+#include <ios>
+#include <iterator>
+#include <memory>
 #include <string>
+#include <tuple>
 #include <vector>
+
+#include "./test_utils.h"
+
+#if !defined(TEST_DATA_PATH)
+#include "tools/cpp/runfiles/runfiles.h"
+#endif
 
 namespace brunsli {
 
@@ -130,6 +143,65 @@ std::vector<uint8_t> GetFallbackBrunsliFile() {
   return std::vector<uint8_t>(
       kFallbackBrunsliFile,
       kFallbackBrunsliFile + sizeof(kFallbackBrunsliFile));
+}
+
+namespace {
+uint32_t readU32(const uint8_t* data) {
+  return data[3] | (data[2] << 8) | (data[1] << 16) | (data[0] << 24);
+}
+
+#if defined(TEST_DATA_PATH)
+std::string GetTestDataPath(const std::string& filename) {
+  return std::string(TEST_DATA_PATH "/") + filename;
+}
+#else
+using bazel::tools::cpp::runfiles::Runfiles;
+const std::unique_ptr<Runfiles> kRunfiles(Runfiles::Create(""));
+std::string GetTestDataPath(const std::string& filename) {
+  std::string root(BRUNSLI_ROOT_PACKAGE "/tests/testdata/");
+  return kRunfiles->Rlocation(root + filename);
+}
+#endif
+}  // namespace
+
+std::vector<std::tuple<std::vector<uint8_t>>> ParseMar(const void* data,
+                                                             size_t size) {
+  std::vector<std::tuple<std::vector<uint8_t>>> result;
+  const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data);
+  if (size < 8) __builtin_trap();
+  uint32_t sig = readU32(bytes);
+  if (sig != 0x4D415231) __builtin_trap();
+  uint32_t index = readU32(bytes + 4);
+  if ((index + 4 < index) || (index + 4 > size)) __builtin_trap();
+  uint32_t index_size = readU32(bytes + index);
+  index += 4;
+  if (index + index_size < index) __builtin_trap();
+  uint32_t index_end = index + index_size;
+  if (index_end > size) __builtin_trap();
+  while (index < index_end) {
+    if ((index + 13 < index) || (index + 13 > index_end)) __builtin_trap();
+    uint32_t offset = readU32(bytes + index);
+    uint32_t len = readU32(bytes + index + 4);
+    if (offset + len < offset || offset + len > size) __builtin_trap();
+    index += 12;
+    while (bytes[index++]) {
+      if (index == index_end) __builtin_trap();
+    }
+    const uint8_t* start = bytes + offset;
+    result.emplace_back(std::vector<uint8_t>(start, start + len));
+  }
+  return result;
+}
+
+std::vector<uint8_t> ReadTestData(const std::string& filename) {
+  std::string full_path = GetTestDataPath(filename);
+  std::ifstream file(full_path, std::ios::binary);
+  std::vector<char> str((std::istreambuf_iterator<char>(file)),
+                        std::istreambuf_iterator<char>());
+  if (!file.good()) __builtin_trap();
+  const uint8_t* raw = reinterpret_cast<const uint8_t*>(str.data());
+  std::vector<uint8_t> data(raw, raw + str.size());
+  return data;
 }
 
 }  // namespace brunsli

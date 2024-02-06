@@ -4,21 +4,24 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <algorithm>
+#include <cstdint>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "gtest/gtest.h"
+#include "testing/fuzzing/fuzztest.h"
 #include <brunsli/jpeg_data.h>
 #include <brunsli/status.h>
-#include <brunsli/types.h>
 #include <brunsli/brunsli_decode.h>
 #include <brunsli/jpeg_data_writer.h>
 #include <brunsli/brunsli_encode.h>
 #include <brunsli/jpeg_data_reader.h>
 #include "./test_utils.h"
 
-// Entry point for LibFuzzer.
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+int DoTestOneInput(const uint8_t* data, size_t size) {
   // Encode.
   std::unique_ptr<brunsli::JPEGData> enc_jpg(new brunsli::JPEGData);
   // TODO(eustas): read header and skip if too many pixels are to be decoded.
@@ -71,4 +74,25 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   }
 
   return 0;
+}
+
+// Entry point for LibFuzzer.
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
+  return DoTestOneInput(data, size);
+}
+
+void TestOneInput(const std::vector<uint8_t>& data) {
+  DoTestOneInput(data.data(), data.size());
+}
+
+std::vector<std::tuple<std::vector<uint8_t>>> ReadSeeds() {
+  const std::vector<uint8_t> data = brunsli::ReadTestData("fuzz-encode.mar");
+  return brunsli::ParseMar(data.data(), data.size());
+}
+
+FUZZ_TEST(BrunsliEncodeFuzz, TestOneInput).WithSeeds(ReadSeeds);
+
+// TODO(eustas): Add existing cases.
+TEST(BrunsliEncodeFuzz, Empty) {
+  DoTestOneInput(nullptr, 0);
 }
