@@ -41,7 +41,7 @@ std::vector<uint8_t> ReadTestData(const std::string& filename);
    private:           \
     void TestBody();  \
   };                  \
-  A##B_Test::TestBody()
+  void A##B##_Test::TestBody()
 #endif
 
 #if !defined(FUZZ_TEST)

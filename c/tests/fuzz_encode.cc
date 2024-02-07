@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
-#include "gtest/gtest.h"
-#include "testing/fuzzing/fuzztest.h"
+// #include "gtest/gtest.h"
+// #include "testing/fuzzing/fuzztest.h"
 #include <brunsli/jpeg_data.h>
 #include <brunsli/status.h>
 #include <brunsli/brunsli_decode.h>

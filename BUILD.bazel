@@ -1,6 +1,7 @@
 # Description:
 #   Brunsli is an compact JPEG data format.
 
+load("@rules_fuzzing//fuzzing:cc_defs.bzl", "cc_fuzz_test")
 load(":compiler_config_setting.bzl", "create_msvc_config")
 
 package(
@@ -220,6 +221,22 @@ cc_binary(
     ] + EXPERIMENTAL_DEPS,
 )
 
+cc_library(
+    name = "test_utils",
+    srcs = ["c/tests/test_utils.cc"],
+    hdrs = ["c/tests/test_utils.h"],
+    defines = ['BRUNSLI_ROOT_PACKAGE=\'"dev_brunsli"\''],
+    deps = ["@bazel_tools//tools/cpp/runfiles"],
+)
+
+BRUNSLI_LIBS = [
+    ":brunslicommon",
+    ":brunslidec",
+    ":brunslienc",
+    ":brunslidec_c",
+    ":brunslienc_c",
+]
+
 TESTS = [
     "bit_reader",
     "build_huffman_table",
@@ -234,22 +251,27 @@ TESTS = [
     # "stream_decode", # fix brotli dependency
 ]
 
+FUZZERS = [
+    "decode",
+    "decode_streaming",
+    "encode",
+]
+
 [cc_test(
     name = item + "_test",
-    srcs = [
-        "c/tests/" + item + "_test.cc",
-        "c/tests/test_utils.cc",
-        "c/tests/test_utils.h",
-    ],
+    srcs = ["c/tests/" + item + "_test.cc"],
     copts = ["-Iexternal/gtest/include"],
-    defines = ['BRUNSLI_ROOT_PACKAGE=\'"dev_brunsli"\''],
-    deps = [
-        ":brunslicommon",
-        ":brunslidec",
-        ":brunslienc",
-        ":brunslidec_c",
-        ":brunslienc_c",
-        "@bazel_tools//tools/cpp/runfiles",
+    deps = BRUNSLI_LIBS + [
+        ":test_utils",
         "@com_google_googletest//:gtest_main",
     ],
 ) for item in TESTS]
+
+# To start fuzzing run: bazel run --config=asan-libfuzzer //:fuzz_FUZZER_run
+[cc_fuzz_test(
+    name = "fuzz_" + item,
+    srcs = ["c/tests/fuzz_" + item + ".cc"],
+    deps = BRUNSLI_LIBS + [
+        ":test_utils",
+    ],
+) for item in FUZZERS]
