@@ -261,6 +261,9 @@ bool ProcessMetaData(const uint8_t* data, size_t len, MetadataState* state,
         state->remaining_multibyte_length = marker_len - 2;
         uint8_t head[3] = {state->marker, state->length_hi, lo};
         auto* dest = (state->marker == 0xFE) ? &jpg->com_data : &jpg->app_data;
+        if (dest->size() >= kBrunsliMultibyteMarkerLimit) {
+          return false;
+        }
         dest->emplace_back(head, head + 3);
         state->multibyte_sink = &dest->back();
         // Turn state machine to default state in case there is no payload in

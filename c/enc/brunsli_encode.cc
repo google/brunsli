@@ -844,6 +844,18 @@ bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
                         << transformed_marker_count << BRUNSLI_ENDL();
     return false;
   }
+  size_t other_app_count = jpg.app_data.size() - transformed_marker_count;
+  if (other_app_count > kBrunsliMultibyteMarkerLimit) {
+    BRUNSLI_LOG_ERROR() << "Too many app markers: "
+                        << other_app_count << BRUNSLI_ENDL();
+    return false;
+  }
+  size_t com_count = jpg.com_data.size();
+  if (com_count > kBrunsliMultibyteMarkerLimit) {
+    BRUNSLI_LOG_ERROR() << "Too many com markers: "
+                        << com_count << BRUNSLI_ENDL();
+    return false;
+  }
   for (const auto& s : jpg.com_data) {
     Append(&metadata, s);
   }

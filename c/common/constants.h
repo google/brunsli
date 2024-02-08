@@ -40,6 +40,7 @@ static const size_t kMaxHuffmanBits = 15u;
 // repeated markers; to mitigate this, brunsli allows repetition of short
 // markers, but sets the limit: the number of all unique marker variants.
 static const int kBrunsliShortMarkerLimit = 0x40 + 3 * 0x100;
+static const int kBrunsliMultibyteMarkerLimit = 0x400;
 
 static const uint8_t kBrunsliWiringTypeVarint = 0x0;
 static const uint8_t kBrunsliWiringTypeLengthDelimited = 0x2;
