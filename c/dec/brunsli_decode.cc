@@ -261,7 +261,8 @@ bool ProcessMetaData(const uint8_t* data, size_t len, MetadataState* state,
         state->remaining_multibyte_length = marker_len - 2;
         uint8_t head[3] = {state->marker, state->length_hi, lo};
         auto* dest = (state->marker == 0xFE) ? &jpg->com_data : &jpg->app_data;
-        if (dest->size() >= kBrunsliMultibyteMarkerLimit) {
+        size_t delta = (state->marker == 0xFE) ? 0 : state->short_marker_count;
+        if (dest->size() - delta >= kBrunsliMultibyteMarkerLimit) {
           return false;
         }
         dest->emplace_back(head, head + 3);
