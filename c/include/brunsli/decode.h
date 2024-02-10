@@ -27,6 +27,9 @@ Outputs to out_fun, out_fun must return amount of consumed bytes, any return
 value not equal to the input size is considered an error. It will pass on the
 out_data to out_fun.
 */
+#if defined(_MSC_VER) && defined(brunslidec_c_EXPORTS)
+__declspec(dllexport)
+#endif
 int DecodeBrunsli(size_t in_size, const uint8_t* in, void* out_data,
                   DecodeBrunsliSink out_fun);
 
