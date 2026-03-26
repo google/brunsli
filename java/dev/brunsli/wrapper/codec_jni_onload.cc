@@ -14,9 +14,9 @@ extern "C" {
 #endif
 
 static const JNINativeMethod kCodecMethods[] = {
-    {"nativeDecode", "(Ljava/nio/ByteBuffer;)[B",
+    {(char*)"nativeDecode", (char*)"(Ljava/nio/ByteBuffer;)[B",
      reinterpret_cast<void*>(Java_dev_brunsli_wrapper_CodecJNI_nativeDecode)},
-    {"nativeEncode", "(Ljava/nio/ByteBuffer;)[B",
+    {(char*)"nativeEncode", (char*)"(Ljava/nio/ByteBuffer;)[B",
      reinterpret_cast<void*>(Java_dev_brunsli_wrapper_CodecJNI_nativeEncode)}};
 
 JNIEXPORT jint JNI_OnLoad(JavaVM* vm, void* reserved) {
