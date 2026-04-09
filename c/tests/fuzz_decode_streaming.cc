@@ -48,10 +48,7 @@ int DoTestOneInput(const uint8_t* data, size_t size) {
   return 0;
 }
 
-// Entry point for LibFuzzer.
-extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
-  return DoTestOneInput(data, size);
-}
+
 
 void TestOneInput(const std::vector<uint8_t>& data) {
   DoTestOneInput(data.data(), data.size());
