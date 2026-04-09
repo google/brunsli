@@ -6,8 +6,8 @@
 
 #include "./state.h"
 
-#include <brotli/decode.h>
 #include "./state_internal.h"
+#include <brotli/decode.h>
 
 namespace brunsli {
 namespace internal {
@@ -21,7 +21,7 @@ State::~State() {}
 
 MetadataState::~MetadataState() {
   if (brotli != nullptr) {
-    BrotliDecoderDestroyInstance(brotli);
+    R_BrotliDecoderDestroyInstance(brotli);
     brotli = nullptr;
   }
 }
