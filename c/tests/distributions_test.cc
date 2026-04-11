@@ -82,7 +82,7 @@ TEST(Distributions, Worst) {
   ds.Flush();
   // This means that every AddBit emits the whole word (16 bits).
   // That is far from ideal (see "Bad" test case).
-  ASSERT_EQ(642, ds.words.size());
+  ASSERT_EQ(size_t(642), ds.words.size());
 }
 
 // TODO(eustas): explore if this could happen for valid JPEG input; also, if

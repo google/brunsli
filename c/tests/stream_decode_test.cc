@@ -78,7 +78,7 @@ TEST(StreamDecodeTest, BytewiseInput) {
     state.len = 1;
     ASSERT_EQ(start + 1 < src.size() ? BRUNSLI_NOT_ENOUGH_DATA : BRUNSLI_OK,
               internal::dec::ProcessJpeg(&state, &jpg));
-    ASSERT_EQ(1, state.pos) << start;
+    ASSERT_EQ(size_t(1), state.pos) << start;
   }
 }
 
