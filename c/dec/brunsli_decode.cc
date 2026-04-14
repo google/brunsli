@@ -1053,7 +1053,8 @@ static BrunsliStatus ReadTag(State* state, SectionState* section) {
   const uint32_t tag_bit = 1u << tag;
   if (section->tags_met & tag_bit) {
     BRUNSLI_LOG_ERROR() << "Duplicate marker " << std::hex
-                        << static_cast<int>(marker) << BRUNSLI_ENDL();
+                        << static_cast<int>(marker) << std::dec
+                        << BRUNSLI_ENDL();
     return BRUNSLI_INVALID_BRN;
   }
   section->tags_met |= tag_bit;
