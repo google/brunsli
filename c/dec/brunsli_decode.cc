@@ -13,7 +13,6 @@
 #include <string>
 #include <vector>
 
-#include <brotli/decode.h>
 #include "../common/constants.h"
 #include "../common/context.h"
 #include <brunsli/jpeg_data.h>
@@ -33,6 +32,7 @@
 #include <brunsli/jpeg_data_writer.h>
 #include "./state.h"
 #include "./state_internal.h"
+#include <brotli/decode.h>
 
 namespace brunsli {
 
@@ -1300,7 +1300,7 @@ static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {
     // TODO(eustas): ms.metadata_size should be limited to avoid "zip-bombs".
     if (IsOutOfSectionBounds(state)) return BRUNSLI_INVALID_BRN;
     if (RemainingSectionLength(state) == 0) return BRUNSLI_INVALID_BRN;
-    ms.brotli = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
+    ms.brotli = R_BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
     if (ms.brotli == nullptr) return BRUNSLI_DECOMPRESSION_ERROR;
     ms.decompression_stage = MetadataDecompressionStage::DECOMPRESSING;
   }
@@ -1309,7 +1309,7 @@ static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {
     // Free Brotli decoder and return result
     const auto finish_decompression = [&ms] (BrunsliStatus result) {
       BRUNSLI_DCHECK(ms.brotli != nullptr);
-      BrotliDecoderDestroyInstance(ms.brotli);
+      R_BrotliDecoderDestroyInstance(ms.brotli);
       ms.brotli = nullptr;
       ms.decompression_stage = MetadataDecompressionStage::DONE;
       return result;
@@ -1320,15 +1320,18 @@ static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {
           std::min(GetBytesAvailable(state), RemainingSectionLength(state));
       size_t available_in = available_bytes;
       const uint8_t* next_in = state->data + state->pos;
+      uint8_t dummy_out = 0;
+      uint8_t* next_out = &dummy_out;
       size_t available_out = 0;
-      BrotliDecoderResult result = BrotliDecoderDecompressStream(
-          ms.brotli, &available_in, &next_in, &available_out, nullptr, nullptr);
+      BrotliDecoderResult result = R_BrotliDecoderDecompressStream(
+          ms.brotli, &available_in, &next_in, &available_out, &next_out,
+          nullptr);
       if (result == BROTLI_DECODER_RESULT_ERROR) {
         return finish_decompression(BRUNSLI_INVALID_BRN);
       }
       size_t chunk_size = 0;
       const uint8_t* chunk_data =
-          BrotliDecoderTakeOutput(ms.brotli, &chunk_size);
+          R_BrotliDecoderTakeOutput(ms.brotli, &chunk_size);
       ms.decompressed_size += chunk_size;
       if (ms.decompressed_size > ms.metadata_size) {
         return finish_decompression(BRUNSLI_INVALID_BRN);
