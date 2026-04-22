@@ -54,6 +54,13 @@ endif()
 set(BRUNSLI_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/c/include")
 mark_as_advanced(BRUNSLI_INCLUDE_DIRS)
 
+find_library(BROTLIDEC_STATIC NAMES brotlidec-static ${CMAKE_STATIC_LIBRARY_PREFIX}brotlidec${CMAKE_STATIC_LIBRARY_SUFFIX})
+find_library(BROTLIENC_STATIC NAMES brotlienc-static ${CMAKE_STATIC_LIBRARY_PREFIX}brotlienc${CMAKE_STATIC_LIBRARY_SUFFIX})
+
+if(NOT BROTLIDEC_STATIC OR NOT BROTLIENC_STATIC)
+  message(FATAL_ERROR "Static Brotli libraries not found")
+endif()
+
 add_library(brunslicommon-static STATIC
   ${BRUNSLI_COMMON_SOURCES}
   ${BRUNSLI_COMMON_HEADERS}
@@ -64,7 +71,7 @@ add_library(brunslidec-static STATIC
   ${BRUNSLI_DEC_HEADERS}
 )
 target_link_libraries(brunslidec-static PRIVATE
-  brotlidec-static
+  ${BROTLIDEC_STATIC}
   brunslicommon-static
 )
 
@@ -73,7 +80,7 @@ add_library(brunslienc-static STATIC
   ${BRUNSLI_ENC_HEADERS}
 )
 target_link_libraries(brunslienc-static PRIVATE
-  brotlienc-static
+  ${BROTLIENC_STATIC}
   brunslicommon-static
 )
 
