@@ -15,6 +15,14 @@
 #include <vector>
 
 #include <brotli/encode.h>
+
+static size_t BrunsliBrotliEncoderEstimatePeakMemoryUsage(int quality,
+                                                          int lgwin,
+                                                          size_t input_size) {
+  (void)quality;
+  (void)input_size;
+  return (size_t{1} << lgwin) + (1 << 20);
+}
 #include "../common/constants.h"
 #include "../common/context.h"
 #include "../common/distributions.h"
@@ -878,9 +886,9 @@ bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
 
   // Write the compressed metadata directly to the output.
   size_t compressed_size = *len - pos;
-  if (!BrotliEncoderCompress(kBrotliQuality, kBrotliWindowBits,
-                             BROTLI_DEFAULT_MODE, metadata.size(),
-                             metadata.data(), &compressed_size, &data[pos])) {
+  if (!R_BrotliEncoderCompress(kBrotliQuality, kBrotliWindowBits,
+                               BROTLI_DEFAULT_MODE, metadata.size(),
+                               metadata.data(), &compressed_size, &data[pos])) {
     BRUNSLI_LOG_ERROR() << "Brotli compression failed:"
                         << " input size = " << metadata.size()
                         << " pos = " << pos << " len = " << *len
@@ -1499,7 +1507,7 @@ size_t EstimateBrunsliEncodePeakMemoryUsage(size_t jpg_size,
   }
   size_t brotli_peak = 0;
   if (metadata_size > 1) {
-    brotli_peak = BrotliEncoderEstimatePeakMemoryUsage(
+    brotli_peak = BrunsliBrotliEncoderEstimatePeakMemoryUsage(
         kBrotliQuality, kBrotliWindowBits, metadata_size);
   }
   size_t ncomp = jpg.components.size();
