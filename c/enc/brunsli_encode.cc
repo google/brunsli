@@ -118,7 +118,7 @@ bool TransformApp0Marker(const std::vector<uint8_t>& s,
     const uint8_t y_dens_lo = s[14];
     int y_dens = (y_dens_hi << 8) + y_dens_lo;
     int density_ix = -1;
-    for (int k = 0; k < kMaxApp0Densities; ++k) {
+    for (size_t k = 0; k < kMaxApp0Densities; ++k) {
       if (x_dens == kApp0Densities[k] && y_dens == x_dens) {
         density_ix = k;
       }
@@ -260,7 +260,7 @@ bool EncodeQuantTables(const JPEGData& jpg, Storage* storage) {
     if (code < kNumStockQuantTables) {
       WriteBits(3, code, storage);
     } else {
-      int q_factor = code - kNumStockQuantTables;
+      size_t q_factor = code - kNumStockQuantTables;
       BRUNSLI_DCHECK(q_factor < kQFactorLimit);
       WriteBits(kQFactorBits, q_factor, storage);
       int last_diff = 0;  // difference predictor
@@ -628,7 +628,7 @@ void DataStream::AddCode(size_t code, size_t band, size_t context,
   word.code = static_cast<uint32_t>(code);
   word.nbits = 0;
   word.value = 0;
-  BRUNSLI_DCHECK(pos_ < code_words_.size());
+  BRUNSLI_DCHECK(static_cast<size_t>(pos_) < code_words_.size());
   code_words_[pos_++] = word;
   s->AddCode(code, histo_ix);
 }
@@ -1088,7 +1088,7 @@ void EncodeDC(State* state) {
 
   std::vector<ComponentStateDC> comps(num_components);
   size_t total_num_blocks = 0;
-  for (int i = 0; i < num_components; ++i) {
+  for (size_t i = 0; i < num_components; ++i) {
     const ComponentMeta& m = meta[i];
     comps[i].SetWidth(m.width_in_blocks);
     total_num_blocks += m.width_in_blocks * m.height_in_blocks;
@@ -1200,7 +1200,7 @@ void EncodeAC(State* state) {
   entropy_source.Resize(state->num_contexts);
   data_stream.Resize(num_code_words);
 
-  for (int i = 0; i < num_components; ++i) {
+  for (size_t i = 0; i < num_components; ++i) {
     EncodeCoeffOrder(&comps[i].order[0], &data_stream);
   }
 

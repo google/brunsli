@@ -96,7 +96,7 @@ bool ProcessSOF(const uint8_t* data, const size_t len, JpegReadMode mode,
 
   // Read sampling factors and quant table index for each component.
   std::vector<bool> ids_seen(256, false);
-  for (int i = 0; i < jpg->components.size(); ++i) {
+  for (size_t i = 0; i < jpg->components.size(); ++i) {
     const int id = ReadUint8(data, pos);
     if (ids_seen[id]) {  // (cf. section B.2.2, syntax of Ci)
       BRUNSLI_LOG_INFO() << "Duplicate ID " << id << " in SOF."
@@ -123,7 +123,7 @@ bool ProcessSOF(const uint8_t* data, const size_t len, JpegReadMode mode,
   jpg->MCU_rows = DivCeil(jpg->height, jpg->max_v_samp_factor * 8);
   jpg->MCU_cols = DivCeil(jpg->width, jpg->max_h_samp_factor * 8);
   // Compute the block dimensions for each component.
-  for (int i = 0; i < jpg->components.size(); ++i) {
+  for (size_t i = 0; i < jpg->components.size(); ++i) {
     JPEGComponent* c = &jpg->components[i];
     if (jpg->max_h_samp_factor % c->h_samp_factor != 0 ||
         jpg->max_v_samp_factor % c->v_samp_factor != 0) {
@@ -158,7 +158,8 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
   BRUNSLI_VERIFY_LEN(3);
   size_t marker_len = ReadUint16(data, pos);
   int comps_in_scan = ReadUint8(data, pos);
-  BRUNSLI_VERIFY_INPUT(comps_in_scan, 1, jpg->components.size(), COMPS_IN_SCAN);
+  BRUNSLI_VERIFY_INPUT(static_cast<size_t>(comps_in_scan), 1,
+                       jpg->components.size(), COMPS_IN_SCAN);
 
   JPEGScanInfo scan_info;
   scan_info.num_components = comps_in_scan;
@@ -174,7 +175,7 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
     }
     ids_seen[id] = true;
     bool found_index = false;
-    for (int j = 0; j < jpg->components.size(); ++j) {
+    for (size_t j = 0; j < jpg->components.size(); ++j) {
       if (jpg->components[j].id == id) {
         scan_info.components[i].comp_idx = j;
         found_index = true;
@@ -214,7 +215,7 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
   for (int i = 0; i < comps_in_scan; ++i) {
     bool found_dc_table = false;
     bool found_ac_table = false;
-    for (int j = 0; j < jpg->huffman_code.size(); ++j) {
+    for (size_t j = 0; j < jpg->huffman_code.size(); ++j) {
       int slot_id = jpg->huffman_code[j].slot_id;
       if (slot_id == scan_info.components[i].dc_tbl_idx) {
         found_dc_table = true;
@@ -467,7 +468,7 @@ struct BitReaderState {
     FillBitWindow();
     uint64_t val = (val_ >> (bits_left_ - nbits)) & ((1ULL << nbits) - 1);
     bits_left_ -= nbits;
-    BRUNSLI_DCHECK(val < (1 << 31));
+    BRUNSLI_DCHECK(val < (1u << 31));
     return static_cast<int>(val);
   }
 
@@ -857,7 +858,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
   const int Se = is_progressive ? scan_info->Se : 63;
   const uint16_t scan_bitmask = Ah == 0 ? (0xffff << Al) : (1u << Al);
   const uint16_t refinement_bitmask = (1 << Al) - 1;
-  for (int i = 0; i < scan_info->num_components; ++i) {
+  for (size_t i = 0; i < scan_info->num_components; ++i) {
     int comp_idx = scan_info->components[i].comp_idx;
     for (int k = Ss; k <= Se; ++k) {
       if (scan_progression[comp_idx][k] & scan_bitmask) {
@@ -914,7 +915,7 @@ bool ProcessScan(const uint8_t* data, const size_t len,
         return false;
       }
       // Decode one MCU.
-      for (int i = 0; i < scan_info->num_components; ++i) {
+      for (size_t i = 0; i < scan_info->num_components; ++i) {
         JPEGComponentScanInfo* si = &scan_info->components[i];
         JPEGComponent* c = &jpg->components[si->comp_idx];
         const HuffmanTableEntry* dc_lut =
@@ -979,10 +980,10 @@ bool ProcessScan(const uint8_t* data, const size_t len,
 // Changes the quant_idx field of the components to refer to the index of the
 // quant table in the jpg->quant array.
 bool FixupIndexes(JPEGData* jpg) {
-  for (int i = 0; i < jpg->components.size(); ++i) {
+  for (size_t i = 0; i < jpg->components.size(); ++i) {
     JPEGComponent* c = &jpg->components[i];
     bool found_index = false;
-    for (int j = 0; j < jpg->quant.size(); ++j) {
+    for (size_t j = 0; j < jpg->quant.size(); ++j) {
       if (jpg->quant[j].index == c->quant_idx) {
         c->quant_idx = j;
         found_index = true;

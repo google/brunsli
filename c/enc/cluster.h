@@ -22,8 +22,8 @@
 namespace brunsli {
 
 struct HistogramPair {
-  int idx1;
-  int idx2;
+  size_t idx1;
+  size_t idx2;
   double cost_combo;
   double cost_diff;
 };
@@ -106,7 +106,7 @@ size_t HistogramCombine(HistogramType* out, int* cluster_size,
   size_t min_cluster_size = 1;
 
   // Uniquify the list of symbols.
-  std::vector<int> clusters(symbols, symbols + symbols_size);
+  std::vector<size_t> clusters(symbols, symbols + symbols_size);
   std::sort(clusters.begin(), clusters.end());
   clusters.resize(std::unique(clusters.begin(), clusters.end()) -
                   clusters.begin());
@@ -116,8 +116,8 @@ size_t HistogramCombine(HistogramType* out, int* cluster_size,
   // it is unordered.
   std::vector<HistogramPair> pairs;
   pairs.reserve(clusters.size() * (clusters.size() + 1) / 2);
-  for (int idx1 = 0; idx1 < clusters.size(); ++idx1) {
-    for (int idx2 = idx1 + 1; idx2 < clusters.size(); ++idx2) {
+  for (size_t idx1 = 0; idx1 < clusters.size(); ++idx1) {
+    for (size_t idx2 = idx1 + 1; idx2 < clusters.size(); ++idx2) {
       CompareAndPushToQueue(out, cluster_size, clusters[idx1], clusters[idx2],
                             &pairs);
     }
@@ -131,8 +131,8 @@ size_t HistogramCombine(HistogramType* out, int* cluster_size,
     }
 
     // Take the best pair from the top of queue.
-    int best_idx1 = pairs[0].idx1;
-    int best_idx2 = pairs[0].idx2;
+    size_t best_idx1 = pairs[0].idx1;
+    size_t best_idx2 = pairs[0].idx2;
     out[best_idx1].AddHistogram(out[best_idx2]);
     out[best_idx1].bit_cost_ = pairs[0].cost_combo;
     cluster_size[best_idx1] += cluster_size[best_idx2];
@@ -170,7 +170,7 @@ size_t HistogramCombine(HistogramType* out, int* cluster_size,
     pairs.resize(copy_to - pairs.begin());
 
     // Push new pairs formed with the combined histogram to the queue.
-    for (int i = 0; i < clusters.size(); ++i) {
+    for (size_t i = 0; i < clusters.size(); ++i) {
       CompareAndPushToQueue(out, cluster_size, best_idx1, clusters[i], &pairs);
     }
   }
@@ -233,7 +233,7 @@ void HistogramReindex(std::vector<HistogramType>* out,
   std::vector<HistogramType> tmp(*out);
   std::map<int, int> new_index;
   int next_index = 0;
-  for (int i = 0; i < symbols->size(); ++i) {
+  for (size_t i = 0; i < symbols->size(); ++i) {
     if (new_index.find((*symbols)[i]) == new_index.end()) {
       new_index[(*symbols)[i]] = next_index;
       (*out)[next_index] = tmp[(*symbols)[i]];
@@ -241,7 +241,7 @@ void HistogramReindex(std::vector<HistogramType>* out,
     }
   }
   out->resize(next_index);
-  for (int i = 0; i < symbols->size(); ++i) {
+  for (size_t i = 0; i < symbols->size(); ++i) {
     (*symbols)[i] = new_index[(*symbols)[i]];
   }
 }
@@ -260,7 +260,7 @@ void ClusterHistograms(const std::vector<HistogramType>& in,
   std::vector<int> cluster_size(in_size, 1);
   out->resize(in_size);
   histogram_symbols->resize(in_size);
-  for (int i = 0; i < in_size; ++i) {
+  for (size_t i = 0; i < in_size; ++i) {
     (*out)[i] = in[i];
     (*out)[i].bit_cost_ = PopulationCost(in[i]);
     (*histogram_symbols)[i] = i;

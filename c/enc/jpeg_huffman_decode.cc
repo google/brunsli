@@ -30,7 +30,7 @@ void BuildJpegHuffmanTable(const int* count, const int* symbols,
   HuffmanTableEntry* table;  // next available space in table
   int len;         // current code length
   int idx;         // symbol index
-  size_t key;      // prefix code
+  int key;         // prefix code
   int reps;        // number of replicate key values in current table
   int low;         // low bits for current root entry
   int table_bits;  // key length of current table

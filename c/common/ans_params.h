@@ -12,8 +12,8 @@
 
 namespace brunsli {
 
-#define BRUNSLI_ANS_LOG_TAB_SIZE 10u
-#define BRUNSLI_ANS_TAB_SIZE (1u << BRUNSLI_ANS_LOG_TAB_SIZE)
+static constexpr int BRUNSLI_ANS_LOG_TAB_SIZE = 10;
+static constexpr int BRUNSLI_ANS_TAB_SIZE = (1 << BRUNSLI_ANS_LOG_TAB_SIZE);
 #define BRUNSLI_ANS_MAX_SYMBOLS 18
 #define BRUNSLI_ANS_SIGNATURE 0x13u  // Initial state, used as CRC.
 
