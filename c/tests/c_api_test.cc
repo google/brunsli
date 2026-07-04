@@ -7,7 +7,15 @@
 #include <brunsli/decode.h>
 #include <brunsli/encode.h>
 
+#include <vector>
+
+#include <brunsli/brunsli_decode.h>
+#include <brunsli/jpeg_data.h>
+#include <brunsli/status.h>
 #include "gtest/gtest.h"
+
+using ::brunsli::BrunsliDecodeJpeg;
+using ::brunsli::JPEGData;
 
 namespace {
   size_t OutputToString(void* data, const uint8_t* buf, size_t count) {
@@ -48,4 +56,20 @@ TEST(CApiTest, Roundtrip) {
 
   // Roundtrip should be equal to initial string
   ASSERT_EQ(jpeg, jpeg2);
+}
+
+// A header field (width / height / version / subsampling) is a varint. When one
+// is encoded as a length-delimited section instead, the decoder must reject the
+// stream; otherwise the corresponding value is left unset and read later.
+TEST(CApiTest, HeaderVarintTagAsSectionIsRejected) {
+  const std::vector<uint8_t> brn = {
+    0x0A, 0x04, 'B', 0xD2, 0xD5, 'N',  // signature
+    0x12,                              // header tag, length-delimited
+    0x07,                              // header content length
+    0x22,                              // subsampling tag (varint field) as section
+    0x05                               // claimed sub-section length
+  };
+  JPEGData jpg;
+  ASSERT_EQ(brunsli::BRUNSLI_INVALID_BRN,
+            BrunsliDecodeJpeg(brn.data(), brn.size(), &jpg));
 }

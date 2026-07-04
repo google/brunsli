@@ -1142,7 +1142,7 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
         const uint32_t tag_bit = 1u << hs.section.tag;
         if (hs.section.is_section) {
           if (kKnownHeaderVarintTags & tag_bit) {
-            Fail(state, BRUNSLI_INVALID_BRN);
+            return Fail(state, BRUNSLI_INVALID_BRN);
           }
           hs.stage = HeaderState::ITEM_ENTER_SECTION;
           break;
