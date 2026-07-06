@@ -67,8 +67,7 @@ size_t EstimateAuxDataSize(const JPEGData& jpg) {
 }
 
 size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg) {
-  // Rough estimate is 1.2 * uncompressed size plus some more for the header.
-  size_t hdr_size = 1 << 20;
+  size_t hdr_size = 1 << 20;  // Extra for header / entropy tables.
   hdr_size += EstimateAuxDataSize(jpg);
   for (const auto& data : jpg.app_data) {
     hdr_size += data.size();
@@ -77,9 +76,13 @@ size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg) {
     hdr_size += data.size();
   }
   hdr_size += jpg.tail_data.size();
-  size_t num_pixels = jpg.width * jpg.height * jpg.components.size();
-  // TODO(eustas): are we certain about the multiplier?
-  return static_cast<size_t>(num_pixels * 1.2) + hdr_size;
+  size_t x_blocks = (jpg.height + 7) >> 3;
+  size_t y_blocks = (jpg.width + 7) >> 3;
+  // Currently established upper bound is 82 bytes per block.
+  constexpr size_t kBytesPerBlock = 82 + 2;
+  size_t entropy_size =
+      x_blocks * y_blocks * jpg.components.size() * kBytesPerBlock;
+  return entropy_size + hdr_size;
 }
 
 size_t Base128Size(size_t val) {
