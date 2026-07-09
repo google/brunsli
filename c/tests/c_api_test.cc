@@ -4,14 +4,14 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brunsli/brunsli_decode.h>
 #include <brunsli/decode.h>
 #include <brunsli/encode.h>
+#include <brunsli/jpeg_data.h>
+#include <brunsli/status.h>
 
 #include <vector>
 
-#include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data.h>
-#include <brunsli/status.h>
 #include "gtest/gtest.h"
 
 using ::brunsli::BrunsliDecodeJpeg;
