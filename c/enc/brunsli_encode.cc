@@ -76,12 +76,13 @@ size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg) {
     hdr_size += data.size();
   }
   hdr_size += jpg.tail_data.size();
-  size_t x_blocks = (jpg.height + 7) >> 3;
-  size_t y_blocks = (jpg.width + 7) >> 3;
+  size_t num_blocks = 0;
+  for (const auto& component : jpg.components) {
+    num_blocks += component.num_blocks;
+  }
   // Currently established upper bound is 82 bytes per block.
   constexpr size_t kBytesPerBlock = 82 + 2;
-  size_t entropy_size =
-      x_blocks * y_blocks * jpg.components.size() * kBytesPerBlock;
+  size_t entropy_size = num_blocks * kBytesPerBlock;
   return entropy_size + hdr_size;
 }
 
