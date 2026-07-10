@@ -1,0 +1,11 @@
+# Build output directories
+/build
+/build*
+/bazel*
+**/bazel*
+
+# clangd
+.cache
+
+# IDE
+.vscode
