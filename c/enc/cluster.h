@@ -9,15 +9,16 @@
 #ifndef BRUNSLI_ENC_CLUSTER_H_
 #define BRUNSLI_ENC_CLUSTER_H_
 
+#include <brunsli/types.h>
+
 #include <algorithm>
 #include <map>
 #include <utility>
 #include <vector>
 
 #include "../common/platform.h"
-#include <brunsli/types.h>
-#include "./histogram_encode.h"
 #include "./fast_log.h"
+#include "./histogram_encode.h"
 
 namespace brunsli {
 
@@ -41,19 +42,18 @@ inline bool operator<(const HistogramPair& p1, const HistogramPair& p2) {
 inline double ClusterCostDiff(int size_a, int size_b) {
   int size_c = size_a + size_b;
   return size_a * FastLog2(size_a) + size_b * FastLog2(size_b) -
-      size_c * FastLog2(size_c);
+         size_c * FastLog2(size_c);
 }
 
-template<typename HistogramType>
+template <typename HistogramType>
 double PopulationCost(const HistogramType& h) {
   return PopulationCost(&h.data_[0], h.total_count_);
 }
 
 // Computes the bit cost reduction by combining out[idx1] and out[idx2] and if
 // it is below a threshold, stores the pair (idx1, idx2) in the *pairs queue.
-template<typename HistogramType>
-void CompareAndPushToQueue(const HistogramType* out,
-                           const int* cluster_size,
+template <typename HistogramType>
+void CompareAndPushToQueue(const HistogramType* out, const int* cluster_size,
                            int idx1, int idx2,
                            std::vector<HistogramPair>* pairs) {
   if (idx1 == idx2) {
@@ -76,8 +76,8 @@ void CompareAndPushToQueue(const HistogramType* out,
     p.cost_combo = out[idx1].bit_cost_;
     store_pair = true;
   } else {
-    double threshold = pairs->empty() ? 1e99 :
-        std::max(0.0, (*pairs)[0].cost_diff);
+    double threshold =
+        pairs->empty() ? 1e99 : std::max(0.0, (*pairs)[0].cost_diff);
     HistogramType combo = out[idx1];
     combo.AddHistogram(out[idx2]);
     double cost_combo = PopulationCost(combo);
@@ -152,8 +152,8 @@ size_t HistogramCombine(HistogramType* out, int* cluster_size,
     // Remove pairs intersecting the just combined best pair.
     auto copy_to = pairs.begin();
     for (const HistogramPair& p : pairs) {
-      if (p.idx1 == best_idx1 || p.idx2 == best_idx1 ||
-          p.idx1 == best_idx2 || p.idx2 == best_idx2) {
+      if (p.idx1 == best_idx1 || p.idx2 == best_idx1 || p.idx1 == best_idx2 ||
+          p.idx2 == best_idx2) {
         // Remove invalid pair from the queue.
         continue;
       }
@@ -181,7 +181,7 @@ size_t HistogramCombine(HistogramType* out, int* cluster_size,
 // Histogram refinement
 
 // What is the bit cost of moving histogram from cur_symbol to candidate.
-template<typename HistogramType>
+template <typename HistogramType>
 double HistogramBitCostDistance(const HistogramType& histogram,
                                 const HistogramType& candidate) {
   if (histogram.total_count_ == 0) {
@@ -194,9 +194,9 @@ double HistogramBitCostDistance(const HistogramType& histogram,
 
 // Find the best 'out' histogram for each of the 'in' histograms.
 // Note: we assume that out[]->bit_cost_ is already up-to-date.
-template<typename HistogramType>
-void HistogramRemap(const HistogramType* in, size_t in_size,
-                    HistogramType* out, uint32_t* symbols) {
+template <typename HistogramType>
+void HistogramRemap(const HistogramType* in, size_t in_size, HistogramType* out,
+                    uint32_t* symbols) {
   // Uniquify the list of symbols.
   std::vector<int> all_symbols(symbols, symbols + in_size);
   std::sort(all_symbols.begin(), all_symbols.end());
@@ -227,7 +227,7 @@ void HistogramRemap(const HistogramType* in, size_t in_size,
 
 // Reorder histograms in *out so that the new symbols in *symbols come in
 // increasing order.
-template<typename HistogramType>
+template <typename HistogramType>
 void HistogramReindex(std::vector<HistogramType>* out,
                       std::vector<uint32_t>* symbols) {
   std::vector<HistogramType> tmp(*out);
@@ -249,12 +249,11 @@ void HistogramReindex(std::vector<HistogramType>* out,
 // Clusters similar histograms in 'in' together, the selected histograms are
 // placed in 'out', and for each index in 'in', *histogram_symbols will
 // indicate which of the 'out' histograms is the best approximation.
-template<typename HistogramType>
+template <typename HistogramType>
 void ClusterHistograms(const std::vector<HistogramType>& in,
                        size_t num_contexts, size_t num_blocks,
                        const std::vector<size_t> block_group_offsets,
-                       size_t max_histograms,
-                       std::vector<HistogramType>* out,
+                       size_t max_histograms, std::vector<HistogramType>* out,
                        std::vector<uint32_t>* histogram_symbols) {
   const size_t in_size = num_contexts * num_blocks;
   std::vector<int> cluster_size(in_size, 1);
@@ -286,10 +285,9 @@ void ClusterHistograms(const std::vector<HistogramType>& in,
                                ? block_group_offsets[i + 1] * num_contexts
                                : in_size;
       size_t length = next_offset - offset;
-      size_t nclusters =
-          HistogramCombine(&(*out)[0], &cluster_size[0],
-                           &(*histogram_symbols)[offset], length,
-                           max_histograms);
+      size_t nclusters = HistogramCombine(&(*out)[0], &cluster_size[0],
+                                          &(*histogram_symbols)[offset], length,
+                                          max_histograms);
       // Find the optimal map from original histograms to the final ones.
       if (nclusters >= 2 && nclusters < kMinClustersForHistogramRemap) {
         HistogramRemap(&in[offset], length, &(*out)[0],
@@ -303,9 +301,8 @@ void ClusterHistograms(const std::vector<HistogramType>& in,
     // If we did not have block groups or the per-block-group clustering ended
     // with too many histograms, we have to do one final round of clustering.
     num_clusters =
-        HistogramCombine(&(*out)[0], &cluster_size[0],
-                         &(*histogram_symbols)[0], in_size,
-                         max_histograms);
+        HistogramCombine(&(*out)[0], &cluster_size[0], &(*histogram_symbols)[0],
+                         in_size, max_histograms);
     // Find the optimal map from original histograms to the final ones.
     if (num_clusters >= 2 && num_clusters < kMinClustersForHistogramRemap) {
       HistogramRemap(&in[0], in_size, &(*out)[0], &(*histogram_symbols)[0]);

@@ -17,7 +17,6 @@ import org.junit.runners.JUnit4;
 /** Tests for {@link dev.brunsli.wrapper.Codec}. */
 @RunWith(JUnit4.class)
 public class CodecTest {
-
   static {
     String jniLibrary = System.getProperty("BRUNSLI_JNI_LIBRARY");
     if (jniLibrary != null) {

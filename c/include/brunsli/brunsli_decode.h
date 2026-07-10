@@ -10,10 +10,11 @@
 #ifndef BRUNSLI_DEC_BRUNSLI_DECODE_H_
 #define BRUNSLI_DEC_BRUNSLI_DECODE_H_
 
-#include <memory>
 #include <brunsli/jpeg_data.h>
 #include <brunsli/status.h>
 #include <brunsli/types.h>
+
+#include <memory>
 
 namespace brunsli {
 

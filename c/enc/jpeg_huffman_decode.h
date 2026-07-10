@@ -22,7 +22,7 @@ static const int kJpegHuffmanRootTableBits = 8;
 // following sum is used as estimate:
 //  + number of 1-st level cells
 //  + number of symbols
-//  + assymptotic amount of repeated 2-nd level cells
+//  + asymptotic amount of repeated 2-nd level cells
 // The third number is 1 + 3 + ... + 255 i.e. it is assumed that sub-table of
 // each "size" might be almost completely be filled with repetitions.
 // Total sum is slightly less than 1024,...
@@ -33,8 +33,8 @@ struct HuffmanTableEntry {
   // when reading the bit stream using a Huffman code with space > 0.
   HuffmanTableEntry() : bits(0), value(0xffff) {}
 
-  uint8_t bits;     // number of bits used for this symbol
-  uint16_t value;   // symbol value or table offset
+  uint8_t bits;    // number of bits used for this symbol
+  uint16_t value;  // symbol value or table offset
 };
 
 // Builds jpeg-style Huffman lookup table from the given symbols.

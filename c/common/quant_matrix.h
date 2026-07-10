@@ -9,8 +9,9 @@
 #ifndef BRUNSLI_COMMON_QUANT_MATRIX_H_
 #define BRUNSLI_COMMON_QUANT_MATRIX_H_
 
-#include "./constants.h"
 #include <brunsli/types.h>
+
+#include "./constants.h"
 
 namespace brunsli {
 

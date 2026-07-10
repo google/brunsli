@@ -7,6 +7,10 @@
 #ifndef BRUNSLI_DEC_STATE_INTERNAL_H_
 #define BRUNSLI_DEC_STATE_INTERNAL_H_
 
+#include <brunsli/jpeg_data_writer.h>
+#include <brunsli/status.h>
+#include <brunsli/types.h>
+
 #include <array>
 #include <memory>
 #include <string>
@@ -14,14 +18,11 @@
 
 #include "../common/context.h"
 #include "../common/lehmer_code.h"
-#include <brunsli/status.h>
-#include <brunsli/types.h>
 #include "./ans_decode.h"
 #include "./arith_decode.h"
 #include "./bit_reader.h"
 #include "./brunsli_input.h"
 #include "./huffman_decode.h"
-#include <brunsli/jpeg_data_writer.h>
 #include "./serialization_state.h"
 #include "./state.h"
 
@@ -189,11 +190,7 @@ struct MetadataState {
  * parsing workflow supports input buffering.
  */
 struct VarintState {
-  enum Stage {
-    INIT,
-    READ_CONTINUATION,
-    READ_DATA
-  };
+  enum Stage { INIT, READ_CONTINUATION, READ_DATA };
 
   Stage stage = INIT;
   size_t value;

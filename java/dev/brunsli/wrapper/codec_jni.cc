@@ -6,13 +6,13 @@
 
 #include "codec_jni.h"
 
-#include <cstring>
-#include <string>
-
 #include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data_writer.h>
 #include <brunsli/brunsli_encode.h>
 #include <brunsli/jpeg_data_reader.h>
+#include <brunsli/jpeg_data_writer.h>
+
+#include <cstring>
+#include <string>
 
 namespace {
 
@@ -39,8 +39,8 @@ JNIEXPORT jbyteArray JNICALL Java_dev_brunsli_wrapper_CodecJNI_nativeDecode(
   if (length == -1) return nullptr;
 
   ::brunsli::JPEGData jpg;
-  ::brunsli::BrunsliStatus status = ::brunsli::BrunsliDecodeJpeg(
-      data, length, &jpg);
+  ::brunsli::BrunsliStatus status =
+      ::brunsli::BrunsliDecodeJpeg(data, length, &jpg);
   if (status != ::brunsli::BRUNSLI_OK) {
     return nullptr;
   }

@@ -9,8 +9,9 @@
 #ifndef BRUNSLI_ENC_HISTOGRAM_ENCODE_H_
 #define BRUNSLI_ENC_HISTOGRAM_ENCODE_H_
 
-#include "../common/ans_params.h"
 #include <brunsli/types.h>
+
+#include "../common/ans_params.h"
 #include "./write_bits.h"
 
 namespace brunsli {

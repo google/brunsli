@@ -7,12 +7,13 @@
 #ifndef BRUNSLI_COMMON_CONTEXT_H_
 #define BRUNSLI_COMMON_CONTEXT_H_
 
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
+
 #include <vector>
 
 #include "./distributions.h"
-#include <brunsli/jpeg_data.h>
 #include "./platform.h"
-#include <brunsli/types.h>
 
 namespace brunsli {
 
@@ -50,6 +51,7 @@ static const uint8_t kNumNonzeroBuckets = 11;
 static const int kNumSchemes = 7;
 
 static const uint8_t kFreqContext[kNumSchemes][64] = {
+    // clang-format off
     {
         0,
     },
@@ -92,6 +94,7 @@ static const uint8_t kFreqContext[kNumSchemes][64] = {
         32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47,
         48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
     },
+    // clang-format on
 };
 
 static const uint16_t kNumNonzeroContext[kNumSchemes][64] = {
@@ -137,6 +140,7 @@ static const uint16_t kNumNonzeroContextSkip[kNumSchemes] = {8,   15,  31, 61,
  *  - 2: context should be calculated using ACPredictContextCol
  */
 static const uint8_t kContextAlgorithm[128] = {
+    // clang-format off
     // JPEG XL layout
     0, 1, 1, 1, 1, 0, 0, 0,  //
     2, 3, 1, 1, 1, 0, 0, 0,  //
@@ -155,6 +159,7 @@ static const uint8_t kContextAlgorithm[128] = {
     2, 0, 0, 0, 0, 0, 0, 0,  //
     2, 0, 0, 0, 0, 0, 0, 0,  //
     2, 0, 0, 0, 0, 0, 0, 0,
+    // clang-format on
 };
 
 inline uint16_t ZeroDensityContext(size_t nonzeros_left, size_t k,
@@ -183,7 +188,7 @@ inline int WeightedAverageContextDC(const int* vals, int x) {
  * while the (locally) previous elements represent the current row. If y < 2,
  * then vals[0] should be 0.
  * Elements (locally) around vals[prev_row_delta] correspond to the row above
- * currnent one.
+ * current one.
  *
  * Values are summed up with the following weights:
  *
@@ -230,7 +235,7 @@ inline void ACPredictContext(int64_t p, size_t* avg_ctx, size_t* sgn) {
     ctx = kMaxAverageContext;
   } else {
     // 0 -> 0, 1 -> 1, 2..3 -> 2, 4..7 -> 3, etc.
-    ctx = Log2FloorNonZero(2 * static_cast<uint32_t>(p)+ 1);
+    ctx = Log2FloorNonZero(2 * static_cast<uint32_t>(p) + 1);
   }
   *avg_ctx = ctx;
   *sgn = kMaxAverageContext + multiplier * ctx;
@@ -259,7 +264,7 @@ inline void ACPredictContextCol(const coeff_t* prev, const coeff_t* cur,
 }
 
 inline void ACPredictContextRow(const coeff_t* prev, const coeff_t* cur,
-                               const int* mult, size_t* avg_ctx, size_t* sgn) {
+                                const int* mult, size_t* avg_ctx, size_t* sgn) {
   coeff_t terms[8];
   terms[0] = 0;
   terms[1] = cur[8] + prev[8];
@@ -306,7 +311,7 @@ inline uint8_t NumNonzerosContext(const uint8_t* prev, int x, int y) {
   return static_cast<uint8_t>(prediction / kNumNonZeroQuant);
 }
 
-// Context for the emptyness of a block is the number of non-empty blocks in the
+// Context for the emptiness of a block is the number of non-empty blocks in the
 // previous and up neighborhood (blocks beyond the border are assumed
 // non-empty).
 static const int kNumIsEmptyBlockContexts = 3;

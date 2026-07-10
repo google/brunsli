@@ -9,8 +9,9 @@
 #ifndef BRUNSLI_ENC_WRITE_BITS_H_
 #define BRUNSLI_ENC_WRITE_BITS_H_
 
-#include "../common/platform.h"
 #include <brunsli/types.h>
+
+#include "../common/platform.h"
 
 namespace brunsli {
 
@@ -23,9 +24,7 @@ class Storage {
    */
   ~Storage();
 
-  size_t GetBytesUsed() const {
-    return (pos + 7) >> 3;
-  }
+  size_t GetBytesUsed() const { return (pos + 7) >> 3; }
 
   void AppendBytes(const uint8_t* src, size_t len);
 

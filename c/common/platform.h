@@ -19,7 +19,7 @@
 #ifndef BRUNSLI_COMMON_PLATFORM_H_
 #define BRUNSLI_COMMON_PLATFORM_H_
 
-#include <cstring>  /* memcpy */
+#include <cstring> /* memcpy */
 #include <iomanip>
 #include <ios>
 #include <iostream>
@@ -36,8 +36,9 @@
 #include <stdio.h>
 #endif  // defined(BRUNSLI_USE_LOGGING)
 
-#include "./port.h"
 #include <brunsli/types.h>
+
+#include "./port.h"
 
 #if defined(OS_LINUX) || defined(OS_CYGWIN)
 #include <endian.h>
@@ -79,8 +80,7 @@ OR:
     BRUNSLI_SUNPRO_VERSION_CHECK(5, 12, 0) ||              \
     BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||                  \
     BRUNSLI_IBM_VERSION_CHECK(10, 1, 0) ||                 \
-    BRUNSLI_TI_VERSION_CHECK(7, 3, 0) ||                   \
-    BRUNSLI_TINYC_VERSION_CHECK(0, 9, 27)
+    BRUNSLI_TI_VERSION_CHECK(7, 3, 0) || BRUNSLI_TINYC_VERSION_CHECK(0, 9, 27)
 #define BRUNSLI_PREDICT_TRUE(x) (__builtin_expect(!!(x), 1))
 #define BRUNSLI_PREDICT_FALSE(x) (__builtin_expect(x, 0))
 #else
@@ -91,14 +91,13 @@ OR:
 #if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) && \
     !defined(__cplusplus)
 #define BRUNSLI_RESTRICT restrict
-#elif BRUNSLI_GNUC_VERSION_CHECK(3, 1, 0) ||                         \
-    BRUNSLI_MSVC_VERSION_CHECK(14, 0, 0) ||                          \
-    BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0) ||                         \
-    BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||                            \
-    BRUNSLI_IBM_VERSION_CHECK(10, 1, 0) ||                           \
-    BRUNSLI_PGI_VERSION_CHECK(17, 10, 0) ||                          \
-    BRUNSLI_TI_VERSION_CHECK(8, 0, 0) ||                             \
-    BRUNSLI_IAR_VERSION_CHECK(8, 0, 0) ||                            \
+#elif BRUNSLI_GNUC_VERSION_CHECK(3, 1, 0) ||                                   \
+    BRUNSLI_MSVC_VERSION_CHECK(14, 0, 0) ||                                    \
+    BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0) ||                                   \
+    BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||                                      \
+    BRUNSLI_IBM_VERSION_CHECK(10, 1, 0) ||                                     \
+    BRUNSLI_PGI_VERSION_CHECK(17, 10, 0) ||                                    \
+    BRUNSLI_TI_VERSION_CHECK(8, 0, 0) || BRUNSLI_IAR_VERSION_CHECK(8, 0, 0) || \
     (BRUNSLI_SUNPRO_VERSION_CHECK(5, 14, 0) && defined(__cplusplus))
 #define BRUNSLI_RESTRICT __restrict
 #elif BRUNSLI_SUNPRO_VERSION_CHECK(5, 3, 0) && !defined(__cplusplus)
@@ -120,13 +119,14 @@ OR:
 #define BRUNSLI_MAYBE_INLINE
 #endif
 
-#if BRUNSLI_GNUC_HAS_ATTRIBUTE(always_inline, 4, 0, 0) ||                      \
-    BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0) ||                                   \
-    BRUNSLI_SUNPRO_VERSION_CHECK(5, 11, 0) ||                                  \
-    BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||                                      \
-    BRUNSLI_IBM_VERSION_CHECK(10, 1, 0) ||                                     \
-    BRUNSLI_TI_VERSION_CHECK(8, 0, 0) ||                                       \
-    (BRUNSLI_TI_VERSION_CHECK(7, 3, 0) && defined(__TI_GNU_ATTRIBUTE_SUPPORT__))
+#if BRUNSLI_GNUC_HAS_ATTRIBUTE(always_inline, 4, 0, 0) || \
+    BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0) ||              \
+    BRUNSLI_SUNPRO_VERSION_CHECK(5, 11, 0) ||             \
+    BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||                 \
+    BRUNSLI_IBM_VERSION_CHECK(10, 1, 0) ||                \
+    BRUNSLI_TI_VERSION_CHECK(8, 0, 0) ||                  \
+    (BRUNSLI_TI_VERSION_CHECK(7, 3, 0) &&                 \
+     defined(__TI_GNU_ATTRIBUTE_SUPPORT__))
 #define BRUNSLI_INLINE BRUNSLI_MAYBE_INLINE __attribute__((__always_inline__))
 #elif BRUNSLI_MSVC_VERSION_CHECK(12, 0, 0)
 #define BRUNSLI_INLINE BRUNSLI_MAYBE_INLINE __forceinline
@@ -138,13 +138,14 @@ OR:
 #define BRUNSLI_INLINE BRUNSLI_MAYBE_INLINE
 #endif
 
-#if BRUNSLI_GNUC_HAS_ATTRIBUTE(noinline, 4, 0, 0) ||                           \
-    BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0) ||                                   \
-    BRUNSLI_SUNPRO_VERSION_CHECK(5, 11, 0) ||                                  \
-    BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||                                      \
-    BRUNSLI_IBM_VERSION_CHECK(10, 1, 0) ||                                     \
-    BRUNSLI_TI_VERSION_CHECK(8, 0, 0) ||                                       \
-    (BRUNSLI_TI_VERSION_CHECK(7, 3, 0) && defined(__TI_GNU_ATTRIBUTE_SUPPORT__))
+#if BRUNSLI_GNUC_HAS_ATTRIBUTE(noinline, 4, 0, 0) || \
+    BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0) ||         \
+    BRUNSLI_SUNPRO_VERSION_CHECK(5, 11, 0) ||        \
+    BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||            \
+    BRUNSLI_IBM_VERSION_CHECK(10, 1, 0) ||           \
+    BRUNSLI_TI_VERSION_CHECK(8, 0, 0) ||             \
+    (BRUNSLI_TI_VERSION_CHECK(7, 3, 0) &&            \
+     defined(__TI_GNU_ATTRIBUTE_SUPPORT__))
 #define BRUNSLI_NOINLINE __attribute__((__noinline__))
 #elif BRUNSLI_MSVC_VERSION_CHECK(13, 10, 0)
 #define BRUNSLI_NOINLINE __declspec(noinline)
@@ -162,15 +163,15 @@ OR:
 #if !defined(BRUNSLI_INTERNAL)
 #if defined(_WIN32) || defined(__CYGWIN__)
 #define BRUNSLI_INTERNAL
-#elif BRUNSLI_GNUC_VERSION_CHECK(3, 3, 0) ||                        \
-    BRUNSLI_TI_VERSION_CHECK(8, 0, 0) ||                            \
-    BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0) ||                        \
-    BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||                           \
-    BRUNSLI_IBM_VERSION_CHECK(13, 1, 0) ||                          \
-    BRUNSLI_SUNPRO_VERSION_CHECK(5, 11, 0) ||                       \
-    (BRUNSLI_TI_VERSION_CHECK(7, 3, 0) &&                           \
+#elif BRUNSLI_GNUC_VERSION_CHECK(3, 3, 0) ||  \
+    BRUNSLI_TI_VERSION_CHECK(8, 0, 0) ||      \
+    BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0) ||  \
+    BRUNSLI_ARM_VERSION_CHECK(4, 1, 0) ||     \
+    BRUNSLI_IBM_VERSION_CHECK(13, 1, 0) ||    \
+    BRUNSLI_SUNPRO_VERSION_CHECK(5, 11, 0) || \
+    (BRUNSLI_TI_VERSION_CHECK(7, 3, 0) &&     \
      defined(__TI_GNU_ATTRIBUTE_SUPPORT__) && defined(__TI_EABI__))
-#define BRUNSLI_INTERNAL __attribute__ ((visibility ("hidden")))
+#define BRUNSLI_INTERNAL __attribute__((visibility("hidden")))
 #else
 #define BRUNSLI_INTERNAL
 #endif
@@ -180,7 +181,7 @@ OR:
 
 #if BRUNSLI_GNUC_HAS_ATTRIBUTE(unused, 2, 7, 0) || \
     BRUNSLI_INTEL_VERSION_CHECK(16, 0, 0)
-#define BRUNSLI_UNUSED_FUNCTION static BRUNSLI_INLINE __attribute__ ((unused))
+#define BRUNSLI_UNUSED_FUNCTION static BRUNSLI_INLINE __attribute__((unused))
 #else
 #define BRUNSLI_UNUSED_FUNCTION static BRUNSLI_INLINE
 #endif
@@ -194,10 +195,10 @@ OR:
 #if (defined(__ARM_ARCH) && (__ARM_ARCH == 7)) || \
     (defined(M_ARM) && (M_ARM == 7))
 #define BRUNSLI_TARGET_ARMV7
-#endif  /* ARMv7 */
+#endif /* ARMv7 */
 
-#if (defined(__ARM_ARCH) && (__ARM_ARCH == 8)) || \
-    defined(__aarch64__) || defined(__ARM64_ARCH_8__)
+#if (defined(__ARM_ARCH) && (__ARM_ARCH == 8)) || defined(__aarch64__) || \
+    defined(__ARM64_ARCH_8__)
 #define BRUNSLI_TARGET_ARMV8_ANY
 
 #if defined(__ARM_32BIT_STATE)
@@ -206,7 +207,7 @@ OR:
 #define BRUNSLI_TARGET_ARMV8_64
 #endif
 
-#endif  /* ARMv8 */
+#endif /* ARMv8 */
 
 #if defined(__ARM_NEON__) || defined(__ARM_NEON)
 #define BRUNSLI_TARGET_NEON
@@ -264,7 +265,7 @@ OR:
 #elif BRUNSLI_X_BYTE_ORDER == BRUNSLI_X_BIG_ENDIAN
 #define BRUNSLI_BIG_ENDIAN 1
 #endif
-#endif  /* BRUNSLI_X_BYTE_ORDER */
+#endif /* BRUNSLI_X_BYTE_ORDER */
 
 #if !defined(BRUNSLI_LITTLE_ENDIAN)
 #define BRUNSLI_LITTLE_ENDIAN 0
@@ -311,11 +312,10 @@ static BRUNSLI_INLINE void BrunsliUnalignedWrite64(void* p, uint64_t v) {
 #define BRUNSLI_UNALIGNED_LOAD32LE BrunsliUnalignedRead32
 #define BRUNSLI_UNALIGNED_LOAD64LE BrunsliUnalignedRead64
 #define BRUNSLI_UNALIGNED_STORE64LE BrunsliUnalignedWrite64
-#elif BRUNSLI_BIG_ENDIAN  /* BRUNSLI_LITTLE_ENDIAN */
+#elif BRUNSLI_BIG_ENDIAN /* BRUNSLI_LITTLE_ENDIAN */
 /* Explain compiler to byte-swap values. */
-#define BRUNSLI_BSWAP16_(V) ((uint16_t)( \
-  (((V) & 0xFFU) << 8) | \
-  (((V) >> 8) & 0xFFU)))
+#define BRUNSLI_BSWAP16_(V) \
+  ((uint16_t)((((V) & 0xFFU) << 8) | (((V) >> 8) & 0xFFU)))
 static BRUNSLI_INLINE uint16_t BRUNSLI_UNALIGNED_LOAD16LE(const void* p) {
   uint16_t value = BrunsliUnalignedRead16(p);
   return BRUNSLI_BSWAP16_(value);
@@ -324,18 +324,18 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE16LE(void* p, uint16_t v) {
   uint16_t value = BRUNSLI_BSWAP16_(v);
   BrunsliUnalignedWrite16(p, value);
 }
-#define BRUNSLI_BSWAP32_(V) ( \
-  (((V) & 0xFFU) << 24) | (((V) & 0xFF00U) << 8) | \
-  (((V) >> 8) & 0xFF00U) | (((V) >> 24) & 0xFFU))
+#define BRUNSLI_BSWAP32_(V)                                                  \
+  ((((V) & 0xFFU) << 24) | (((V) & 0xFF00U) << 8) | (((V) >> 8) & 0xFF00U) | \
+   (((V) >> 24) & 0xFFU))
 static BRUNSLI_INLINE uint32_t BRUNSLI_UNALIGNED_LOAD32LE(const void* p) {
   uint32_t value = BrunsliUnalignedRead32(p);
   return BRUNSLI_BSWAP32_(value);
 }
-#define BRUNSLI_BSWAP64_(V) ( \
-  (((V) & 0xFFU) << 56) | (((V) & 0xFF00U) << 40) | \
-  (((V) & 0xFF0000U) << 24) | (((V) & 0xFF000000U) << 8) | \
-  (((V) >> 8) & 0xFF000000U) | (((V) >> 24) & 0xFF0000U) | \
-  (((V) >> 40) & 0xFF00U) | (((V) >> 56) & 0xFFU))
+#define BRUNSLI_BSWAP64_(V)                                 \
+  ((((V) & 0xFFU) << 56) | (((V) & 0xFF00U) << 40) |        \
+   (((V) & 0xFF0000U) << 24) | (((V) & 0xFF000000U) << 8) | \
+   (((V) >> 8) & 0xFF000000U) | (((V) >> 24) & 0xFF0000U) | \
+   (((V) >> 40) & 0xFF00U) | (((V) >> 56) & 0xFFU))
 static BRUNSLI_INLINE uint64_t BRUNSLI_UNALIGNED_LOAD64LE(const void* p) {
   uint64_t value = BrunsliUnalignedRead64(p);
   return BRUNSLI_BSWAP64_(value);
@@ -386,7 +386,7 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
   out[6] = (uint8_t)(v >> 48);
   out[7] = (uint8_t)(v >> 56);
 }
-#endif  /* BRUNSLI_LITTLE_ENDIAN */
+#endif /* BRUNSLI_LITTLE_ENDIAN */
 
 /* BRUNSLI_IS_CONSTANT macros returns true for compile-time constants. */
 #if BRUNSLI_GNUC_HAS_BUILTIN(__builtin_constant_p, 3, 0, 1) || \
@@ -403,7 +403,10 @@ static BRUNSLI_INLINE void BRUNSLI_UNALIGNED_STORE64LE(void* p, uint64_t v) {
 #endif
 
 // "else" branch is never evaluated, but provides the sink.
-#define BRUNSLI_VOID_LOG() if (true) {} else std::cerr
+#define BRUNSLI_VOID_LOG() \
+  if (true) {              \
+  } else                   \
+    std::cerr
 
 // This macro allows easy logging engine replacement.
 #if defined(BRUNSLI_USE_LOGGING)
@@ -448,11 +451,11 @@ static BRUNSLI_INLINE void Append(std::vector<uint8_t>* dst,
 }  // namespace brunsli
 
 // TODO(eustas): use "predict false" to move the code out of hot path.
-#define BRUNSLI_CHECK(V) \
+#define BRUNSLI_CHECK(V)                                              \
   if (!(V)) {                                                         \
     ::brunsli::BrunsliDumpAndAbort(__FILE__, __LINE__, __FUNCTION__); \
     /* Tell the compiler, that there is no escape route. */           \
-    while (true) ;                                                    \
+    while (true);                                                     \
   }
 
 #if defined(BRUNSLI_DEBUG)

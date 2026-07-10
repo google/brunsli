@@ -4,19 +4,19 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include <brunsli/encode.h>
-
-#include <brunsli/jpeg_data.h>
-#include <brunsli/types.h>
 #include <brunsli/brunsli_encode.h>
+#include <brunsli/encode.h>
+#include <brunsli/jpeg_data.h>
 #include <brunsli/jpeg_data_reader.h>
+#include <brunsli/types.h>
 
 /* C API for brunsli encoder */
 
 extern "C" {
 
 int EncodeBrunsli(size_t insize, const unsigned char* in, void* outdata,
-    size_t (*outfun)(void* outdata, const unsigned char* buf, size_t size)) {
+                  size_t (*outfun)(void* outdata, const unsigned char* buf,
+                                   size_t size)) {
   std::vector<uint8_t> output;
   brunsli::JPEGData jpg;
   if (!brunsli::ReadJpeg(in, insize, brunsli::JPEG_READ_ALL, &jpg)) {
@@ -29,10 +29,10 @@ int EncodeBrunsli(size_t insize, const unsigned char* in, void* outdata,
   }
   output.resize(output_size);
   if (!outfun(outdata, reinterpret_cast<const unsigned char*>(output.data()),
-      output.size())) {
+              output.size())) {
     return 0;
   }
-  return 1;  /* ok */
+  return 1; /* ok */
 }
 
-}  /* extern "C" */
+} /* extern "C" */

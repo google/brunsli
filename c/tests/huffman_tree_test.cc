@@ -6,11 +6,12 @@
 
 #include "../enc/huffman_tree.h"
 
+#include <brunsli/types.h>
+
 #include <vector>
 
-#include "gtest/gtest.h"
 #include "../common/platform.h"
-#include <brunsli/types.h>
+#include "gtest/gtest.h"
 
 namespace brunsli {
 
@@ -190,8 +191,7 @@ TEST(HuffmanTree, WriteHuffmanTreeSparse) {
   std::vector<uint8_t> code_length_bitdepth(huffman_tree_histogram.size());
   std::vector<uint16_t> code_length_bitdepth_symbols(
       huffman_tree_histogram.size());
-  CreateHuffmanTree(&huffman_tree_histogram[0],
-                    huffman_tree_histogram.size(),
+  CreateHuffmanTree(&huffman_tree_histogram[0], huffman_tree_histogram.size(),
                     7, &code_length_bitdepth[0]);
   for (size_t i = 0; i < code_length_bitdepth.size(); ++i) {
     BRUNSLI_LOG_DEBUG() << "code_length_bitdepth " << i << " "

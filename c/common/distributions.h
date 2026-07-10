@@ -11,8 +11,9 @@
 #ifndef BRUNSLI_COMMON_DISTRIBUTIONS_H_
 #define BRUNSLI_COMMON_DISTRIBUTIONS_H_
 
-#include "./platform.h"
 #include <brunsli/types.h>
+
+#include "./platform.h"
 
 namespace brunsli {
 
@@ -64,7 +65,8 @@ static const uint8_t kInitProbCount = 3;
 // An adaptive binary distribution with 8-bit precision.
 class Prob {
  public:
-  Prob(): prob8(impl::kInitProb),
+  Prob()
+      : prob8(impl::kInitProb),
         total(impl::kInitProbCount),
         count(impl::kInitProb * impl::kInitProbCount) {}
   ~Prob() {}

@@ -4,16 +4,16 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brunsli/jpeg_data.h>
 #include <brunsli/jpeg_data_reader.h>
+#include <brunsli/types.h>
 
 #include <algorithm>
 #include <string>
 #include <vector>
 
 #include "../common/constants.h"
-#include <brunsli/jpeg_data.h>
 #include "../common/platform.h"
-#include <brunsli/types.h>
 #include "./jpeg_huffman_decode.h"
 
 namespace brunsli {
@@ -24,9 +24,8 @@ namespace {
 
 #define BRUNSLI_VERIFY_LEN(n)                                                  \
   if (*pos + (n) > len) {                                                      \
-    BRUNSLI_LOG_INFO() << "Unexpected end of input:"                           \
-                       << " pos=" << *pos << " need=" << (n) << " len=" << len \
-                       << BRUNSLI_ENDL();                                      \
+    BRUNSLI_LOG_INFO() << "Unexpected end of input:" << " pos=" << *pos        \
+                       << " need=" << (n) << " len=" << len << BRUNSLI_ENDL(); \
     jpg->error = JPEGReadError::UNEXPECTED_EOF;                                \
     return false;                                                              \
   }
@@ -38,13 +37,13 @@ namespace {
     return false;                                                              \
   }
 
-#define BRUNSLI_VERIFY_MARKER_END()                                           \
-  if (start_pos + marker_len != *pos) {                                       \
-    BRUNSLI_LOG_INFO() << "Invalid marker length:"                            \
-                       << " declared=" << marker_len                          \
-                       << " actual=" << (*pos - start_pos) << BRUNSLI_ENDL(); \
-    jpg->error = JPEGReadError::WRONG_MARKER_SIZE;                            \
-    return false;                                                             \
+#define BRUNSLI_VERIFY_MARKER_END()                                      \
+  if (start_pos + marker_len != *pos) {                                  \
+    BRUNSLI_LOG_INFO() << "Invalid marker length:" << " declared="       \
+                       << marker_len << " actual=" << (*pos - start_pos) \
+                       << BRUNSLI_ENDL();                                \
+    jpg->error = JPEGReadError::WRONG_MARKER_SIZE;                       \
+    return false;                                                        \
   }
 
 #define BRUNSLI_EXPECT_MARKER()                                               \
@@ -207,9 +206,9 @@ bool ProcessSOS(const uint8_t* data, const size_t len, size_t* pos,
     // section G.1.1.1.2 : Successive approximation control only improves
     // by one bit at a time. But it's not always respected, so we just issue
     // a warning.
-    BRUNSLI_LOG_WARNING() << "Invalid progressive parameters: "
-                          << " Al = " << scan_info.Al
-                          << " Ah = " << scan_info.Ah << BRUNSLI_ENDL();
+    BRUNSLI_LOG_WARNING() << "Invalid progressive parameters: " << " Al = "
+                          << scan_info.Al << " Ah = " << scan_info.Ah
+                          << BRUNSLI_ENDL();
   }
   // Check that all the Huffman tables needed for this scan are defined.
   for (int i = 0; i < comps_in_scan; ++i) {
@@ -812,8 +811,8 @@ bool ProcessRestart(const uint8_t* data, const size_t len,
   BRUNSLI_EXPECT_MARKER();
   int marker = data[pos + 1];
   if (marker != expected_marker) {
-    BRUNSLI_LOG_INFO() << "Did not find expected restart"
-                       << " marker " << expected_marker << " actual=" << marker
+    BRUNSLI_LOG_INFO() << "Did not find expected restart" << " marker "
+                       << expected_marker << " actual=" << marker
                        << BRUNSLI_ENDL();
     jpg->error = JPEGReadError::WRONG_RESTART_MARKER;
     return false;

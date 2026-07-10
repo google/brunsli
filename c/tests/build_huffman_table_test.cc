@@ -4,12 +4,13 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brunsli/types.h>
+
 #include <array>
 #include <vector>
 
-#include "gtest/gtest.h"
-#include <brunsli/types.h>
 #include "../dec/huffman_table.h"
+#include "gtest/gtest.h"
 
 namespace brunsli {
 
