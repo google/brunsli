@@ -183,6 +183,7 @@ if (${BUILD_TESTING})
     build_huffman_table
     c_api
     context
+    dct_block
     distributions
     fallback
     headerless
