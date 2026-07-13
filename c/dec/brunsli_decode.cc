@@ -1016,15 +1016,19 @@ static size_t SkipAvailableBytes(State* state, size_t len) {
 static BrunsliStatus DecodeBase128(State* state, size_t* val) {
   *val = 0;
   uint64_t b = 0x80;
+  uint64_t v = 0;
   size_t i = 0;
   while ((i < 9) && (b & 0x80u)) {
     if (!CheckCanRead(state, i + 1)) return BRUNSLI_NOT_ENOUGH_DATA;
     b = PeekByte(state, i);
-    *val |= (b & 0x7Fu) << (i * 7);
+    v |= (b & 0x7Fu) << (i * 7);
     ++i;
   }
   SkipBytes(state, i);
-  return ((b & 0x80u) == 0) ? BRUNSLI_OK : BRUNSLI_INVALID_BRN;
+  *val = v;
+  bool terminated = ((b & 0x80u) == 0);
+  bool fit = (v == *val);
+  return (terminated && fit) ? BRUNSLI_OK : BRUNSLI_INVALID_BRN;
 }
 
 static Stage Fail(State* state, BrunsliStatus result) {

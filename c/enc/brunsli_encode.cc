@@ -1480,17 +1480,12 @@ bool BrunsliEncodeJpeg(const JPEGData& jpg, uint8_t* data, size_t* len) {
 
 #if defined(BRUNSLI_EXTRA_API)
 // The memory usage of BrunsliEncodeJpeg() looks roughly like this:
-//   +-----------------+------------------------+
-//   | BrotliCompress  | State::entropy_source  |
-//   | (brotli_peak)   | (entropy_source_size)  |
-//   +-----------------+------------------------+
-//                     | State::data_stream_dc  |
-//                     | State::data_stream_ac  |
-//                     | (data_stream_size)     |
-//                     +------------------------+
-//                     | vector<ComponentState> |
-//                     | (component_state_size) |
-//                     +------------------------+
+// - either:
+//   - BrotliCompress (brotli_peak)
+// - or:
+//   - State::entropy_source (entropy_source_size)
+//   - State::data_stream_{dc, ac} (data_stream_size)
+//   - vector<ComponentState> (component_state_size)
 size_t EstimateBrunsliEncodePeakMemoryUsage(size_t jpg_size,
                                             const JPEGData& jpg) {
   std::vector<uint8_t> tmp;
