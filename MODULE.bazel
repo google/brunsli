@@ -1,0 +1,14 @@
+# Copyright 2026 Google Inc. All Rights Reserved.
+#
+# Distributed under MIT license.
+# See file LICENSE for detail or copy at https://opensource.org/licenses/MIT
+
+module(
+    name = "dev_brunsli",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "rules_cc", version = "0.2.22")
+bazel_dep(name = "rules_fuzzing", version = "0.8.0")
+bazel_dep(name = "googletest", version = "1.17.0.bcr.2", repo_name = "com_google_googletest")
+bazel_dep(name = "brotli", version = "1.2.0.bcr.1", repo_name = "org_brotli")
