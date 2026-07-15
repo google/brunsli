@@ -13,6 +13,16 @@ file(GLOB BRUNSLI_COMMON_HEADERS
   c/common/*.h
 )
 
+if (BRUNSLI_EMSCRIPTEN)
+  # In Emscripten mode all libraries are meant to be static.
+  set(BROTLI_DEC_STATIC_LIBS brotlidec brotlicommon)
+  set(BROTLI_ENC_STATIC_LIBS brotlienc brotlicommon)
+else()
+  # We do want static build. TODO(eustas): are we?
+  set(BROTLI_DEC_STATIC_LIBS brotlidec-static brotlicommon-static)
+  set(BROTLI_ENC_STATIC_LIBS brotlienc-static brotlicommon-static)
+endif()
+
 set(BRUNSLI_DEC_SOURCES
   c/dec/ans_decode.cc
   c/dec/bit_reader.cc
@@ -64,7 +74,7 @@ add_library(brunslidec-static STATIC
   ${BRUNSLI_DEC_HEADERS}
 )
 target_link_libraries(brunslidec-static PRIVATE
-  brotlidec-static
+  ${BROTLI_DEC_STATIC_LIBS}
   brunslicommon-static
 )
 
@@ -73,7 +83,7 @@ add_library(brunslienc-static STATIC
   ${BRUNSLI_ENC_HEADERS}
 )
 target_link_libraries(brunslienc-static PRIVATE
-  brotlienc-static
+  ${BROTLI_ENC_STATIC_LIBS}
   brunslicommon-static
 )
 
@@ -118,7 +128,6 @@ if(BRUNSLI_EMSCRIPTEN)
     --closure 1 \
     -s ALLOW_MEMORY_GROWTH=1 \
     -flto \
-    --llvm-lto 1 \
     -s DISABLE_EXCEPTION_CATCHING=1 \
   ")
   set(WASM_LINK_FLAGS "\

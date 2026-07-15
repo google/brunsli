@@ -6,12 +6,13 @@
 
 #include "./huffman_decode.h"
 
-#include <cstring>  /* for memset */
+#include <brunsli/types.h>
+
+#include <cstring> /* for memset */
 #include <vector>
 
 #include "../common/constants.h"
 #include "../common/platform.h"
-#include <brunsli/types.h>
 #include "./bit_reader.h"
 #include "./huffman_table.h"
 
@@ -25,8 +26,8 @@ static const uint8_t kDefaultCodeLength = 8;
 static const uint8_t kCodeLengthRepeatCode = 16;
 
 bool ReadHuffmanCodeLengths(const uint8_t* code_length_code_lengths,
-                           size_t num_symbols, uint8_t* code_lengths,
-                           BrunsliBitReader* br) {
+                            size_t num_symbols, uint8_t* code_lengths,
+                            BrunsliBitReader* br) {
   size_t symbol = 0;
   uint8_t prev_code_len = kDefaultCodeLength;
   size_t repeat = 0;
@@ -119,7 +120,7 @@ static BRUNSLI_INLINE bool ReadSimpleCode(uint16_t alphabet_size,
   // 4 symbols have to option to encode.
   if (num_symbols == 4) num_symbols += BrunsliBitReaderRead(br, 1);
 
-  const auto swap_symbols = [&symbols] (size_t i, size_t j) {
+  const auto swap_symbols = [&symbols](size_t i, size_t j) {
     uint16_t t = symbols[j];
     symbols[j] = symbols[i];
     symbols[i] = t;
@@ -186,9 +187,9 @@ static BRUNSLI_INLINE bool ReadSimpleCode(uint16_t alphabet_size,
   return BrunsliBitReaderIsHealthy(br);
 }
 
-bool HuffmanDecodingData::ReadFromBitStream(
-    size_t alphabet_size, BrunsliBitReader* br,
-    Arena<HuffmanCode>* arena) {
+bool HuffmanDecodingData::ReadFromBitStream(size_t alphabet_size,
+                                            BrunsliBitReader* br,
+                                            Arena<HuffmanCode>* arena) {
   Arena<HuffmanCode> local_arena;
   if (arena == nullptr) arena = &local_arena;
 
@@ -227,8 +228,8 @@ bool HuffmanDecodingData::ReadFromBitStream(
     }
   }
   bool ok = (num_codes == 1 || space == 0) &&
-       ReadHuffmanCodeLengths(code_length_code_lengths, alphabet_size,
-                              &code_lengths[0], br);
+            ReadHuffmanCodeLengths(code_length_code_lengths, alphabet_size,
+                                   &code_lengths[0], br);
 
   if (!ok || !BrunsliBitReaderIsHealthy(br)) return false;
   uint16_t counts[16] = {0};

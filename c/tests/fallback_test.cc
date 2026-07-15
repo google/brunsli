@@ -4,23 +4,25 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include <string>
-
-#include "gtest/gtest.h"
+#include <brunsli/brunsli_decode.h>
 #include <brunsli/jpeg_data.h>
+#include <brunsli/jpeg_data_writer.h>
 #include <brunsli/status.h>
 #include <brunsli/types.h>
-#include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data_writer.h>
+
+#include <string>
+
 #include "./test_utils.h"
+#include "gtest/gtest.h"
 
 namespace brunsli {
 
 TEST(DecodeTest, TestFallback) {
-  uint8_t signature[] = {/* marker */ 0x0A, /* length */ 0x04,
-      0x42, 0xD2, 0xD5, 0x4E};
+  uint8_t signature[] = {
+      /* marker */ 0x0A,
+      /* length */ 0x04, 0x42, 0xD2, 0xD5, 0x4E};
   uint8_t header[] = {/* marker */ 0x12, /* length */ 0x02,
-      /* submarker */ 0x18, /* version */ 0x04};
+                      /* submarker */ 0x18, /* version */ 0x04};
   std::string payload = "KOTLOMOMKOLOLSLONA";
   uint8_t payload_size = static_cast<uint8_t>(payload.size());
   uint8_t fallback[] = {/* marker */ 0x4A, /* length */ payload_size};

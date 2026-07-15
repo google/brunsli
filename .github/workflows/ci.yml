@@ -12,69 +12,54 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'CI:none') }}
     runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     strategy:
       fail-fast: false
       matrix:
         include:
-        - name: cmake:clang-10
+        - name: cmake:clang
           mode: cmake
-          env: CC=/usr/bin/clang-10 CXX=/usr/bin/clang++-10
-          os: ubuntu-20.04
+          env: CC=/usr/bin/clang CXX=/usr/bin/clang++
 
-        - name: cmake:clang-11
+        - name: cmake:clang-arm
           mode: cmake
-          env: CC=/usr/bin/clang-11 CXX=/usr/bin/clang++-11
-          os: ubuntu-20.04
+          env: CC=/usr/bin/clang CXX=/usr/bin/clang++
+          os: ubuntu-26.04-arm
 
-        - name: cmake:clang-12
+        - name: cmake:gcc
           mode: cmake
-          env: CC=/usr/bin/clang-12 CXX=/usr/bin/clang++-12
-          os: ubuntu-20.04
+          env: CC=/usr/bin/gcc CXX=/usr/bin/g++
 
-        - name: cmake:clang-13
+        - name: cmake:gcc-arm
           mode: cmake
-          env: CC=/usr/bin/clang-13 CXX=/usr/bin/clang++-13
-
-        - name: cmake:clang-14
-          mode: cmake
-          env: CC=/usr/bin/clang-14 CXX=/usr/bin/clang++-14
-
-        - name: cmake:clang-15
-          mode: cmake
-          env: CC=/usr/bin/clang-15 CXX=/usr/bin/clang++-15
-
-        - name: cmake:gcc-9
-          mode: cmake
-          env: CC=/usr/bin/gcc-9 CXX=/usr/bin/g++-9
-
-        - name: cmake:gcc-10
-          mode: cmake
-          env: CC=/usr/bin/gcc-10 CXX=/usr/bin/g++-10
-
-        - name: cmake:gcc-11
-          mode: cmake
-          env: CC=/usr/bin/gcc-11 CXX=/usr/bin/g++-11
-
-        - name: cmake:gcc-12
-          mode: cmake
-          env: CC=/usr/bin/gcc-12 CXX=/usr/bin/g++-12
-
-        - name: cmake:gcc-13
-          mode: cmake
-          env: CC=/usr/bin/gcc-13 CXX=/usr/bin/g++-13
+          env: CC=/usr/bin/gcc CXX=/usr/bin/g++
+          os: ubuntu-26.04-arm
 
         - name: cmake:android:arm64-v8a
           mode: cmake
-          cmake_params: -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake" -DANDROID_ABI=arm64-v8a -DANDROID_NATIVE_API_LEVEL=25 -DBUILD_TESTING=off
+          cmake_params: >-
+            -DCMAKE_TOOLCHAIN_FILE="$ANDROID_NDK/build/cmake/android.toolchain.cmake"
+            -DANDROID_ABI=arm64-v8a
+            -DANDROID_NATIVE_API_LEVEL=25
+            -DBUILD_TESTING=off
 
         - name: cmake:wasm
           mode: cmake
           wasm: true
           # TODO(eustas): enable tests
-          cmake_params: -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake" -DBUILD_TESTING=off
+          cmake_params: >-
+            -DCMAKE_TOOLCHAIN_FILE="$EMSDK/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+            -DBUILD_TESTING=off
           env: emcmake
 
         - name: cmake:win:default
@@ -86,23 +71,19 @@ jobs:
           mode: cmake
           os: macos-latest
 
-        - name: bazel:c
+        - name: bazel
           mode: bazel
-          bazel_project_root: .
-
-        - name: bazel:java
-          mode: bazel
-          bazel_project_root: java
 
     env:
-      EM_VERSION: 3.1.51
-      NODE_VERSION: 21
+      EM_VERSION: 6.0.2
+      NODE_VERSION: 26
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       with:
         submodules: recursive
+        persist-credentials: false
 
     - name: Install node
       if: ${{ matrix.wasm }}
@@ -143,15 +124,21 @@ jobs:
 
     - name: Build @ Bazel
       if: ${{ matrix.mode == 'bazel' }}
-      run: cd ${{ matrix.bazel_project_root }} && bazelisk build -c opt ...:all
+      run: |
+        bazelisk build -c opt :all
+        cd java
+        bazelisk build -c opt ...:all
 
     - name: Test @ Bazel
       if: ${{ matrix.mode == 'bazel' }}
-      run: cd ${{ matrix.bazel_project_root }} && bazelisk test -c opt ...:all
+      run: |
+        bazelisk test -c opt :all
+        cd java
+        bazelisk test -c opt ...:all
 
     - name: upload
       if: ${{ matrix.upload_artifacts }}
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ matrix.os }}
         path: out/artifacts

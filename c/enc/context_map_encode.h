@@ -7,9 +7,10 @@
 #ifndef BRUNSLI_ENC_CONTEXT_MAP_ENCODE_H_
 #define BRUNSLI_ENC_CONTEXT_MAP_ENCODE_H_
 
+#include <brunsli/types.h>
+
 #include <vector>
 
-#include <brunsli/types.h>
 #include "./write_bits.h"
 
 // TODO(eustas): remove after landing changes to JPEG XL

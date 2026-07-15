@@ -16,17 +16,14 @@ namespace brunsli {
 // A node of a Huffman tree.
 struct HuffmanTree {
   HuffmanTree(uint32_t count, int16_t left, int16_t right)
-      : total_count(count),
-        index_left(left),
-        index_right_or_value(right) {
-  }
+      : total_count(count), index_left(left), index_right_or_value(right) {}
   uint32_t total_count;
   int16_t index_left;
   int16_t index_right_or_value;
 };
 
-void SetDepth(const HuffmanTree& p, HuffmanTree* pool,
-              uint8_t* depth, uint8_t level);
+void SetDepth(const HuffmanTree& p, HuffmanTree* pool, uint8_t* depth,
+              uint8_t level);
 
 // This function will create a Huffman tree.
 //
@@ -37,23 +34,17 @@ void SetDepth(const HuffmanTree& p, HuffmanTree* pool,
 // the symbol.
 //
 // See http://en.wikipedia.org/wiki/Huffman_coding
-void CreateHuffmanTree(const uint32_t* data,
-                       const size_t length,
-                       const int tree_limit,
-                       uint8_t* depth);
+void CreateHuffmanTree(const uint32_t* data, const size_t length,
+                       const int tree_limit, uint8_t* depth);
 
 // Write a Huffman tree from bit depths into the bitstream representation
 // of a Huffman tree. The generated Huffman tree is to be compressed once
 // more using a Huffman tree
-void WriteHuffmanTree(const uint8_t* depth,
-                      size_t length,
-                      size_t* tree_size,
-                      uint8_t* tree,
-                      uint8_t* extra_bits_data);
+void WriteHuffmanTree(const uint8_t* depth, size_t length, size_t* tree_size,
+                      uint8_t* tree, uint8_t* extra_bits_data);
 
 // Get the actual bit values for a tree of bit depths.
-void ConvertBitDepthsToSymbols(const uint8_t* depth,
-                               size_t len,
+void ConvertBitDepthsToSymbols(const uint8_t* depth, size_t len,
                                uint16_t* bits);
 
 }  // namespace brunsli

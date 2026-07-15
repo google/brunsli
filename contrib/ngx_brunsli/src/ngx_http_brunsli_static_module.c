@@ -16,15 +16,15 @@ typedef struct {
   ngx_uint_t enable;
 } ngx_http_brunsli_static_conf_t;
 
-static ngx_int_t ngx_http_brunsli_static_handler(ngx_http_request_t *r);
+static ngx_int_t ngx_http_brunsli_static_handler(ngx_http_request_t* r);
 
-static ngx_int_t ngx_http_brunsli_ok(ngx_http_request_t *r);
-static ngx_int_t ngx_http_brunsli_accept(ngx_str_t *ae);
+static ngx_int_t ngx_http_brunsli_ok(ngx_http_request_t* r);
+static ngx_int_t ngx_http_brunsli_accept(ngx_str_t* ae);
 
-static void *ngx_http_brunsli_static_create_conf(ngx_conf_t *cf);
-static char *ngx_http_brunsli_static_merge_conf(ngx_conf_t *cf, void *parent,
-                                                void *child);
-static ngx_int_t ngx_http_brunsli_static_init(ngx_conf_t *cf);
+static void* ngx_http_brunsli_static_create_conf(ngx_conf_t* cf);
+static char* ngx_http_brunsli_static_merge_conf(ngx_conf_t* cf, void* parent,
+                                                void* child);
+static ngx_int_t ngx_http_brunsli_static_init(ngx_conf_t* cf);
 
 static const ngx_str_t ngx_http_brunsli_mime_type = ngx_string("image/x-j");
 
@@ -73,19 +73,19 @@ ngx_module_t ngx_http_brunsli_static_module = {
     NULL,                                /* exit main process */
     NGX_MODULE_V1_PADDING};
 
-static ngx_int_t ngx_http_brunsli_static_handler(ngx_http_request_t *r) {
-  u_char *p;
+static ngx_int_t ngx_http_brunsli_static_handler(ngx_http_request_t* r) {
+  u_char* p;
   size_t root;
   ngx_str_t path;
   ngx_int_t rc;
   ngx_uint_t level;
-  ngx_log_t *log;
-  ngx_buf_t *b;
+  ngx_log_t* log;
+  ngx_buf_t* b;
   ngx_chain_t out;
-  ngx_table_elt_t *h;
+  ngx_table_elt_t* h;
   ngx_open_file_info_t of;
-  ngx_http_core_loc_conf_t *clcf;
-  ngx_http_brunsli_static_conf_t *bscf;
+  ngx_http_core_loc_conf_t* clcf;
+  ngx_http_brunsli_static_conf_t* bscf;
 
   if (!(r->method & (NGX_HTTP_GET | NGX_HTTP_HEAD))) {
     return NGX_DECLINED;
@@ -266,8 +266,8 @@ static ngx_int_t ngx_http_brunsli_static_handler(ngx_http_request_t *r) {
   return ngx_http_output_filter(r, &out);
 }
 
-static ngx_int_t ngx_http_brunsli_ok(ngx_http_request_t *r) {
-  ngx_table_elt_t *ae;
+static ngx_int_t ngx_http_brunsli_ok(ngx_http_request_t* r) {
+  ngx_table_elt_t* ae;
 
   if (r != r->main) {
     return NGX_DECLINED;
@@ -292,10 +292,10 @@ static ngx_int_t ngx_http_brunsli_ok(ngx_http_request_t *r) {
   return NGX_OK;
 }
 
-static ngx_int_t ngx_http_brunsli_accept(ngx_str_t *ae) {
-  u_char *p;
+static ngx_int_t ngx_http_brunsli_accept(ngx_str_t* ae) {
+  u_char* p;
 
-  p = ngx_strcasestrn(ae->data, (char *)ngx_http_brunsli_mime_type.data,
+  p = ngx_strcasestrn(ae->data, (char*)ngx_http_brunsli_mime_type.data,
                       ngx_http_brunsli_mime_type.len);
   if (p == NULL) {
     return NGX_DECLINED;
@@ -312,8 +312,8 @@ static ngx_int_t ngx_http_brunsli_accept(ngx_str_t *ae) {
   return NGX_DECLINED;
 }
 
-static void *ngx_http_brunsli_static_create_conf(ngx_conf_t *cf) {
-  ngx_http_brunsli_static_conf_t *conf;
+static void* ngx_http_brunsli_static_create_conf(ngx_conf_t* cf) {
+  ngx_http_brunsli_static_conf_t* conf;
 
   conf = ngx_palloc(cf->pool, sizeof(ngx_http_brunsli_static_conf_t));
   if (conf == NULL) {
@@ -325,10 +325,10 @@ static void *ngx_http_brunsli_static_create_conf(ngx_conf_t *cf) {
   return conf;
 }
 
-static char *ngx_http_brunsli_static_merge_conf(ngx_conf_t *cf, void *parent,
-                                                void *child) {
-  ngx_http_brunsli_static_conf_t *prev = parent;
-  ngx_http_brunsli_static_conf_t *conf = child;
+static char* ngx_http_brunsli_static_merge_conf(ngx_conf_t* cf, void* parent,
+                                                void* child) {
+  ngx_http_brunsli_static_conf_t* prev = parent;
+  ngx_http_brunsli_static_conf_t* conf = child;
 
   ngx_conf_merge_uint_value(conf->enable, prev->enable,
                             NGX_HTTP_BRUNSLI_STATIC_OFF);
@@ -336,9 +336,9 @@ static char *ngx_http_brunsli_static_merge_conf(ngx_conf_t *cf, void *parent,
   return NGX_CONF_OK;
 }
 
-static ngx_int_t ngx_http_brunsli_static_init(ngx_conf_t *cf) {
-  ngx_http_handler_pt *h;
-  ngx_http_core_main_conf_t *cmcf;
+static ngx_int_t ngx_http_brunsli_static_init(ngx_conf_t* cf) {
+  ngx_http_handler_pt* h;
+  ngx_http_core_main_conf_t* cmcf;
 
   cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 

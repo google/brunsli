@@ -1,0 +1,20 @@
+# Copyright (c) Google LLC 2026
+#
+# Use of this source code is governed by an MIT-style
+# license that can be found in the LICENSE file or at
+# https://opensource.org/licenses/MIT.
+
+[default]
+extend-ignore-re = [
+  "(?Rm)^.*// notypo$",  # disable check in current line
+  "// typo:off\\n(.*\\n)+\\s*// typo:on",  # disable check in block
+  "0x[0-9a-fA-F]+[ ,u]",  # hexadecimal literal
+  "\\W2-nd\\W",  # second
+]
+extend-ignore-identifiers-re = []
+
+[default.extend-words]
+ix = "ix"
+iy = "iy"
+
+[default.extend-identifiers]

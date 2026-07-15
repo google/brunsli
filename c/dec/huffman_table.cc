@@ -6,11 +6,12 @@
 
 #include "./huffman_table.h"
 
+#include <brunsli/types.h>
+
 #include <cstring> /* for memcpy */
 #include <vector>
 
 #include "../common/constants.h"
-#include <brunsli/types.h>
 #include "./huffman_decode.h"
 
 namespace brunsli {
@@ -53,17 +54,17 @@ static inline size_t NextTableBitSize(const uint16_t* const count, size_t len,
 uint32_t BuildHuffmanTable(HuffmanCode* root_table, size_t root_bits,
                            const uint8_t* const code_lengths,
                            size_t code_lengths_size, uint16_t* count) {
-  HuffmanCode code;    /* current table entry */
-  HuffmanCode* table;  /* next available space in table */
-  size_t len;          /* current code length */
-  size_t symbol;       /* symbol index in original or sorted table */
-  int key;             /* reversed prefix code */
-  int step;            /* step size to replicate values in current table */
-  int low;             /* low bits for current root entry */
-  int mask;            /* mask for low bits */
-  size_t table_bits;   /* key length of current table */
-  int table_size;      /* size of current table */
-  int total_size;      /* sum of root table size and 2nd level table sizes */
+  HuffmanCode code;   /* current table entry */
+  HuffmanCode* table; /* next available space in table */
+  size_t len;         /* current code length */
+  size_t symbol;      /* symbol index in original or sorted table */
+  int key;            /* reversed prefix code */
+  int step;           /* step size to replicate values in current table */
+  int low;            /* low bits for current root entry */
+  int mask;           /* mask for low bits */
+  size_t table_bits;  /* key length of current table */
+  int table_size;     /* size of current table */
+  int total_size;     /* sum of root table size and 2nd level table sizes */
   /* offsets in sorted table for each length */
   uint16_t offset[kMaxHuffmanBits + 1];
   size_t max_length = 1;

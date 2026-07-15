@@ -12,8 +12,8 @@
 namespace brunsli {
 
 struct HuffmanCode {
-  uint8_t bits;    /* number of bits used for this symbol */
-  uint16_t value;  /* symbol value or table offset */
+  uint8_t bits;   /* number of bits used for this symbol */
+  uint16_t value; /* symbol value or table offset */
 };
 
 /* Builds Huffman lookup table assuming code lengths are in symbol order. */

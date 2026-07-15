@@ -4,8 +4,9 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include "../common/platform.h"
 #include "./write_bits.h"
+
+#include "../common/platform.h"
 
 namespace brunsli {
 
@@ -22,8 +23,6 @@ void Storage::AppendBytes(const uint8_t* src, size_t len) {
   pos += 8 * len;
 }
 
-Storage::~Storage() {
-  BRUNSLI_CHECK(GetBytesUsed() <= length);
-}
+Storage::~Storage() { BRUNSLI_CHECK(GetBytesUsed() <= length); }
 
 }  // namespace brunsli

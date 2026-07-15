@@ -8,20 +8,21 @@
 
 #include "./groups.h"
 
+#include <brunsli/brunsli_decode.h>
+#include <brunsli/brunsli_encode.h>
+#include <brunsli/jpeg_data.h>
+#include <brunsli/jpeg_data_reader.h>
+#include <brunsli/jpeg_data_writer.h>
+#include <brunsli/status.h>
+#include <brunsli/types.h>
+
 #include <algorithm>
 #include <atomic>
 #include <vector>
 
 #include "../common/constants.h"
 #include "../common/context.h"
-#include <brunsli/jpeg_data.h>
-#include <brunsli/status.h>
-#include <brunsli/types.h>
-#include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data_writer.h>
 #include "../dec/state.h"
-#include <brunsli/brunsli_encode.h>
-#include <brunsli/jpeg_data_reader.h>
 #include "../enc/state.h"
 
 namespace brunsli {
@@ -271,9 +272,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
   (*executor)(encode_dc, dc_state.size());
   if (failed.load()) return false;
 
-  const auto encode_ac = [&ac_state](size_t idx) {
-    EncodeAC(&ac_state[idx]);
-  };
+  const auto encode_ac = [&ac_state](size_t idx) { EncodeAC(&ac_state[idx]); };
   (*executor)(encode_ac, ac_state.size());
 
   // Groups workflow: merge histograms.
@@ -351,7 +350,7 @@ bool EncodeGroups(const brunsli::JPEGData& jpg, uint8_t* data, size_t* len,
       bool ok = BrunsliSerialize(&s, jpg, skip_flags, part.data(), &part_size);
       if (ok) {
         part.resize(part_size);
-      } else{
+      } else {
         failed.store(true);
       }
       return;

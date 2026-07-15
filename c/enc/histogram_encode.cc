@@ -6,12 +6,13 @@
 
 #include "./histogram_encode.h"
 
+#include <brunsli/types.h>
+
 #include <algorithm>
 
 #include "../common/ans_params.h"
 #include "../common/histogram.h"
 #include "../common/platform.h"
-#include <brunsli/types.h>
 #include "./fast_log.h"
 #include "./write_bits.h"
 
@@ -212,8 +213,7 @@ double PopulationCost(const int* data, int total_count) {
     ++length;
     const uint64_t max0 =
         (total * length) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
-    const uint64_t max1 =
-        (max0 * length) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
+    const uint64_t max1 = (max0 * length) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
     const uint64_t min_base =
         (total + max0 + max1) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
     total += min_base * count;

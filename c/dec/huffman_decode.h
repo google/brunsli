@@ -19,7 +19,7 @@ namespace brunsli {
 
 struct BrunsliBitReader;
 
-template<typename T>
+template <typename T>
 struct Arena {
   size_t capacity = 0;
   // TODO(eustas): use "char" storage to ensure new[] does not initialize...
@@ -32,9 +32,7 @@ struct Arena {
     }
   }
 
-  T* data() {
-    return storage.get();
-  }
+  T* data() { return storage.get(); }
 
   void reset() {
     capacity = 0;

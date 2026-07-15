@@ -11,29 +11,32 @@
 namespace brunsli {
 
 const uint8_t kBrunsliSignature[kBrunsliSignatureSize] = {
-  SectionMarker(kBrunsliSignatureTag), 0x04, 'B', 0xd2, 0xd5, 'N'
-};
+    SectionMarker(kBrunsliSignatureTag), 0x04, 'B', 0xd2, 0xd5, 'N'};
 
 // Common app-data chunks
 
 const uint8_t AppData_0xe0[17] = {
+    // clang-format off
   0xe0, 0x00, 0x10, 'J',  'F',  'I',  'F',  0x00, 0x01,
   0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00
+    // clang-format on
 };
 
 // APP12 'Ducky' marker
 const uint8_t AppData_0xec[18] = {
+    // clang-format off
   236, 0, 17, 'D', 'u', 'c', 'k', 'y', 0,
   1, 0, 4, 0, 0, 0, 100 /* quality */, 0, 0
+    // clang-format on
 };
 
 // APP14 'Adobe' marker
 const uint8_t AppData_0xee[15] = {
-  238, 0, 14, 'A', 'd', 'o', 'b', 'e', 0, 100, 0 /* flags */, 0, 0, 0, 1
-};
+    238, 0, 14, 'A', 'd', 'o', 'b', 'e', 0, 100, 0 /* flags */, 0, 0, 0, 1};
 
 // Very common 'ICC' profile.
 const uint8_t AppData_0xe2[3161] = {
+    // clang-format off
   226, 12, 88, 73, 67, 67, 95, 80, 82, 79,
   70, 73, 76, 69, 0, 1, 1, 0, 0, 12,
   72, 76, 105, 110, 111, 2, 16, 0, 0, 109,
@@ -351,6 +354,7 @@ const uint8_t AppData_0xe2[3161] = {
   87, 250, 231, 251, 119, 252, 7, 252, 152, 253,
   41, 253, 186, 254, 75, 254, 220, 255, 109, 255,
   255
+    // clang-format on
 };
 
 }  // namespace brunsli

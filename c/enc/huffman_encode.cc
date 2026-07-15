@@ -8,12 +8,13 @@
 
 #include "./huffman_encode.h"
 
+#include <brunsli/types.h>
+
 #include <algorithm>
 #include <memory>
 
 #include "../common/constants.h"
 #include "../common/platform.h"
-#include <brunsli/types.h>
 #include "./huffman_tree.h"
 #include "./write_bits.h"
 

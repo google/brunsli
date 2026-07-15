@@ -10,10 +10,11 @@
 #ifndef BRUNSLI_DEC_ANS_DECODE_H_
 #define BRUNSLI_DEC_ANS_DECODE_H_
 
+#include <brunsli/types.h>
+
 #include <vector>
 
 #include "../common/ans_params.h"
-#include <brunsli/types.h>
 #include "./brunsli_input.h"
 
 namespace brunsli {

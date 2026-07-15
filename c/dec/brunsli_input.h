@@ -7,8 +7,9 @@
 #ifndef BRUNSLI_DEC_BRUNSLI_INPUT_H_
 #define BRUNSLI_DEC_BRUNSLI_INPUT_H_
 
-#include "../common/platform.h"
 #include <brunsli/types.h>
+
+#include "../common/platform.h"
 
 namespace brunsli {
 
@@ -26,7 +27,7 @@ struct WordSource {
 
   uint16_t GetNextWord() {
     uint16_t val = 0;
-    if (pos_ < len_) {  /* NB: both pos_ and len_ are even. */
+    if (pos_ < len_) { /* NB: both pos_ and len_ are even. */
       val = BRUNSLI_UNALIGNED_LOAD16LE(data_ + pos_);
     } else {
       error_ = true;

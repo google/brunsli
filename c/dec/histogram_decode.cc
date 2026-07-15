@@ -6,10 +6,11 @@
 
 #include "./histogram_decode.h"
 
+#include <brunsli/types.h>
+
 #include "../common/ans_params.h"
 #include "../common/histogram.h"
 #include "../common/platform.h"
-#include <brunsli/types.h>
 #include "./bit_reader.h"
 
 namespace brunsli {
@@ -18,11 +19,12 @@ namespace {
 
 // Binary trees; positive - offset to child nodes; other - minus leaf value.
 // 3-8 bits encoding value 3..18.
-const int8_t kLengthTree[] = {1, 2, 3, 4, 5, 6, 7, -10, -11, -12, -13,
-  -14, -15, 2, 3, -9, -16, 2, 3, -8, -17, 2, 3, -5, -6, -7, 1, -18, 1, -3, -4};
+const int8_t kLengthTree[] = {1,   2,   3,  4,  5,  6,   7, -10, -11, -12, -13,
+                              -14, -15, 2,  3,  -9, -16, 2, 3,   -8,  -17, 2,
+                              3,   -5,  -6, -7, 1,  -18, 1, -3,  -4};
 // 2..6 bits encoding value 0..10.
-const int8_t kLogCountTree[] = {1, 2, 3, -6, 3, 4, 5, -4, -5, -7, -8, 2,
-  3, -1, -2, -3, 1, 0, 1, -9, -10};
+const int8_t kLogCountTree[] = {1, 2, 3,  -6, 3,  4, 5, -4, -5, -7, -8,
+                                2, 3, -1, -2, -3, 1, 0, 1,  -9, -10};
 
 size_t ReadShortHuffmanCode(BrunsliBitReader* br, const int8_t* tree) {
   size_t pos = 0;

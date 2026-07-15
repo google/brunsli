@@ -19,7 +19,7 @@ void BrunsliBitReaderInit(BrunsliBitReader* br) {
 }
 
 void BrunsliBitReaderResume(BrunsliBitReader* br, const uint8_t* buffer,
-                              size_t length) {
+                            size_t length) {
   br->next_ = buffer;
   br->end_ = buffer + length;
   br->is_optimistic_ = false;

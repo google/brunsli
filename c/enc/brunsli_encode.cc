@@ -4,7 +4,11 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brotli/encode.h>
 #include <brunsli/brunsli_encode.h>
+#include <brunsli/jpeg_data.h>
+#include <brunsli/jpeg_data_reader.h>
+#include <brunsli/types.h>
 
 #include <algorithm>
 #include <cstdlib>
@@ -14,21 +18,17 @@
 #include <utility>
 #include <vector>
 
-#include <brotli/encode.h>
 #include "../common/constants.h"
 #include "../common/context.h"
 #include "../common/distributions.h"
-#include <brunsli/jpeg_data.h>
 #include "../common/lehmer_code.h"
 #include "../common/platform.h"
 #include "../common/predict.h"
 #include "../common/quant_matrix.h"
-#include <brunsli/types.h>
 #include "./ans_encode.h"
 #include "./cluster.h"
 #include "./context_map_encode.h"
 #include "./histogram_encode.h"
-#include <brunsli/jpeg_data_reader.h>
 #include "./state.h"
 #include "./write_bits.h"
 
@@ -850,14 +850,14 @@ bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
   }
   size_t other_app_count = jpg.app_data.size() - transformed_marker_count;
   if (other_app_count > kBrunsliMultibyteMarkerLimit) {
-    BRUNSLI_LOG_ERROR() << "Too many app markers: "
-                        << other_app_count << BRUNSLI_ENDL();
+    BRUNSLI_LOG_ERROR() << "Too many app markers: " << other_app_count
+                        << BRUNSLI_ENDL();
     return false;
   }
   size_t com_count = jpg.com_data.size();
   if (com_count > kBrunsliMultibyteMarkerLimit) {
-    BRUNSLI_LOG_ERROR() << "Too many com markers: "
-                        << com_count << BRUNSLI_ENDL();
+    BRUNSLI_LOG_ERROR() << "Too many com markers: " << com_count
+                        << BRUNSLI_ENDL();
     return false;
   }
   for (const auto& s : jpg.com_data) {
@@ -885,10 +885,9 @@ bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
   if (!BrotliEncoderCompress(kBrotliQuality, kBrotliWindowBits,
                              BROTLI_DEFAULT_MODE, metadata.size(),
                              metadata.data(), &compressed_size, &data[pos])) {
-    BRUNSLI_LOG_ERROR() << "Brotli compression failed:"
-                        << " input size = " << metadata.size()
-                        << " pos = " << pos << " len = " << *len
-                        << BRUNSLI_ENDL();
+    BRUNSLI_LOG_ERROR() << "Brotli compression failed:" << " input size = "
+                        << metadata.size() << " pos = " << pos
+                        << " len = " << *len << BRUNSLI_ENDL();
     return false;
   }
   pos += compressed_size;
@@ -1569,8 +1568,8 @@ bool BrunsliEncodeJpegBypass(const uint8_t* jpg_data, size_t jpg_data_len,
   // TODO(eustas): could use simpler serialization here
   State state;
 
-  if (!EncodeSection(jpg, &state, kBrunsliHeaderTag, EncodeHeader,
-                     1, *len, data, &pos)) {
+  if (!EncodeSection(jpg, &state, kBrunsliHeaderTag, EncodeHeader, 1, *len,
+                     data, &pos)) {
     return false;
   }
   if (!EncodeSection(jpg, &state, kBrunsliOriginalJpgTag, EncodeOriginalJpg,

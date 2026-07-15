@@ -9,8 +9,9 @@
 #ifndef BRUNSLI_DEC_BIT_READER_H_
 #define BRUNSLI_DEC_BIT_READER_H_
 
-#include "../common/platform.h"
 #include <brunsli/types.h>
+
+#include "../common/platform.h"
 
 namespace brunsli {
 
@@ -51,7 +52,7 @@ void BrunsliBitReaderInit(BrunsliBitReader* br);
  * Supply instance with new chunk of input.
  */
 void BrunsliBitReaderResume(BrunsliBitReader* br, const uint8_t* buffer,
-                          size_t length);
+                            size_t length);
 /**
  * Returns the number of unused bytes.
  */
@@ -124,7 +125,7 @@ static BRUNSLI_INLINE void BrunsliBitReaderDrop(BrunsliBitReader* br,
 }
 
 BRUNSLI_INLINE uint32_t BrunsliBitReaderRead(BrunsliBitReader* br,
-                                                    uint32_t n_bits) {
+                                             uint32_t n_bits) {
   uint32_t result = BrunsliBitReaderGet(br, n_bits);
   BrunsliBitReaderDrop(br, n_bits);
   return result;

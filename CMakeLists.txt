@@ -11,9 +11,10 @@ check_c_source_compiles(
 )
 if (BRUNSLI_EMSCRIPTEN)
   message("-- Compiler is EMSCRIPTEN")
+  message(STATUS "Switching to static build for EMSCRIPTEN")
+  set(BUILD_SHARED_LIBS OFF)
   set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto -fno-exceptions -fno-rtti")
   set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -O3 -flto -fno-exceptions -fno-rtti")
-  set(CMAKE_STATIC_LIBRARY_SUFFIX ".bc")
   set(CMAKE_EXECUTABLE_SUFFIX ".js")
 else()
   message("-- Compiler is not EMSCRIPTEN")
@@ -31,7 +32,7 @@ include(FetchContent)
 FetchContent_Declare(
   GTest
   GIT_REPOSITORY https://github.com/google/googletest
-  GIT_TAG e2239ee6043f73722e7aa812a459f54a28552929 # v1.11.0
+  GIT_TAG 52eb8108c5bdec04579160ae17225d66034bd723 # v1.17.0
 )
 # For Windows: Prevent overriding the parent project's compiler/linker settings
 set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
@@ -42,8 +43,12 @@ FetchContent_MakeAvailable(GTest)
 FetchContent_Declare(
   Brotli
   GIT_REPOSITORY https://github.com/google/brotli
-  GIT_TAG e61745a6b7add50d380cfd7d3883dd6c62fc2c71 # v1.0.9
+  GIT_TAG 028fb5a23661f123017c060daa546b55cf4bde29 # v1.2.0
 )
+if (NOT BRUNSLI_EMSCRIPTEN)
+  # We have already set "BUILD_SHARED_LIBS"
+  set(BROTLI_BUILD_FOR_PACKAGE ON CACHE INTERNAL "")
+endif()
 set(BROTLI_DISABLE_TESTS ON CACHE INTERNAL "")
 set(BROTLI_BUILD_TOOLS OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(Brotli)

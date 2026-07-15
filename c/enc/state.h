@@ -9,14 +9,15 @@
 #ifndef BRUNSLI_ENC_STATE_H_
 #define BRUNSLI_ENC_STATE_H_
 
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
+
 #include <array>
 #include <memory>
 #include <vector>
 
 #include "../common/distributions.h"
-#include <brunsli/jpeg_data.h>
 #include "../common/platform.h"
-#include <brunsli/types.h>
 #include "./ans_encode.h"
 #include "./write_bits.h"
 

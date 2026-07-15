@@ -6,18 +6,17 @@
 
 #include "./huffman_tree.h"
 
+#include <brunsli/types.h>
+
 #include <algorithm>
 #include <limits>
 #include <vector>
 
 #include "../common/platform.h"
-#include <brunsli/types.h>
 
 namespace brunsli {
 
-void SetDepth(const HuffmanTree& p,
-              HuffmanTree* pool,
-              uint8_t* depth,
+void SetDepth(const HuffmanTree& p, HuffmanTree* pool, uint8_t* depth,
               uint8_t level) {
   if (p.index_left >= 0) {
     ++level;
@@ -49,15 +48,13 @@ static BRUNSLI_INLINE bool Compare(const HuffmanTree& v0,
 // we are not planning to use this with extremely long blocks.
 //
 // See http://en.wikipedia.org/wiki/Huffman_coding
-void CreateHuffmanTree(const uint32_t* data,
-                       const size_t length,
-                       const int tree_limit,
-                       uint8_t* depth) {
+void CreateHuffmanTree(const uint32_t* data, const size_t length,
+                       const int tree_limit, uint8_t* depth) {
   // For block sizes below 64 kB, we never need to do a second iteration
   // of this loop. Probably all of our block sizes will be smaller than
   // that, so this loop is mostly of academic interest. If we actually
   // would need this, we would be better off with the Katajainen algorithm.
-  for (uint32_t count_limit = 1; ; count_limit *= 2) {
+  for (uint32_t count_limit = 1;; count_limit *= 2) {
     std::vector<HuffmanTree> tree;
     tree.reserve(2 * length + 1);
 
@@ -141,13 +138,10 @@ void Reverse(uint8_t* v, size_t start, size_t end) {
   }
 }
 
-void WriteHuffmanTreeRepetitions(
-    const uint8_t previous_value,
-    const uint8_t value,
-    size_t repetitions,
-    size_t* tree_size,
-    uint8_t* tree,
-    uint8_t* extra_bits_data) {
+void WriteHuffmanTreeRepetitions(const uint8_t previous_value,
+                                 const uint8_t value, size_t repetitions,
+                                 size_t* tree_size, uint8_t* tree,
+                                 uint8_t* extra_bits_data) {
   BRUNSLI_DCHECK(repetitions > 0);
   if (previous_value != value) {
     tree[*tree_size] = value;
@@ -185,11 +179,8 @@ void WriteHuffmanTreeRepetitions(
   }
 }
 
-void WriteHuffmanTreeRepetitionsZeros(
-    size_t repetitions,
-    size_t* tree_size,
-    uint8_t* tree,
-    uint8_t* extra_bits_data) {
+void WriteHuffmanTreeRepetitionsZeros(size_t repetitions, size_t* tree_size,
+                                      uint8_t* tree, uint8_t* extra_bits_data) {
   if (repetitions == 11) {
     tree[*tree_size] = 0;
     extra_bits_data[*tree_size] = 0;
@@ -247,11 +238,8 @@ static void DecideOverRleUse(const uint8_t* depth, const size_t length,
   *use_rle_for_zero = total_reps_zero > count_reps_zero * 2;
 }
 
-void WriteHuffmanTree(const uint8_t* depth,
-                      size_t length,
-                      size_t* tree_size,
-                      uint8_t* tree,
-                      uint8_t* extra_bits_data) {
+void WriteHuffmanTree(const uint8_t* depth, size_t length, size_t* tree_size,
+                      uint8_t* tree, uint8_t* extra_bits_data) {
   uint8_t previous_value = 8;
 
   // Throw away trailing zeros.
@@ -270,8 +258,8 @@ void WriteHuffmanTree(const uint8_t* depth,
   if (length > 50) {
     // Find rle coding for longer codes.
     // Shorter codes seem not to benefit from rle.
-    DecideOverRleUse(depth, new_length,
-                     &use_rle_for_non_zero, &use_rle_for_zero);
+    DecideOverRleUse(depth, new_length, &use_rle_for_non_zero,
+                     &use_rle_for_zero);
   }
 
   // Actual rle coding.
@@ -287,9 +275,8 @@ void WriteHuffmanTree(const uint8_t* depth,
     if (value == 0) {
       WriteHuffmanTreeRepetitionsZeros(reps, tree_size, tree, extra_bits_data);
     } else {
-      WriteHuffmanTreeRepetitions(previous_value,
-                                  value, reps, tree_size,
-                                  tree, extra_bits_data);
+      WriteHuffmanTreeRepetitions(previous_value, value, reps, tree_size, tree,
+                                  extra_bits_data);
       previous_value = value;
     }
     i += reps;
@@ -299,10 +286,9 @@ void WriteHuffmanTree(const uint8_t* depth,
 namespace {
 
 uint16_t ReverseBits(int num_bits, uint16_t bits) {
-  static const size_t kLut[16] = {  // Pre-reversed 4-bit values.
-    0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
-    0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf
-  };
+  static const size_t kLut[16] = {// Pre-reversed 4-bit values.
+                                  0x0, 0x8, 0x4, 0xc, 0x2, 0xa, 0x6, 0xe,
+                                  0x1, 0x9, 0x5, 0xd, 0x3, 0xb, 0x7, 0xf};
   size_t retval = kLut[bits & 0xf];
   for (int i = 4; i < num_bits; i += 4) {
     retval <<= 4;
@@ -315,13 +301,12 @@ uint16_t ReverseBits(int num_bits, uint16_t bits) {
 
 }  // namespace
 
-void ConvertBitDepthsToSymbols(const uint8_t* depth,
-                               size_t len,
+void ConvertBitDepthsToSymbols(const uint8_t* depth, size_t len,
                                uint16_t* bits) {
   // In Brotli, all bit depths are [1..15]
   // 0 bit depth means that the symbol does not exist.
   const int kMaxBits = 16;  // 0..15 are values for bits
-  uint16_t bl_count[kMaxBits] = { 0 };
+  uint16_t bl_count[kMaxBits] = {0};
   {
     for (size_t i = 0; i < len; ++i) {
       ++bl_count[depth[i]];
