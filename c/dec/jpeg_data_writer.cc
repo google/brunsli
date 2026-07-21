@@ -508,8 +508,8 @@ bool EncodeDCTBlockSequential(const coeff_t* coeffs,
                               const HuffmanCodeTable& ac_huff,
                               int num_zero_runs, coeff_t* last_dc_coeff,
                               BitWriter* bw) {
-  coeff_t temp2;
-  coeff_t temp;
+  int temp2;
+  int temp;
   temp2 = coeffs[0];
   temp = temp2 - *last_dc_coeff;
   *last_dc_coeff = temp2;
@@ -562,8 +562,8 @@ bool EncodeDCTBlockProgressive(const coeff_t* coeffs,
                                DCTCodingState* coding_state,
                                coeff_t* last_dc_coeff, BitWriter* bw) {
   bool eob_run_allowed = Ss > 0;
-  coeff_t temp2;
-  coeff_t temp;
+  int temp2;
+  int temp;
   if (Ss == 0) {
     temp2 = coeffs[0] >> Al;
     temp = temp2 - *last_dc_coeff;
