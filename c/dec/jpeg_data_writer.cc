@@ -1062,7 +1062,7 @@ SerializationStatus SerializeJpeg(State* state, const JPEGData& jpg,
         SerializationStatus status = SerializeSection(marker, *state, &ss, jpg);
         if (status == SerializationStatus::ERROR) {
           BRUNSLI_LOG_DEBUG() << "Failed to encode marker " << std::hex
-                              << marker << BRUNSLI_ENDL();
+                              << marker << std::dec << BRUNSLI_ENDL();
           ss.stage = SerializationState::ERROR;
           break;
         }
