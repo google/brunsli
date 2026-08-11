@@ -9,12 +9,15 @@
 #include <algorithm>
 #include <cstdlib>
 #include <iterator>
+#include <limits>
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
 #include <vector>
 
 #include <brotli/encode.h>
+#include "../common/ans_params.h"
 #include "../common/constants.h"
 #include "../common/context.h"
 #include "../common/distributions.h"
@@ -27,7 +30,6 @@
 #include "./ans_encode.h"
 #include "./cluster.h"
 #include "./context_map_encode.h"
-#include "./histogram_encode.h"
 #include <brunsli/jpeg_data_reader.h>
 #include "./state.h"
 #include "./write_bits.h"
@@ -80,8 +82,11 @@ size_t GetMaximumBrunsliEncodedSize(const JPEGData& jpg) {
   for (const auto& component : jpg.components) {
     num_blocks += component.num_blocks;
   }
-  // Currently established upper bound is 82 bytes per block.
-  constexpr size_t kBytesPerBlock = 82 + 2;
+  // Currently established upper bound is 232 bytes per block. I.e. each color
+  // pixel takes almost 11 bytes (more than if we simply store true-color BMP).
+  // That is ridiculous, so it is recommended to additionally cap compressed
+  // size to original JPEG size.
+  constexpr size_t kBytesPerBlock = 232;
   size_t entropy_size = num_blocks * kBytesPerBlock;
   return entropy_size + hdr_size;
 }
@@ -247,6 +252,7 @@ bool EncodeQuantTables(const JPEGData& jpg, Storage* storage) {
     // If ReadJpeg() succeeded with JPEG_READ_ALL mode, this should not happen.
     return false;
   }
+  if (!storage->IsHealthy()) return false;
   WriteBits(2, jpg.quant.size() - 1, storage);
   for (size_t i = 0; i < jpg.quant.size(); ++i) {
     const JPEGQuantTable& q = jpg.quant[i];
@@ -260,6 +266,7 @@ bool EncodeQuantTables(const JPEGData& jpg, Storage* storage) {
 
     uint8_t quant_approx[kDCTBlockSize];
     const int code = GetQuantTableId(q, i > 0, quant_approx);
+    if (!storage->IsHealthy()) return false;
     WriteBits(1, (code >= kNumStockQuantTables), storage);
     if (code < kNumStockQuantTables) {
       WriteBits(3, code, storage);
@@ -273,6 +280,7 @@ bool EncodeQuantTables(const JPEGData& jpg, Storage* storage) {
         const int new_diff = q.values[j] - quant_approx[j];
         int diff = new_diff - last_diff;
         last_diff = new_diff;
+        if (!storage->IsHealthy()) return false;
         WriteBits(1, diff != 0, storage);
         if (diff) {
           WriteBits(1, diff < 0, storage);
@@ -286,6 +294,7 @@ bool EncodeQuantTables(const JPEGData& jpg, Storage* storage) {
       }
     }
   }
+  // At most kMaxComponents -> 8 bits.
   for (size_t i = 0; i < jpg.components.size(); ++i) {
     WriteBits(2, jpg.components[i].quant_idx, storage);
   }
@@ -294,6 +303,7 @@ bool EncodeQuantTables(const JPEGData& jpg, Storage* storage) {
 
 bool EncodeHuffmanCode(const JPEGHuffmanCode& huff, bool is_known_last,
                        Storage* storage) {
+  if (!storage->IsHealthy()) return false;
   WriteBits(2, huff.slot_id & 0xf, storage);
   WriteBits(1, huff.slot_id >> 4, storage);
   if (!is_known_last) {
@@ -352,6 +362,7 @@ bool EncodeHuffmanCode(const JPEGHuffmanCode& huff, bool is_known_last,
     }
     if (count_limit > 0) {
       int nbits = Log2FloorNonZero(count_limit) + 1;
+      if (!storage->IsHealthy()) return false;
       WriteBits(nbits, count, storage);
       total_count += count;
       space -= count * (1 << (kJpegHuffmanMaxBitLength - i));
@@ -372,12 +383,14 @@ bool EncodeHuffmanCode(const JPEGHuffmanCode& huff, bool is_known_last,
     if (!p.RemoveValue(val, &code, &nbits)) {
       return false;
     }
+    if (!storage->IsHealthy()) return false;
     EncodeLimitedVarint(code, 2, (nbits + 1) >> 1, storage);
   }
   return true;
 }
 
 bool EncodeScanInfo(const JPEGScanInfo& si, Storage* storage) {
+  if (!storage->IsHealthy()) return false;
   WriteBits(6, si.Ss, storage);
   WriteBits(6, si.Se, storage);
   WriteBits(4, si.Ah, storage);
@@ -385,15 +398,19 @@ bool EncodeScanInfo(const JPEGScanInfo& si, Storage* storage) {
   WriteBits(2, si.num_components - 1, storage);
   for (size_t i = 0; i < si.num_components; ++i) {
     const JPEGComponentScanInfo& csi = si.components[i];
+    if (!storage->IsHealthy()) return false;
     WriteBits(2, csi.comp_idx, storage);
     WriteBits(2, csi.dc_tbl_idx, storage);
     WriteBits(2, csi.ac_tbl_idx, storage);
   }
   int last_block_idx = -1;
   for (const auto& block_idx : si.reset_points) {
+    if (!storage->IsHealthy()) return false;
     WriteBits(1, 1, storage);
     BRUNSLI_DCHECK(block_idx >= last_block_idx + 1);
-    EncodeVarint(block_idx - last_block_idx - 1, 28, storage);
+    int diff = block_idx - last_block_idx - 1;
+    if ((diff >> 28) != 0) return false;
+    EncodeVarint(diff, 28, storage);
     last_block_idx = block_idx;
   }
   WriteBits(1, 0, storage);
@@ -403,10 +420,16 @@ bool EncodeScanInfo(const JPEGScanInfo& si, Storage* storage) {
     int block_idx = si.extra_zero_runs[i].block_idx;
     int num = si.extra_zero_runs[i].num_extra_zero_runs;
     BRUNSLI_DCHECK(block_idx >= last_block_idx);
-    for (int j = 0; j < num; ++j) {
-      WriteBits(1, 1, storage);
-      EncodeVarint(block_idx - last_block_idx, 28, storage);
-      last_block_idx = block_idx;
+    BRUNSLI_DCHECK(num >= 1 && num <= 4);
+    if (!storage->IsHealthy()) return false;
+    WriteBits(1, 1, storage);
+    int diff = block_idx - last_block_idx;
+    if ((diff >> 28) != 0) return false;
+    EncodeVarint(diff, 28, storage);
+    last_block_idx = block_idx;
+    if (num > 1) {
+      size_t nbits = 2 * (num - 1);
+      WriteBits(nbits, 0x5555 & ((1 << nbits) - 1), storage);
     }
   }
   WriteBits(1, 0, storage);
@@ -446,17 +469,20 @@ bool EncodeAuxData(const JPEGData& jpg, Storage* storage) {
     if (marker < 0xc0) {
       return false;
     }
+    if (!storage->IsHealthy()) return false;
     WriteBits(6, marker - 0xc0, storage);
     if (marker == 0xdd) have_dri = true;
     if (marker == 0xda) ++num_scans;
   }
   if (have_dri) {
+    if (!storage->IsHealthy()) return false;
     WriteBits(16, jpg.restart_interval, storage);
   }
 
   BRUNSLI_DCHECK(jpg.huffman_code.size() < kMaxDHTMarkers);
   for (size_t i = 0; i < jpg.huffman_code.size(); ++i) {
     const bool is_known_last = ((i + 1) == jpg.huffman_code.size());
+    if (!storage->IsHealthy()) return false;
     WriteBits(1, is_known_last, storage);
     if (!EncodeHuffmanCode(jpg.huffman_code[i], is_known_last, storage)) {
       return false;
@@ -471,8 +497,10 @@ bool EncodeAuxData(const JPEGData& jpg, Storage* storage) {
       return false;
     }
   }
+  if (!storage->IsHealthy()) return false;
   WriteBits(2, jpg.quant.size() - 1, storage);
   for (size_t i = 0; i < jpg.quant.size(); ++i) {
+    if (!storage->IsHealthy()) return false;
     WriteBits(2, jpg.quant[i].index, storage);
     if (i != jpg.quant.size() - 1) {
       WriteBits(1, jpg.quant[i].is_last, storage);
@@ -485,15 +513,27 @@ bool EncodeAuxData(const JPEGData& jpg, Storage* storage) {
   WriteBits(2, comp_ids, storage);
   if (comp_ids == kComponentIdsCustom) {
     for (size_t i = 0; i < jpg.components.size(); ++i) {
+      if (!storage->IsHealthy()) return false;
       WriteBits(8, jpg.components[i].id, storage);
     }
   }
   size_t nsize = jpg.has_zero_padding_bit ? jpg.padding_bits.size() : 0;
   if (nsize > PaddingBitsLimit(jpg)) return false;
-  // we limit to 32b for nsize
+  if (nsize > std::numeric_limits<uint32_t>::max()) return false;
+  if (!storage->IsHealthy()) return false;
   EncodeLimitedVarint(nsize, 8, 4, storage);
   if (nsize > 0) {
-    for (size_t i = 0; i < nsize; ++i) {
+    size_t i = 0;
+    for (; i + 31 < nsize; i += 32) {
+      uint32_t bits = 0;
+      for (size_t j = 0; j < 32; ++j) {
+        bits |= static_cast<uint32_t>(jpg.padding_bits[i + j] & 1u) << j;
+      }
+      if (!storage->IsHealthy()) return false;
+      WriteBits(32, bits, storage);
+    }
+    if (!storage->IsHealthy()) return false;
+    for (; i < nsize; ++i) {
       WriteBits(1, jpg.padding_bits[i], storage);
     }
   }
@@ -502,8 +542,8 @@ bool EncodeAuxData(const JPEGData& jpg, Storage* storage) {
     const auto& s = jpg.inter_marker_data[i];
     uint8_t buffer[(sizeof(size_t) * 8 + 6) / 7];
     size_t len = EncodeBase128(s.size(), buffer);
-    storage->AppendBytes(buffer, len);
-    storage->AppendBytes(s.data(), s.size());
+    if (!storage->AppendBytes(buffer, len)) return false;
+    if (!storage->AppendBytes(s.data(), s.size())) return false;
   }
   return true;
 }
@@ -583,16 +623,19 @@ EntropyCodes::EntropyCodes(const std::vector<Histogram>& histograms,
                              &context_map_);
 }
 
-void EntropyCodes::EncodeContextMap(Storage* storage) const {
-  brunsli::EncodeContextMap(context_map_, clustered_.size(), storage);
+bool EntropyCodes::EncodeContextMap(Storage* storage) const {
+  return brunsli::EncodeContextMap(context_map_, clustered_.size(), storage);
 }
 
-void EntropyCodes::BuildAndStoreEntropyCodes(Storage* storage) {
+bool EntropyCodes::BuildAndStoreEntropyCodes(Storage* storage) {
   ans_tables_.resize(clustered_.size());
   for (size_t i = 0; i < clustered_.size(); ++i) {
-    BuildAndStoreANSEncodingData(&clustered_[i].data_[0], &ans_tables_[i],
-                                 storage);
+    if (!BuildAndStoreANSEncodingData(&clustered_[i].data_[0], &ans_tables_[i],
+                                      storage)) {
+      return false;
+    }
   }
+  return true;
 }
 
 const ANSTable* EntropyCodes::GetANSTable(int context) const {
@@ -670,7 +713,7 @@ void DataStream::FlushBitWriter() {
 
 // Encodes the next bit to the bit stream, based on the 8-bit precision
 // probability, i.e. P(bit = 0) = prob / 256. Statistics are updated in 'p'.
-void DataStream::AddBit(Prob* const p, int bit) {
+void DataStream::AddBit(Prob* p, int bit) {
   const uint8_t prob = p->get_proba();
   p->Add(bit);
   const uint32_t diff = high_ - low_;
@@ -692,21 +735,26 @@ void DataStream::AddBit(Prob* const p, int bit) {
   }
 }
 
-void DataStream::EncodeCodeWords(EntropyCodes* s, Storage* storage) {
+bool DataStream::EncodeCodeWords(EntropyCodes* s, Storage* storage) {
   FlushBitWriter();
   FlushArithmeticCoder();
   ANSCoder ans;
+  size_t count = 0;
   for (int i = pos_ - 1; i >= 0; --i) {
     CodeWord* const word = &code_words_[i];
     if (word->nbits == 0) {
       const ANSEncSymbolInfo info =
           s->GetANSTable(word->context)->info_[word->code];
       word->value = ans.PutSymbol(info, &word->nbits);
+      if (word->nbits != 0) ++count;
+    } else {
+      ++count;
     }
   }
+  count += 2;
   const uint32_t state = ans.GetState();
+  if (storage->length < count * sizeof(uint16_t)) return false;
   uint16_t* out = reinterpret_cast<uint16_t*>(storage->data);
-  const uint16_t* out_start = out;
   // Mixed-endian for historical reasons.
   BRUNSLI_UNALIGNED_STORE16LE(out++, state >> 16);
   BRUNSLI_UNALIGNED_STORE16LE(out++, state);
@@ -716,7 +764,8 @@ void DataStream::EncodeCodeWords(EntropyCodes* s, Storage* storage) {
       BRUNSLI_UNALIGNED_STORE16LE(out++, word.value);
     }
   }
-  storage->pos += (out - out_start) * 16;
+  storage->pos += count * sizeof(uint16_t) * 8;
+  return true;
 }
 
 void EncodeNumNonzeros(size_t val, Prob* p, DataStream* data_stream) {
@@ -792,7 +841,7 @@ uint32_t FrameTypeCode(const JPEGData& jpg) {
 }
 
 bool EncodeSignature(size_t len, uint8_t* data, size_t* pos) {
-  if (len < kBrunsliSignatureSize || *pos > len - kBrunsliSignatureSize) {
+  if (len - *pos < kBrunsliSignatureSize) {
     return false;
   }
   memcpy(&data[*pos], kBrunsliSignature, kBrunsliSignatureSize);
@@ -824,11 +873,14 @@ bool EncodeHeader(const JPEGData& jpg, State* state, uint8_t* data,
   size_t subsampling = FrameTypeCode(jpg);
 
   size_t pos = 0;
-  EncodeValue(kBrunsliHeaderWidthTag, jpg.width, data, &pos);
-  EncodeValue(kBrunsliHeaderHeightTag, jpg.height, data, &pos);
-  EncodeValue(kBrunsliHeaderVersionCompTag, version_comp, data, &pos);
-  EncodeValue(kBrunsliHeaderSubsamplingTag, subsampling, data, &pos);
+  uint8_t buffer[44];  // 4 x (1 + 10)
+  EncodeValue(kBrunsliHeaderWidthTag, jpg.width, buffer, &pos);
+  EncodeValue(kBrunsliHeaderHeightTag, jpg.height, buffer, &pos);
+  EncodeValue(kBrunsliHeaderVersionCompTag, version_comp, buffer, &pos);
+  EncodeValue(kBrunsliHeaderSubsamplingTag, subsampling, buffer, &pos);
 
+  if (pos > *len) return false;
+  memcpy(data, buffer, pos);
   *len = pos;
   return true;
 }
@@ -872,12 +924,14 @@ bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
     *len = 0;
     return true;
   } else if (metadata.size() == 1) {
+    if (*len < 1) return false;
     *len = 1;
     data[0] = metadata[0];
     return true;
   }
 
   // Write base-128 encoding of the original metadata size.
+  if (*len < 10) return false;
   size_t pos = EncodeBase128(metadata.size(), data);
 
   // Write the compressed metadata directly to the output.
@@ -900,11 +954,8 @@ bool EncodeJPEGInternals(const JPEGData& jpg, State* state, uint8_t* data,
                          size_t* len) {
   BRUNSLI_UNUSED(state);
   Storage storage(data, *len);
-
-  if (!EncodeAuxData(jpg, &storage)) {
-    return false;
-  }
-
+  if (!EncodeAuxData(jpg, &storage)) return false;
+  if (!storage.IsHealthy()) return false;
   *len = storage.GetBytesUsed();
   return true;
 }
@@ -926,13 +977,14 @@ bool EncodeHistogramData(const JPEGData& jpg, State* state, uint8_t* data,
                          size_t* len) {
   Storage storage(data, *len);
 
+  if (!storage.IsHealthy()) return false;
+  // At most 12 bits.
   for (size_t i = 0; i < jpg.components.size(); ++i) {
     WriteBits(3, state->meta[i].context_bits, &storage);
   }
 
-  state->entropy_codes->EncodeContextMap(&storage);
-
-  state->entropy_codes->BuildAndStoreEntropyCodes(&storage);
+  if (!state->entropy_codes->EncodeContextMap(&storage)) return false;
+  if (!state->entropy_codes->BuildAndStoreEntropyCodes(&storage)) return false;
 
   *len = storage.GetBytesUsed();
   return true;
@@ -943,7 +995,9 @@ bool EncodeDCData(const JPEGData& jpg, State* state, uint8_t* data,
   BRUNSLI_UNUSED(jpg);
   Storage storage(data, *len);
 
-  state->data_stream_dc.EncodeCodeWords(state->entropy_codes, &storage);
+  if (!state->data_stream_dc.EncodeCodeWords(state->entropy_codes, &storage)) {
+    return false;
+  }
 
   *len = storage.GetBytesUsed();
   return true;
@@ -966,6 +1020,7 @@ typedef bool (*EncodeSectionDataFn)(const JPEGData& jpg, State* state,
 bool EncodeSection(const JPEGData& jpg, State* s, uint8_t tag,
                    EncodeSectionDataFn write_section, size_t section_size_bytes,
                    size_t len, uint8_t* data, size_t* pos) {
+  if (len - *pos < section_size_bytes + 1) return false;
   // Write the marker byte for the section.
   const size_t pos_start = *pos;
   const uint8_t marker = SectionMarker(tag);
@@ -1358,6 +1413,7 @@ std::unique_ptr<EntropyCodes> PrepareEntropyCodes(State* state) {
 
 bool BrunsliSerialize(State* state, const JPEGData& jpg, uint32_t skip_sections,
                       uint8_t* data, size_t* len) {
+  // Invariant: `pos` <= `*len`
   size_t pos = 0;
 
   // TODO(eustas): refactor to remove repetitive params.

@@ -66,7 +66,7 @@ static const uint8_t kBrunsliDCDataTag = 0x7;
 static const uint8_t kBrunsliACDataTag = 0x8;
 static const uint8_t kBrunsliOriginalJpgTag = 0x9;
 
-// Header section. All fields are varints.
+// Header section. All fields are VarInts.
 static const uint8_t kBrunsliHeaderWidthTag = 0x1;
 static const uint8_t kBrunsliHeaderHeightTag = 0x2;
 static const uint8_t kBrunsliHeaderVersionCompTag = 0x3;

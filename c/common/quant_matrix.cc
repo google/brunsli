@@ -6,7 +6,7 @@
 
 #include "./quant_matrix.h"
 
-#include "./constants.h"
+#include <brunsli/jpeg_data.h>
 #include "./platform.h"
 #include <brunsli/types.h>
 

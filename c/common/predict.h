@@ -4,7 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-// Library to predict DCT coefficents based on previous blocks.
+// Library to predict DCT coefficients based on previous blocks.
 
 #ifndef BRUNSLI_COMMON_PREDICT_H_
 #define BRUNSLI_COMMON_PREDICT_H_

@@ -14,7 +14,7 @@ namespace brunsli {
 
 // Builds a Huffman tree for the given histogram, and encodes it into storage
 // in a format that can be read by HuffmanDecodingData::ReadFromBitstream.
-void BuildAndStoreHuffmanTree(const uint32_t* histogram, const size_t length,
+bool BuildAndStoreHuffmanTree(const uint32_t* histogram, size_t length,
                               uint8_t* depth, uint16_t* bits, Storage* storage);
 
 }  // namespace brunsli

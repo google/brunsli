@@ -12,14 +12,11 @@
 #include <brunsli/types.h>
 #include "./write_bits.h"
 
-// TODO(eustas): remove after landing changes to JPEG XL
-#include "./huffman_encode.h"
-
 namespace brunsli {
 
 // Encodes the given context map to the bit stream. The number of different
 // histogram ids is given by num_clusters.
-void EncodeContextMap(const std::vector<uint32_t>& context_map,
+bool EncodeContextMap(const std::vector<uint32_t>& context_map,
                       size_t num_clusters, Storage* storage);
 
 }  // namespace brunsli

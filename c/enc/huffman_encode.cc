@@ -11,7 +11,6 @@
 #include <algorithm>
 #include <memory>
 
-#include "../common/constants.h"
 #include "../common/platform.h"
 #include <brunsli/types.h>
 #include "./huffman_tree.h"
@@ -23,7 +22,7 @@ namespace {
 
 static const int kCodeLengthCodes = 18;
 
-void StoreHuffmanTreeOfHuffmanTreeToBitMask(const int num_codes,
+bool StoreHuffmanTreeOfHuffmanTreeToBitMask(const int num_codes,
                                             const uint8_t* code_length_bitdepth,
                                             Storage* storage) {
   static const uint8_t kStorageOrder[kCodeLengthCodes] = {
@@ -60,15 +59,18 @@ void StoreHuffmanTreeOfHuffmanTreeToBitMask(const int num_codes,
       skip_some = 3;  // skips three.
     }
   }
+  if (!storage->IsHealthy()) return false;
   WriteBits(2, skip_some, storage);
   for (size_t i = skip_some; i < codes_to_store; ++i) {
+    if (!storage->IsHealthy()) return false;
     size_t l = code_length_bitdepth[kStorageOrder[i]];
     WriteBits(kHuffmanBitLengthHuffmanCodeBitLengths[l],
               kHuffmanBitLengthHuffmanCodeSymbols[l], storage);
   }
+  return true;
 }
 
-void StoreHuffmanTreeToBitMask(const size_t huffman_tree_size,
+bool StoreHuffmanTreeToBitMask(const size_t huffman_tree_size,
                                const uint8_t* huffman_tree,
                                const uint8_t* huffman_tree_extra_bits,
                                const uint8_t* code_length_bitdepth,
@@ -76,6 +78,7 @@ void StoreHuffmanTreeToBitMask(const size_t huffman_tree_size,
                                Storage* storage) {
   for (size_t i = 0; i < huffman_tree_size; ++i) {
     size_t ix = huffman_tree[i];
+    if (!storage->IsHealthy()) return false;
     WriteBits(code_length_bitdepth[ix], code_length_bitdepth_symbols[ix],
               storage);
     // Extra bits
@@ -88,11 +91,14 @@ void StoreHuffmanTreeToBitMask(const size_t huffman_tree_size,
         break;
     }
   }
+  return true;
 }
 
-void StoreSimpleHuffmanTree(const uint8_t* depths, size_t symbols[4],
+bool StoreSimpleHuffmanTree(const uint8_t* depths, size_t symbols[4],
                             size_t num_symbols, size_t max_bits,
                             Storage* storage) {
+  // Assumption: max_bits <= 9; so as most 41 bits are used for the tree.
+  if (!storage->IsHealthy()) return false;
   // value of 1 indicates a simple Huffman code
   WriteBits(2, 1, storage);
   WriteBits(2, num_symbols - 1, storage);  // NSYM - 1
@@ -121,11 +127,12 @@ void StoreSimpleHuffmanTree(const uint8_t* depths, size_t symbols[4],
     // tree-select
     WriteBits(1, depths[symbols[0]] == 1 ? 1 : 0, storage);
   }
+  return true;
 }
 
 // num = alphabet size
 // depths = symbol depths
-void StoreHuffmanTree(const uint8_t* depths, size_t num, Storage* storage) {
+bool StoreHuffmanTree(const uint8_t* depths, size_t num, Storage* storage) {
   // Write the Huffman tree into the compact representation.
   std::unique_ptr<uint8_t[]> arena(new uint8_t[2 * num]);
   uint8_t* huffman_tree = arena.get();
@@ -164,22 +171,27 @@ void StoreHuffmanTree(const uint8_t* depths, size_t num, Storage* storage) {
                             &code_length_bitdepth_symbols[0]);
 
   // Now, we have all the data, let's start storing it
-  StoreHuffmanTreeOfHuffmanTreeToBitMask(num_codes, code_length_bitdepth,
-                                         storage);
+  if (!StoreHuffmanTreeOfHuffmanTreeToBitMask(num_codes, code_length_bitdepth,
+                                              storage)) {
+    return false;
+  }
 
   if (num_codes == 1) {
     code_length_bitdepth[code] = 0;
   }
 
   // Store the real huffman tree now.
-  StoreHuffmanTreeToBitMask(huffman_tree_size, huffman_tree,
-                            huffman_tree_extra_bits, &code_length_bitdepth[0],
-                            code_length_bitdepth_symbols, storage);
+  if (!StoreHuffmanTreeToBitMask(
+          huffman_tree_size, huffman_tree, huffman_tree_extra_bits,
+          &code_length_bitdepth[0], code_length_bitdepth_symbols, storage)) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace
 
-void BuildAndStoreHuffmanTree(const uint32_t* histogram, const size_t length,
+bool BuildAndStoreHuffmanTree(const uint32_t* histogram, size_t length,
                               uint8_t* depth, uint16_t* bits,
                               Storage* storage) {
   size_t count = 0;
@@ -203,20 +215,24 @@ void BuildAndStoreHuffmanTree(const uint32_t* histogram, const size_t length,
   }
 
   if (count <= 1) {
+    if (!storage->IsHealthy()) return false;
     // Output symbol bits and depths are initialized with 0, nothing to do.
     WriteBits(4, 1, storage);
     WriteBits(max_bits, s4[0], storage);
-    return;
+    return true;
   }
 
   CreateHuffmanTree(histogram, length, 15, depth);
   ConvertBitDepthsToSymbols(depth, length, bits);
 
   if (count <= 4) {
-    StoreSimpleHuffmanTree(depth, s4, count, max_bits, storage);
+    if (!StoreSimpleHuffmanTree(depth, s4, count, max_bits, storage)) {
+      return false;
+    }
   } else {
-    StoreHuffmanTree(depth, length, storage);
+    if (!StoreHuffmanTree(depth, length, storage)) return false;
   }
+  return true;
 }
 
 }  // namespace brunsli

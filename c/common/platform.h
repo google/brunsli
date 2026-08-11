@@ -19,9 +19,9 @@
 #ifndef BRUNSLI_COMMON_PLATFORM_H_
 #define BRUNSLI_COMMON_PLATFORM_H_
 
-#include <cstring>  /* memcpy */
-#include <iomanip>
-#include <ios>
+#include <cstring>  /* memcpy */  // IWYU pragma: export
+#include <iomanip>  // IWYU pragma: export
+#include <ios>  // IWYU pragma: export
 #include <iostream>
 #include <vector>
 
@@ -156,6 +156,12 @@ OR:
 #define BRUNSLI_NOINLINE _Pragma("inline=never")
 #else
 #define BRUNSLI_NOINLINE
+#endif
+
+#if BRUNSLI_GNUC_HAS_ATTRIBUTE(warn_unused_result, 3, 4, 0)
+#define BRUNSLI_NODISCARD __attribute__((warn_unused_result))
+#else
+#define BRUNSLI_NODISCARD
 #endif
 
 /* BRUNSLI_INTERNAL could be defined to override visibility, e.g. for tests. */

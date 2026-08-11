@@ -13,6 +13,7 @@
 #include <memory>
 #include <vector>
 
+#include "../common/ans_params.h"
 #include "../common/distributions.h"
 #include <brunsli/jpeg_data.h>
 #include "../common/platform.h"
@@ -63,8 +64,8 @@ class EntropyCodes {
                const std::vector<size_t>& offsets);
   // GCC declares it won't apply RVO, even if it actually does.
   // EntropyCodes(const EntropyCodes&) = delete;
-  void EncodeContextMap(Storage* storage) const;
-  void BuildAndStoreEntropyCodes(Storage* storage);
+  bool EncodeContextMap(Storage* storage) const;
+  bool BuildAndStoreEntropyCodes(Storage* storage);
   const ANSTable* GetANSTable(int context) const;
 
  private:
@@ -101,8 +102,8 @@ class DataStream {
   void FlushBitWriter();
   // Encodes the next bit to the bit stream, based on the 8-bit precision
   // probability, i.e. P(bit = 0) = prob / 256. Statistics are updated in 'p'.
-  void AddBit(Prob* const p, int bit);
-  void EncodeCodeWords(EntropyCodes* s, Storage* storage);
+  void AddBit(Prob* p, int bit);
+  bool EncodeCodeWords(EntropyCodes* s, Storage* storage);
 
  private:
   struct CodeWord {

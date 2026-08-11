@@ -15,7 +15,7 @@
 #include "../common/constants.h"
 #include "../common/platform.h"
 #include <brunsli/types.h>
-#include "./huffman_tree.h"
+#include "./huffman_encode.h"
 #include "./write_bits.h"
 
 namespace brunsli {
@@ -114,12 +114,13 @@ void RunLengthCodeZeros(const std::vector<uint32_t>& v_in,
 
 }  // namespace
 
-void EncodeContextMap(const std::vector<uint32_t>& context_map,
+bool EncodeContextMap(const std::vector<uint32_t>& context_map,
                       size_t num_clusters, Storage* storage) {
+  if (!storage->IsHealthy()) return false;
   StoreVarLenUint8(num_clusters - 1, storage);
 
   if (num_clusters == 1) {
-    return;
+    return true;
   }
 
   std::vector<uint32_t> transformed_symbols = MoveToFrontTransform(context_map);
@@ -142,16 +143,20 @@ void EncodeContextMap(const std::vector<uint32_t>& context_map,
   uint16_t bit_codes[kMaxContextMapAlphabetSize];
   memset(bit_depths, 0, sizeof(bit_depths));
   memset(bit_codes, 0, sizeof(bit_codes));
-  BuildAndStoreHuffmanTree(symbol_histogram,
-                           num_clusters + max_run_length_prefix, bit_depths,
-                           bit_codes, storage);
+  if (!BuildAndStoreHuffmanTree(symbol_histogram,
+                                num_clusters + max_run_length_prefix,
+                                bit_depths, bit_codes, storage)) {
+    return false;
+  }
   for (size_t i = 0; i < rle_symbols.size(); ++i) {
+    if (!storage->IsHealthy()) return false;
     WriteBits(bit_depths[rle_symbols[i]], bit_codes[rle_symbols[i]], storage);
     if (rle_symbols[i] > 0 && rle_symbols[i] <= max_run_length_prefix) {
       WriteBits(rle_symbols[i], extra_bits[i], storage);
     }
   }
   WriteBits(1, 1, storage);  // use move-to-front
+  return true;
 }
 
 }  // namespace brunsli

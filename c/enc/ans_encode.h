@@ -65,7 +65,7 @@ class ANSCoder {
   uint32_t state_;
 };
 
-void BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
+bool BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
                                   Storage* storage);
 
 }  // namespace brunsli

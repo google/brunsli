@@ -9,7 +9,7 @@
 #ifndef BRUNSLI_COMMON_QUANT_MATRIX_H_
 #define BRUNSLI_COMMON_QUANT_MATRIX_H_
 
-#include "./constants.h"
+#include <brunsli/jpeg_data.h>
 #include <brunsli/types.h>
 
 namespace brunsli {

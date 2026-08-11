@@ -8,6 +8,7 @@
 
 #include <vector>
 
+#include "../common/ans_params.h"
 #include <brunsli/types.h>
 #include "./histogram_encode.h"
 #include "./write_bits.h"
@@ -39,7 +40,7 @@ void ANSBuildInfoTable(const int* counts, int alphabet_size,
 
 }  // namespace
 
-void BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
+bool BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
                                   Storage* storage) {
   int num_symbols;
   int symbols[kMaxNumSymbolsForSmallCode] = {0};
@@ -48,7 +49,10 @@ void BuildAndStoreANSEncodingData(const int* histogram, ANSTable* table,
   NormalizeCounts(&counts[0], &omit_pos, BRUNSLI_ANS_MAX_SYMBOLS,
                   BRUNSLI_ANS_LOG_TAB_SIZE, &num_symbols, symbols);
   ANSBuildInfoTable(&counts[0], BRUNSLI_ANS_MAX_SYMBOLS, table->info_);
-  EncodeCounts(&counts[0], omit_pos, num_symbols, symbols, storage);
+  if (!EncodeCounts(&counts[0], omit_pos, num_symbols, symbols, storage)) {
+    return false;
+  }
+  return true;
 }
 
 }  // namespace brunsli

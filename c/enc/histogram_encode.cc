@@ -84,8 +84,8 @@ bool RebalanceHistogram(const float* targets, int max_symbol, int table_size,
   return counts[remainder_pos] > 0;
 }
 
-void NormalizeCounts(int* counts, int* omit_pos, const int length,
-                     const int precision_bits, int* num_symbols, int* symbols) {
+void NormalizeCounts(int* counts, int* omit_pos, int length,
+                     int precision_bits, int* num_symbols, int* symbols) {
   BRUNSLI_DCHECK(precision_bits > 0);
   const int table_size = 1 << precision_bits;  // target sum / table size
   uint64_t total = 0;
@@ -127,9 +127,10 @@ void NormalizeCounts(int* counts, int* omit_pos, const int length,
   }
 }
 
-void EncodeCounts(const int* counts, const int omit_pos, const int num_symbols,
+bool EncodeCounts(const int* counts, const int omit_pos, const int num_symbols,
                   const int* symbols, Storage* storage) {
   int max_bits = 5;  // = 1 + Log2Floor(BRUNSLI_ANS_MAX_SYMBOLS - 1);
+  if (!storage->IsHealthy()) return false;
   if (num_symbols <= 2) {
     // Small tree marker to encode 1-2 symbols.
     WriteBits(1, 1, storage);
@@ -174,6 +175,7 @@ void EncodeCounts(const int* counts, const int omit_pos, const int num_symbols,
 
     // The logcount values are encoded with a static Huffman code.
     for (int i = 0; i < length; ++i) {
+      if (!storage->IsHealthy()) return false;
       WriteBits(kLogCountBitLengths[logcounts[i]],
                 kLogCountSymbols[logcounts[i]], storage);
     }
@@ -182,11 +184,13 @@ void EncodeCounts(const int* counts, const int omit_pos, const int num_symbols,
         int bitcount = GetPopulationCountPrecision(logcounts[i] - 1);
         int drop_bits = logcounts[i] - 1 - bitcount;
         BRUNSLI_CHECK((counts[i] & ((1 << drop_bits) - 1)) == 0);
+        if (!storage->IsHealthy()) return false;
         WriteBits(bitcount, (counts[i] >> drop_bits) - (1 << bitcount),
                   storage);
       }
     }
   }
+  return true;
 }
 
 double PopulationCost(const int* data, int total_count) {
@@ -210,12 +214,10 @@ double PopulationCost(const int* data, int total_count) {
       return 7;
     }
     ++length;
-    const uint64_t max0 =
-        (total * length) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
-    const uint64_t max1 =
-        (max0 * length) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
-    const uint64_t min_base =
-        (total + max0 + max1) >> uint64_t(BRUNSLI_ANS_LOG_TAB_SIZE);
+    const uint64_t table_bits = BRUNSLI_ANS_LOG_TAB_SIZE;
+    const uint64_t max0 = (total * length) >> table_bits;
+    const uint64_t max1 = (max0 * length) >> table_bits;
+    const uint64_t min_base = (total + max0 + max1) >> table_bits;
     total += min_base * count;
     const int64_t kFixBits = 32;
     const int64_t kFixOne = 1LL << kFixBits;

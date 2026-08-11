@@ -27,13 +27,21 @@ class Storage {
     return (pos + 7) >> 3;
   }
 
-  void AppendBytes(const uint8_t* src, size_t len);
+  BRUNSLI_NODISCARD bool AppendBytes(const uint8_t* src, size_t len);
+
+  BRUNSLI_NODISCARD bool IsHealthy() const {
+    return pos <= max_pos;
+  }
 
   uint8_t* const data;
   // Size of buffer in bytes.
   const size_t length;
   // Number of bits written.
   size_t pos;
+  // Position that should not be exceeded; actually it is 16 bytes less than
+  // the buffer size; this allows to write up to 64 bits between two Healthy()
+  // checks.
+  size_t max_pos;
 };
 
 /* This function writes bits into bytes in increasing addresses, and within
