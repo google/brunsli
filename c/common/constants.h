@@ -21,7 +21,7 @@ static const size_t kBrunsliMaxNumBlocks = 1ull << 21;
 
 // The maximum absolute value brunsli can encode is 2054 (8 values for direct
 // codes and num bits from 1 to 10, so a total of 8 + 2 + 4 + ... + 1024).
-static const int kBrunsliMaxDCAbsVal = 2054;
+static const int kBrunsliMaxCoeffAbsVal = 2054;
 
 // We use only the context map alphabet in brunsli, where the maximum alphabet
 // size is 256 + 16 = 272. (We can have 256 clusters and 16 run length codes).

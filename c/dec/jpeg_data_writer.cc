@@ -6,17 +6,19 @@
 
 #include <brunsli/jpeg_data_writer.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring> /* for memset, memcpy */
 #include <deque>
-#include <string>
+#include <utility>
 #include <vector>
 
 #include "../common/constants.h"
 #include <brunsli/jpeg_data.h>
 #include "../common/platform.h"
 #include <brunsli/types.h>
+#include "./output_chunk.h"
 #include "./serialization_state.h"
 #include "./state.h"
 #include "./state_internal.h"
@@ -503,6 +505,11 @@ bool EncodeInterMarkerData(const JPEGData& jpg, SerializationState* state) {
   return true;
 }
 
+bool CheckDcRange(coeff_t x) {
+  // Modern compilers are smart enough to make it a single branch.
+  return x >= -16384 && x <= 16383;
+}
+
 bool EncodeDCTBlockSequential(const coeff_t* coeffs,
                               const HuffmanCodeTable& dc_huff,
                               const HuffmanCodeTable& ac_huff,
@@ -510,7 +517,11 @@ bool EncodeDCTBlockSequential(const coeff_t* coeffs,
                               BitWriter* bw) {
   coeff_t temp2;
   coeff_t temp;
+  // Assumption: absolute Quantized DC Range: -16384 to +16383.
+  // Consequence: delta DC Range: -32767 to +32767.
+  // Thus negation of a negative number will not overflow.
   temp2 = coeffs[0];
+  if (!CheckDcRange(temp2)) return false;
   temp = temp2 - *last_dc_coeff;
   *last_dc_coeff = temp2;
   temp2 = temp;
@@ -525,10 +536,12 @@ bool EncodeDCTBlockSequential(const coeff_t* coeffs,
   }
   int r = 0;
   for (int k = 1; k < 64; ++k) {
-    if ((temp = coeffs[kJPEGNaturalOrder[k]]) == 0) {
+    temp = coeffs[kJPEGNaturalOrder[k]];
+    if (temp == 0) {
       r++;
       continue;
     }
+    BRUNSLI_DCHECK(std::abs(static_cast<int>(temp)) <= kBrunsliMaxCoeffAbsVal);
     if (temp < 0) {
       temp = -temp;
       temp2 = ~temp;
@@ -566,6 +579,7 @@ bool EncodeDCTBlockProgressive(const coeff_t* coeffs,
   coeff_t temp;
   if (Ss == 0) {
     temp2 = coeffs[0] >> Al;
+    if (!CheckDcRange(temp2)) return false;
     temp = temp2 - *last_dc_coeff;
     *last_dc_coeff = temp2;
     temp2 = temp;
@@ -585,7 +599,8 @@ bool EncodeDCTBlockProgressive(const coeff_t* coeffs,
   }
   int r = 0;
   for (int k = Ss; k <= Se; ++k) {
-    if ((temp = coeffs[kJPEGNaturalOrder[k]]) == 0) {
+    temp = coeffs[kJPEGNaturalOrder[k]];
+    if (temp == 0) {
       r++;
       continue;
     }

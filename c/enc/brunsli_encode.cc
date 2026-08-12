@@ -1103,7 +1103,7 @@ bool PredictDCCoeffs(State* state) {
       for (int x = 0; x < width; ++x) {
         int err =
             coeffs[0] - PredictWithAdaptiveMedian(coeffs, x, y, ac_stride);
-        if (std::abs(err) > kBrunsliMaxDCAbsVal) {
+        if (std::abs(err) > kBrunsliMaxCoeffAbsVal) {
           BRUNSLI_LOG_INFO() << "Invalid DC coefficient: " << coeffs[0]
                              << " after prediction: " << err << BRUNSLI_ENDL();
           return false;
