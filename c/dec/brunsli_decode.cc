@@ -14,8 +14,10 @@
 #include <vector>
 
 #include <brotli/decode.h>
+#include "../common/ans_params.h"
 #include "../common/constants.h"
 #include "../common/context.h"
+#include "../common/distributions.h"
 #include <brunsli/jpeg_data.h>
 #include "../common/lehmer_code.h"
 #include "../common/platform.h"
@@ -29,8 +31,6 @@
 #include "./brunsli_input.h"
 #include "./context_map_decode.h"
 #include "./histogram_decode.h"
-#include "./huffman_table.h"
-#include <brunsli/jpeg_data_writer.h>
 #include "./state.h"
 #include "./state_internal.h"
 
@@ -1271,6 +1271,17 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
   return (jpg->version == kFallbackVersion) ? Stage::FALLBACK : Stage::SECTION;
 }
 
+int8_t DecodeBrotliWindowBits(uint8_t header) {
+  uint8_t a = header & 1;
+  uint8_t b = (header >> 1) & 7;
+  uint8_t c = (header >> 4) & 7;
+  if (a == 0) return 16;
+  if (b != 0) return 17 + b;
+  if (c == 0) return 17;
+  if (c == 1) return -1;
+  return 8 + c;
+}
+
 static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {
   InternalState& s = *state->internal;
   MetadataState& ms = s.metadata;
@@ -1304,12 +1315,26 @@ static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {
     // TODO(eustas): ms.metadata_size should be limited to avoid "zip-bombs".
     if (IsOutOfSectionBounds(state)) return BRUNSLI_INVALID_BRN;
     if (RemainingSectionLength(state) == 0) return BRUNSLI_INVALID_BRN;
-    ms.brotli = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
-    if (ms.brotli == nullptr) return BRUNSLI_DECOMPRESSION_ERROR;
+    if (!s.shallow_metadata) {
+      ms.brotli = BrotliDecoderCreateInstance(nullptr, nullptr, nullptr);
+      if (ms.brotli == nullptr) return BRUNSLI_DECOMPRESSION_ERROR;
+    }
     ms.decompression_stage = MetadataDecompressionStage::DECOMPRESSING;
   }
 
   if (ms.decompression_stage == MetadataDecompressionStage::DECOMPRESSING) {
+    if (s.shallow_metadata) {
+      if (!CheckCanReadByte(state)) {
+        return BRUNSLI_NOT_ENOUGH_DATA;
+      }
+      uint8_t data[1];
+      data[0] = ReadByte(state);
+      s.metadata_brotli_lgwin = DecodeBrotliWindowBits(data[0]);
+      BRUNSLI_DCHECK(ms.brotli == nullptr);
+      ms.decompression_stage = MetadataDecompressionStage::DONE;
+      return (s.metadata_brotli_lgwin < 0) ? BRUNSLI_INVALID_BRN : BRUNSLI_OK;
+    }
+
     // Free Brotli decoder and return result
     const auto finish_decompression = [&ms] (BrunsliStatus result) {
       BRUNSLI_DCHECK(ms.brotli != nullptr);
@@ -2474,9 +2499,14 @@ size_t BrunsliEstimateDecoderPeakMemoryUsage(const uint8_t* data,
   State state;
   state.data = data;
   state.len = len;
-  state.skip_tags = ~(1u << kBrunsliHistogramDataTag);
+  // Only (shallowly) parse these sections.
+  uint8_t shallow_sections =
+      (1u << kBrunsliHistogramDataTag) | (1u << kBrunsliMetaDataTag);
+  // Skip all other sections.
+  state.skip_tags = ~shallow_sections;
   InternalState& s = *state.internal;
   s.shallow_histograms = true;
+  s.shallow_metadata = true;
 
   JPEGData jpg;
   BrunsliStatus status = internal::dec::ProcessJpeg(&state, &jpg);
@@ -2496,6 +2526,17 @@ size_t BrunsliEstimateDecoderPeakMemoryUsage(const uint8_t* data,
   size_t histogram_size = s.num_histograms * sizeof(ANSDecodingData);
   size_t decode_peak = context_map_size + histogram_size + component_state_size;
   size_t jpeg_writer_size = (1u << 17u) + (1u << 16u) * sizeof(int32_t);
+  size_t metadata_size = s.metadata.metadata_size;
+  int8_t brotli_lgwin = s.metadata_brotli_lgwin;
+  size_t brotli_log_window_size =
+      std::max<size_t>(10, std::min<size_t>(24, brotli_lgwin));
+  out_size += metadata_size;
+  // TODO(eustas): at the time of serialization there are two copies of
+  // metadata; it is possible to avoid this, if that becomes a problem.
+  jpeg_data_size += metadata_size;
+  // TODO(eustas): also account for other brotli decoder memory usage
+  //               (~1.5MiB in worst case, so not a big deal).
+  decode_peak += (1 << brotli_log_window_size);
   return (out_size + jpeg_data_size + std::max(decode_peak, jpeg_writer_size));
 }
 

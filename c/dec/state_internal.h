@@ -9,7 +9,6 @@
 
 #include <array>
 #include <memory>
-#include <string>
 #include <vector>
 
 #include "../common/context.h"
@@ -21,7 +20,7 @@
 #include "./bit_reader.h"
 #include "./brunsli_input.h"
 #include "./huffman_decode.h"
-#include <brunsli/jpeg_data_writer.h>
+#include "./huffman_table.h"
 #include "./serialization_state.h"
 #include "./state.h"
 
@@ -170,7 +169,7 @@ struct MetadataState {
   size_t stage = READ_MARKER;
 
   BrotliDecoderStateStruct* brotli = nullptr;
-  size_t metadata_size;
+  size_t metadata_size = 0;
   size_t decompressed_size = 0;
   BrunsliStatus result = BRUNSLI_DECOMPRESSION_ERROR;
   MetadataDecompressionStage decompression_stage =
@@ -354,6 +353,8 @@ struct InternalState {
 
   // For "estimate peak memory".
   bool shallow_histograms = false;
+  bool shallow_metadata = false;
+  int8_t metadata_brotli_lgwin = -1;  // -1 means an error / not set.
   size_t num_contexts = 0;
   size_t num_histograms = 0;
 
