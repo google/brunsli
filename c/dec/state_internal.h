@@ -112,7 +112,16 @@ struct FallbackState {
     DONE
   };
 
+  enum class Policy {
+    // Copy reference to external data; might become dangling reference.
+    // Also requires that input is complete (one-shot decoding).
+    BORROW,
+    // Copy contents to internal storage.
+    COPY
+  };
+
   size_t stage = READ_TAG;
+  Policy policy = Policy::COPY;
 
   // Storage for original JPEG contents.
   std::vector<uint8_t> storage;

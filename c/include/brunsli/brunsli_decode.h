@@ -52,6 +52,7 @@ class BrunsliDecoder {
     DONE,
   };
 
+  // Implicit contract: if result is not ERROR, then all input is consumed.
   Status Decode(size_t* available_in, const uint8_t** next_in,
                 size_t* available_out, uint8_t** next_out);
 

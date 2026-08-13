@@ -2036,28 +2036,29 @@ static Stage DecodeOriginalJpg(State* state, JPEGData* jpg) {
           // TODO(eustas): dcheck s.section.remaining != 0
           return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
         }
-        // Check if it is possible to avoid copy.
         const uint8_t* src = state->data + state->pos;
-        if (fs.storage.empty()) {
-          if (chunk_size >= jpg->original_jpg_size) {
-            jpg->original_jpg = src;
-            SkipBytes(state, jpg->original_jpg_size);
+        if (fs.policy == FallbackState::Policy::BORROW) {
+          // In BORROW mode, we require input to be complete.
+          if (chunk_size < jpg->original_jpg_size) {
+            return Fail(state, BRUNSLI_INVALID_BRN);
+          }
+          jpg->original_jpg = src;
+          SkipBytes(state, jpg->original_jpg_size);
+          fs.stage = FallbackState::DONE;
+          break;
+        } else {  // FallbackState::Policy::COPY
+          size_t remaining = jpg->original_jpg_size - fs.storage.size();
+          size_t to_copy = std::min(chunk_size, remaining);
+          fs.storage.insert(fs.storage.cend(), src, src + to_copy);
+          SkipBytes(state, to_copy);
+          if (fs.storage.size() == jpg->original_jpg_size) {
+            jpg->original_jpg = fs.storage.data();
             fs.stage = FallbackState::DONE;
             break;
           }
+          // TODO(eustas): dcheck GetBytesAvailable(state) == 0
+          return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
         }
-        // Otherwise, copy input.
-        size_t remaining = jpg->original_jpg_size - fs.storage.size();
-        size_t to_copy = std::min(chunk_size, remaining);
-        fs.storage.insert(fs.storage.cend(), src, src + to_copy);
-        SkipBytes(state, to_copy);
-        if (fs.storage.size() == jpg->original_jpg_size) {
-          jpg->original_jpg = fs.storage.data();
-          fs.stage = FallbackState::DONE;
-          break;
-        }
-        // TODO(eustas): dcheck GetBytesAvailable(state) == 0
-        return Fail(state, BRUNSLI_NOT_ENOUGH_DATA);
       }
 
       default: return Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
@@ -2488,6 +2489,8 @@ BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, const size_t len,
   State state;
   state.data = data;
   state.len = len;
+  state.internal->fallback.policy =
+      internal::dec::FallbackState::Policy::BORROW;
 
   return internal::dec::ProcessJpeg(&state, jpg);
 }
@@ -2507,6 +2510,7 @@ size_t BrunsliEstimateDecoderPeakMemoryUsage(const uint8_t* data,
   InternalState& s = *state.internal;
   s.shallow_histograms = true;
   s.shallow_metadata = true;
+  s.fallback.policy = internal::dec::FallbackState::Policy::BORROW;
 
   JPEGData jpg;
   BrunsliStatus status = internal::dec::ProcessJpeg(&state, &jpg);
