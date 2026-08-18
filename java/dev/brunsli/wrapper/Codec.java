@@ -9,14 +9,12 @@ package dev.brunsli.wrapper;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 
-/**
- * Brunsli codec wrapper.
- */
+/** Brunsli codec wrapper. */
 public class Codec {
   /**
    * Decodes Brunsli stream to JPEG stream.
    *
-   * Input data is accessed without copying.
+   * <p>Input data is accessed without copying.
    *
    * @param data direct ByteBuffer containing Brunsli stream
    * @return JPEG stream
@@ -35,7 +33,7 @@ public class Codec {
   /**
    * Decodes Brunsli stream to JPEG stream.
    *
-   * Input is wrapped (copied) into a direct ByteBuffer
+   * <p>Input is wrapped (copied) into a direct ByteBuffer
    *
    * @param data Brunsli stream
    * @return JPEG stream
@@ -49,7 +47,7 @@ public class Codec {
   /**
    * Encodes JPEG stream to Brunsli stream.
    *
-   * Input data is accessed without copying.
+   * <p>Input data is accessed without copying.
    *
    * @param data direct ByteBuffer containing JPEG stream
    * @return Brunsli stream
@@ -68,7 +66,7 @@ public class Codec {
   /**
    * Encodes JPEG stream to Brunsli stream.
    *
-   * Input is wrapped (copied) into a direct ByteBuffer
+   * <p>Input is wrapped (copied) into a direct ByteBuffer
    *
    * @param data JPEG stream
    * @return Brunsli stream

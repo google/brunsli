@@ -4,7 +4,11 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brotli/decode.h>
 #include <brunsli/brunsli_decode.h>
+#include <brunsli/jpeg_data.h>
+#include <brunsli/status.h>
+#include <brunsli/types.h>
 
 #include <algorithm>
 #include <cstdlib>
@@ -13,18 +17,14 @@
 #include <string>
 #include <vector>
 
-#include <brotli/decode.h>
 #include "../common/ans_params.h"
 #include "../common/constants.h"
 #include "../common/context.h"
 #include "../common/distributions.h"
-#include <brunsli/jpeg_data.h>
 #include "../common/lehmer_code.h"
 #include "../common/platform.h"
 #include "../common/predict.h"
 #include "../common/quant_matrix.h"
-#include <brunsli/status.h>
-#include <brunsli/types.h>
 #include "./ans_decode.h"
 #include "./arith_decode.h"
 #include "./bit_reader.h"
@@ -288,7 +288,8 @@ bool ProcessMetaData(const uint8_t* data, size_t len, MetadataState* state,
         continue;
       }
 
-      default: return false;
+      default:
+        return false;
     }
   }
   return true;
@@ -438,7 +439,7 @@ BrunsliStatus DecodeScanInfo(State* state, JPEGData* jpg) {
   JpegInternalsState& js = s.internals;
   BrunsliBitReader* br = &js.br;
 
-  const auto maybe_add_zero_run = [&js, jpg] () {
+  const auto maybe_add_zero_run = [&js, jpg]() {
     if (js.last_num > 0) {
       JPEGScanInfo::ExtraZeroRunInfo info;
       info.block_idx = js.last_block_idx;
@@ -535,7 +536,8 @@ BrunsliStatus DecodeScanInfo(State* state, JPEGData* jpg) {
         js.stage = JpegInternalsState::READ_SCAN_ZERO_RUN_CONTINUATION;
         continue;
       }
-      default: return BRUNSLI_DECOMPRESSION_ERROR;
+      default:
+        return BRUNSLI_DECOMPRESSION_ERROR;
     }
   }
 }
@@ -1076,9 +1078,7 @@ static BrunsliStatus EnterSection(State* state, SectionState* section) {
   return BRUNSLI_OK;
 }
 
-static void LeaveSection(SectionState* section) {
-  section->is_active = false;
-}
+static void LeaveSection(SectionState* section) { section->is_active = false; }
 
 static bool IsOutOfSectionBounds(State* state) {
   return state->pos > state->internal->section.projected_end;
@@ -1263,7 +1263,8 @@ Stage DecodeHeader(State* state, JPEGData* jpg) {
         break;
       }
 
-      default: return Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
+      default:
+        return Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
     }
   }
 
@@ -1305,8 +1306,7 @@ static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {
       ms.decompression_stage = MetadataDecompressionStage::DONE;
       return ok ? BRUNSLI_OK : BRUNSLI_INVALID_BRN;
     }
-    ms.decompression_stage =
-        MetadataDecompressionStage::READ_LENGTH;
+    ms.decompression_stage = MetadataDecompressionStage::READ_LENGTH;
   }
 
   if (ms.decompression_stage == MetadataDecompressionStage::READ_LENGTH) {
@@ -1336,7 +1336,7 @@ static BrunsliStatus DecodeMetaDataSection(State* state, JPEGData* jpg) {
     }
 
     // Free Brotli decoder and return result
-    const auto finish_decompression = [&ms] (BrunsliStatus result) {
+    const auto finish_decompression = [&ms](BrunsliStatus result) {
       BRUNSLI_DCHECK(ms.brotli != nullptr);
       BrotliDecoderDestroyInstance(ms.brotli);
       ms.brotli = nullptr;
@@ -1647,7 +1647,8 @@ static BrunsliStatus DecodeJPEGInternalsSection(State* state, JPEGData* jpg) {
         continue;
       }
 
-      default: { /* no-op */ }
+      default: { /* no-op */
+      }
     }
     break;  // no matching stage has been found; exit the loop.
   }
@@ -1791,7 +1792,8 @@ static BrunsliStatus DecodeQuantDataSection(State* state, JPEGData* jpg) {
         continue;
       }
 
-      default: { /* no-op */ }
+      default: { /* no-op */
+      }
     }
     break;  // no matching stage has been found; exit the loop.
   }
@@ -1803,7 +1805,7 @@ static BrunsliStatus DecodeQuantDataSection(State* state, JPEGData* jpg) {
     }
     JPEGComponent* c = &jpg->components[qs.i];
     if (!BrunsliBitReaderCanRead(br, 2)) {
-       return suspend_bit_reader(BRUNSLI_NOT_ENOUGH_DATA);
+      return suspend_bit_reader(BRUNSLI_NOT_ENOUGH_DATA);
     }
     c->quant_idx = BrunsliBitReaderRead(br, 2);
     if (c->quant_idx >= jpg->quant.size()) {
@@ -2061,7 +2063,8 @@ static Stage DecodeOriginalJpg(State* state, JPEGData* jpg) {
         }
       }
 
-      default: return Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
+      default:
+        return Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
     }
   }
 
@@ -2112,7 +2115,8 @@ static Stage ParseSection(State* state) {
         continue;
       }
 
-      default: return Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
+      default:
+        return Fail(state, BRUNSLI_DECOMPRESSION_ERROR);
     }
   }
 

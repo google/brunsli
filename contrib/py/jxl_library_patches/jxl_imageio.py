@@ -9,9 +9,9 @@ This registers a file format that will call an external converter which will
 (securely) convert JPEG-XL to a temporary JPEG file behind the scenes.
 """
 
-from . import jxl_utils
 import imageio
 import imageio.core
+from . import jxl_utils
 
 
 # Extending imageio with plugins:
@@ -20,9 +20,11 @@ class _JpegXLFormat(imageio.core.Format):
   """Jpeg-XL image format. Currently only supports recompressed JPEG."""
 
   def _can_read(self, request):
-    return (request.mode[1] in (self.modes + '?') and
-            request.firstbytes.startswith(
-                jxl_utils.JPEGXL_RECOMPRESSED_JPEG_HEADER))
+    return request.mode[1] in (
+        self.modes + '?'
+    ) and request.firstbytes.startswith(
+        jxl_utils.JPEGXL_RECOMPRESSED_JPEG_HEADER
+    )
 
   def _can_write(self, request):
     return False
@@ -47,7 +49,8 @@ class _JpegXLFormat(imageio.core.Format):
         raise IndexError('Image index out of range: %s' % (index,))
       metadata = {}
       data = jxl_utils.call_with_jxl_filename_arg1_replaced_by_temp_jpeg_file(
-          imageio.imread, self._filename)
+          imageio.imread, self._filename
+      )
       return data, metadata
 
     def _get_meta_data(self, index):
@@ -80,12 +83,14 @@ def register_jxl_support(imageio_module):
   # and defining a closure-class, but the situations when this fails are so
   # obscure that this should not be an issue for easing the transition into
   # Jpeg-XL.
-  assert id(imageio_module) == id(imageio), (
-      'User-passed `imageio` module differs from `import imageio` result.')
+  assert id(imageio_module) == id(
+      imageio
+  ), 'User-passed `imageio` module differs from `import imageio` result.'
   imageio_module.formats.add_format(
       _JpegXLFormat(
           'JPEG-XL',
           'JPEG-XL (partial support; reads recompressed JPEG only.)',
           '.jxl',
           'iI',
-      ))
+      )
+  )

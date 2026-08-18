@@ -25,10 +25,11 @@ not equal to the input size is considered an error. It will pass on the outdata
 to outfun.
 */
 int EncodeBrunsli(size_t insize, const unsigned char* in, void* outdata,
-    size_t (*outfun)(void* outdata, const unsigned char* buf, size_t size));
+                  size_t (*outfun)(void* outdata, const unsigned char* buf,
+                                   size_t size));
 
 #if defined(__cplusplus) || defined(c_plusplus)
-}  /* extern "C" */
+} /* extern "C" */
 #endif
 
-#endif  /* BRUNSLI_ENC_ENCODE_H_ */
+#endif /* BRUNSLI_ENC_ENCODE_H_ */

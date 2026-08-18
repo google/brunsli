@@ -6,12 +6,13 @@
 
 #include "./histogram_encode.h"
 
+#include <brunsli/types.h>
+
 #include <algorithm>
 
 #include "../common/ans_params.h"
 #include "../common/histogram.h"
 #include "../common/platform.h"
-#include <brunsli/types.h>
 #include "./fast_log.h"
 #include "./write_bits.h"
 
@@ -84,8 +85,8 @@ bool RebalanceHistogram(const float* targets, int max_symbol, int table_size,
   return counts[remainder_pos] > 0;
 }
 
-void NormalizeCounts(int* counts, int* omit_pos, int length,
-                     int precision_bits, int* num_symbols, int* symbols) {
+void NormalizeCounts(int* counts, int* omit_pos, int length, int precision_bits,
+                     int* num_symbols, int* symbols) {
   BRUNSLI_DCHECK(precision_bits > 0);
   const int table_size = 1 << precision_bits;  // target sum / table size
   uint64_t total = 0;

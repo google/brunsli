@@ -9,8 +9,9 @@
 #ifndef BRUNSLI_ENC_WRITE_BITS_H_
 #define BRUNSLI_ENC_WRITE_BITS_H_
 
-#include "../common/platform.h"
 #include <brunsli/types.h>
+
+#include "../common/platform.h"
 
 namespace brunsli {
 
@@ -23,15 +24,11 @@ class Storage {
    */
   ~Storage();
 
-  size_t GetBytesUsed() const {
-    return (pos + 7) >> 3;
-  }
+  size_t GetBytesUsed() const { return (pos + 7) >> 3; }
 
   BRUNSLI_NODISCARD bool AppendBytes(const uint8_t* src, size_t len);
 
-  BRUNSLI_NODISCARD bool IsHealthy() const {
-    return pos <= max_pos;
-  }
+  BRUNSLI_NODISCARD bool IsHealthy() const { return pos <= max_pos; }
 
   uint8_t* const data;
   // Size of buffer in bytes.

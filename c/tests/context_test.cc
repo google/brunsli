@@ -6,8 +6,9 @@
 
 #include "../common/context.h"
 
-#include "gtest/gtest.h"
 #include <brunsli/types.h>
+
+#include "gtest/gtest.h"
 
 namespace brunsli {
 

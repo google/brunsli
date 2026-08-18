@@ -15,9 +15,9 @@
 namespace brunsli {
 
 enum JpegReadMode {
-  JPEG_READ_HEADER,   // only basic headers
-  JPEG_READ_TABLES,   // headers and tables (quant, Huffman, ...)
-  JPEG_READ_ALL,      // everything
+  JPEG_READ_HEADER,  // only basic headers
+  JPEG_READ_TABLES,  // headers and tables (quant, Huffman, ...)
+  JPEG_READ_ALL,     // everything
 };
 
 // Parses the JPEG stream contained in data[*pos ... len) and fills in *jpg with

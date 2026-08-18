@@ -7,12 +7,13 @@
 #ifndef BRUNSLI_COMMON_CONTEXT_H_
 #define BRUNSLI_COMMON_CONTEXT_H_
 
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
+
 #include <vector>
 
 #include "./distributions.h"
-#include <brunsli/jpeg_data.h>
 #include "./platform.h"
-#include <brunsli/types.h>
 
 namespace brunsli {
 
@@ -49,6 +50,7 @@ static const uint8_t kNumNonzeroBuckets = 11;
 
 static const int kNumSchemes = 7;
 
+// clang-format off
 static const uint8_t kFreqContext[kNumSchemes][64] = {
     {
         0,
@@ -93,6 +95,7 @@ static const uint8_t kFreqContext[kNumSchemes][64] = {
         48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63,
     },
 };
+// clang-format on
 
 static const uint16_t kNumNonzeroContext[kNumSchemes][64] = {
     {0, 1, 1, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5,
@@ -136,6 +139,7 @@ static const uint16_t kNumNonzeroContextSkip[kNumSchemes] = {8,   15,  31, 61,
  *  - 1: context should be calculated using ACPredictContextRow
  *  - 2: context should be calculated using ACPredictContextCol
  */
+// clang-format off
 static const uint8_t kContextAlgorithm[128] = {
     // JPEG XL layout
     0, 1, 1, 1, 1, 0, 0, 0,  //
@@ -156,6 +160,7 @@ static const uint8_t kContextAlgorithm[128] = {
     2, 0, 0, 0, 0, 0, 0, 0,  //
     2, 0, 0, 0, 0, 0, 0, 0,
 };
+// clang-format on
 
 inline uint16_t ZeroDensityContext(size_t nonzeros_left, size_t k,
                                    size_t bits) {
@@ -230,7 +235,7 @@ inline void ACPredictContext(int64_t p, size_t* avg_ctx, size_t* sgn) {
     ctx = kMaxAverageContext;
   } else {
     // 0 -> 0, 1 -> 1, 2..3 -> 2, 4..7 -> 3, etc.
-    ctx = Log2FloorNonZero(2 * static_cast<uint32_t>(p)+ 1);
+    ctx = Log2FloorNonZero(2 * static_cast<uint32_t>(p) + 1);
   }
   *avg_ctx = ctx;
   *sgn = kMaxAverageContext + multiplier * ctx;
@@ -259,7 +264,7 @@ inline void ACPredictContextCol(const coeff_t* prev, const coeff_t* cur,
 }
 
 inline void ACPredictContextRow(const coeff_t* prev, const coeff_t* cur,
-                               const int* mult, size_t* avg_ctx, size_t* sgn) {
+                                const int* mult, size_t* avg_ctx, size_t* sgn) {
   coeff_t terms[8];
   terms[0] = 0;
   terms[1] = cur[8] + prev[8];

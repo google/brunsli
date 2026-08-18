@@ -6,10 +6,11 @@
 
 #include "./context_map_decode.h"
 
-#include "../common/constants.h"
-#include "../common/platform.h"
 #include <brunsli/status.h>
 #include <brunsli/types.h>
+
+#include "../common/constants.h"
+#include "../common/platform.h"
 #include "./bit_reader.h"
 #include "./huffman_decode.h"
 

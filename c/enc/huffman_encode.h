@@ -8,6 +8,7 @@
 #define BRUNSLI_ENC_HUFFMAN_ENCODE_H_
 
 #include <brunsli/types.h>
+
 #include "./write_bits.h"
 
 namespace brunsli {

@@ -4,13 +4,12 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brunsli/brunsli_decode.h>
 #include <brunsli/decode.h>
-
 #include <brunsli/jpeg_data.h>
+#include <brunsli/jpeg_data_writer.h>
 #include <brunsli/status.h>
 #include <brunsli/types.h>
-#include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data_writer.h>
 
 /* C API for brunsli encoder */
 

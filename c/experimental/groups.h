@@ -9,13 +9,15 @@
 #ifndef BRUNSLI_EXPERIMENTAL_GROUPS_H_
 #define BRUNSLI_EXPERIMENTAL_GROUPS_H_
 
-#include <atomic>
-#include <functional>
-#include <future>  // NOLINT(build/c++11)
-#include <mutex>  // NOLINT(build/c++11)
-
 #include <brunsli/jpeg_data.h>
 #include <brunsli/types.h>
+
+#include <atomic>
+#include <condition_variable>  // NOLINT(build/c++11)
+#include <functional>
+#include <future>  // NOLINT(build/c++11)
+#include <mutex>   // NOLINT(build/c++11)
+#include <vector>
 
 namespace brunsli {
 

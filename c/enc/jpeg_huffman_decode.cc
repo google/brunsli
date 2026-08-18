@@ -28,16 +28,16 @@ void BuildJpegHuffmanTable(const int* count, const int* symbols,
                            HuffmanTableEntry* lut) {
   HuffmanTableEntry code;    // current table entry
   HuffmanTableEntry* table;  // next available space in table
-  int len;         // current code length
-  int idx;         // symbol index
-  int key;         // prefix code
-  int reps;        // number of replicate key values in current table
-  int low;         // low bits for current root entry
-  int table_bits;  // key length of current table
-  int table_size;  // size of current table
+  int len;                   // current code length
+  int idx;                   // symbol index
+  int key;                   // prefix code
+  int reps;                  // number of replicate key values in current table
+  int low;                   // low bits for current root entry
+  int table_bits;            // key length of current table
+  int table_size;            // size of current table
 
   // Make a local copy of the input bit length histogram.
-  int tmp_count[kJpegHuffmanMaxBitLength + 1] = { 0 };
+  int tmp_count[kJpegHuffmanMaxBitLength + 1] = {0};
   int total_count = 0;
   for (len = 1; len <= kJpegHuffmanMaxBitLength; ++len) {
     tmp_count[len] = count[len];
@@ -76,8 +76,8 @@ void BuildJpegHuffmanTable(const int* count, const int* symbols,
   table += table_size;
   table_size = 0;
   low = 0;
-  for (len = kJpegHuffmanRootTableBits + 1;
-       len <= kJpegHuffmanMaxBitLength; ++len) {
+  for (len = kJpegHuffmanRootTableBits + 1; len <= kJpegHuffmanMaxBitLength;
+       ++len) {
     for (; tmp_count[len] > 0; --tmp_count[len]) {
       // Start a new sub-table if the previous one is full.
       if (low >= table_size) {

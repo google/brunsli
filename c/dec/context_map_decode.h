@@ -7,10 +7,10 @@
 #ifndef BRUNSLI_DEC_CONTEXT_MAP_DECODE_H_
 #define BRUNSLI_DEC_CONTEXT_MAP_DECODE_H_
 
-#include <vector>
-
 #include <brunsli/status.h>
 #include <brunsli/types.h>
+
+#include <vector>
 
 namespace brunsli {
 

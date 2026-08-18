@@ -6,11 +6,12 @@
 
 #include "../common/lehmer_code.h"
 
-#include <vector>
+#include <brunsli/types.h>
+
 #include <utility>
+#include <vector>
 
 #include "gtest/gtest.h"
-#include <brunsli/types.h>
 
 namespace brunsli {
 

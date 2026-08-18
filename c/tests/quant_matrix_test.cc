@@ -6,11 +6,10 @@
 
 #include "../common/quant_matrix.h"
 
-#include <vector>
-#include <utility>
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
 
 #include "gtest/gtest.h"
-#include <brunsli/types.h>
 
 namespace brunsli {
 

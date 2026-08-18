@@ -21,7 +21,6 @@ import tempfile
 
 from . import jxl_utils
 
-
 # Default value for JXL_DEBUG debug mode env-variable.
 # _DEFAULT_DEBUG_ENV = '1'
 _DEFAULT_DEBUG_ENV = '0'
@@ -62,19 +61,23 @@ def _get_opencv_wrapped_imread(cv2_imread, debug=False):
   wrapper = _patches_by_pyobj_id.get(id_imread)
   if wrapper:
     return wrapper
+
   # Otherwise, there was not yet a wrapper-function. Create one.
   def imread(filename, **kwargs):  # Has same name as replaced function.
     """[Docstring will get replaced]."""
     # For now, this wrapper does nothing - it just wraps the original imread().
     if debug:
       sys.stderr.write(
-          'DDD wrapped OpenCV imread(filename=%r, **kwargs=%r)\n' % (
-              filename, kwargs))
+          'DDD wrapped OpenCV imread(filename=%r, **kwargs=%r)\n'
+          % (filename, kwargs)
+      )
     if jxl_utils.is_jpegxl_recompressed_jpeg_file(filename):
       return jxl_utils.call_with_jxl_filename_arg1_replaced_by_temp_jpeg_file(
-          cv2_imread, filename, **kwargs)
+          cv2_imread, filename, **kwargs
+      )
     else:
       return cv2_imread(filename, **kwargs)
+
   # We even fake the docstring.
   imread.__doc__ = cv2_imread.__doc__
   # Make both the old and the new function point to the wrapper in the global
@@ -105,8 +108,10 @@ def _opencv_try_patch_modules(debug=False):
     # for its own cv2.imload().
     mdict['imread'] = _get_opencv_wrapped_imread(module.imread, debug=debug)
     if debug:
-      print('Patched JPEG-XL support into OpenCV module imported as %r.' % (
-          module_name,))
+      print(
+          'Patched JPEG-XL support into OpenCV module imported as %r.'
+          % (module_name,)
+      )
 
 
 ### imageio ###
@@ -129,10 +134,13 @@ def _imageio_try_patch_modules(debug=False):
     # We only load the patching code if the user actually has 'imageio'.
     # We could not even import-at-top this otherwise.
     from . import jxl_imageio  # pylint:disable=g-import-not-at-top
+
     jxl_imageio.register_jxl_support(module)
     if debug:
-      print('Patched JPEG-XL support into imageio module imported as %r.' % (
-          module_name,))
+      print(
+          'Patched JPEG-XL support into imageio module imported as %r.'
+          % (module_name,)
+      )
 
 
 ### PIL / Pillow ###
@@ -155,10 +163,13 @@ def _pil_pillow_try_patch_modules(debug=False):
     # We only load the patching code if the user actually has PIL/Pillow.
     # We could not even import-at-top this otherwise.
     from . import jxl_pillow  # pylint:disable=g-import-not-at-top
+
     jxl_pillow.register_jxl_support(module)
     if debug:
-      print('Patched JPEG-XL support into PIL/Pillow module imported as %r.' % (
-          module_name,))
+      print(
+          'Patched JPEG-XL support into PIL/Pillow module imported as %r.'
+          % (module_name,)
+      )
 
 
 ### PythonMagick ###
@@ -180,11 +191,13 @@ def _pythonmagick_try_patch_modules(debug=False):
     # We only load the patching code if the user actually has that module.
     # We could not even import-at-top this otherwise.
     from . import jxl_pythonmagick  # pylint:disable=g-import-not-at-top
+
     jxl_pythonmagick.add_jxl_support(module)
     if debug:
       print(
-          'Patched JPEG-XL support into PythonMagick module imported as %r.' % (
-              module_name,))
+          'Patched JPEG-XL support into PythonMagick module imported as %r.'
+          % (module_name,)
+      )
 
 
 ######
@@ -193,15 +206,18 @@ def _pythonmagick_try_patch_modules(debug=False):
 def _try_patch_all(debug=False):
   """Scans for image-processing modules and patches in JPEG XL support."""
   if not jxl_utils.can_call_converter():
-    sys.exit('Cannot call the JPEG-XL-to-JPEG converter. '
-             'Please setenv the BIN_JPEG_FROM_JXL variable.')
+    sys.exit(
+        'Cannot call the JPEG-XL-to-JPEG converter. '
+        'Please setenv the BIN_JPEG_FROM_JXL variable.'
+    )
   # `matplotlib` needs special handling: matplotlib.pyplot imports PIL and works
   # as-is, but matplotlib.image has native support for PNG only and on-demand
   # imports PIL as needed, e.g. for jpeg. We address this by loading PIL
   # straightaway if we find that matplotlib.image has been loaded. Afterwards,
   # we patch up all modules (including PIL).
-  if any(m.__name__ == _MATPLOTLIB_IMAGE_SELF_NAME
-         for m in sys.modules.values()):
+  if any(
+      m.__name__ == _MATPLOTLIB_IMAGE_SELF_NAME for m in sys.modules.values()
+  ):
     # Just make sure the PIL image module gets entered into sys.modules.
     # It is actually OK to do this even if we are not quite sure that
     # the module named as if it were matplotlib.image actually is that module.

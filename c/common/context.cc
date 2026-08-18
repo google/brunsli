@@ -6,8 +6,9 @@
 
 #include "./context.h"
 
-#include "./platform.h"
 #include <brunsli/types.h>
+
+#include "./platform.h"
 
 namespace brunsli {
 
@@ -15,8 +16,7 @@ static const double kSqrt2 = 1.414213562;
 static const int kSqrt2FixedPoint =
     static_cast<int>(kSqrt2 * kACPredictPrecision);
 
-void ComputeACPredictMultipliers(const int* quant,
-                                 int* mult_row,
+void ComputeACPredictMultipliers(const int* quant, int* mult_row,
                                  int* mult_col) {
   for (size_t y = 0; y < 8; ++y) {
     for (size_t x = 0; x < 8; ++x) {
@@ -46,15 +46,12 @@ void ComponentStateDC::InitAll() {
 // ComponentState
 
 static const uint8_t kInitProb[64] = {
-  // First probability (dc) and last of this table are unused.
-  228, 216, 216, 195, 192, 189, 182, 184,
-  179, 176, 171, 168, 166, 159, 156, 151,
-  151, 150, 150, 146, 144, 138, 138, 137,
-  135, 131, 127, 126, 124, 123, 124, 123,
-  122, 121, 118, 117, 114, 115, 116, 116,
-  115, 115, 114, 111, 111, 111, 112, 111,
-  110, 110, 110, 111, 111, 114, 110, 111,
-  112, 113, 116, 120, 126, 131, 147, 160,
+    // First probability (dc) and last of this table are unused.
+    228, 216, 216, 195, 192, 189, 182, 184, 179, 176, 171, 168, 166,
+    159, 156, 151, 151, 150, 150, 146, 144, 138, 138, 137, 135, 131,
+    127, 126, 124, 123, 124, 123, 122, 121, 118, 117, 114, 115, 116,
+    116, 115, 115, 114, 111, 111, 111, 112, 111, 110, 110, 110, 111,
+    111, 114, 110, 111, 112, 113, 116, 120, 126, 131, 147, 160,
 };
 
 static const uint8_t

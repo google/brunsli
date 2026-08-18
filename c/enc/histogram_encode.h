@@ -24,8 +24,8 @@ static const int kMaxNumSymbolsForSmallCode = 4;
 // Each count will all be rounded to multiples of
 // 1 << GetPopulationCountPrecision(count), except possibly for one. The index
 // of that count will be stored in *omit_pos.
-void NormalizeCounts(int* counts, int* omit_pos, int length,
-                    int precision_bits, int* num_symbols, int* symbols);
+void NormalizeCounts(int* counts, int* omit_pos, int length, int precision_bits,
+                     int* num_symbols, int* symbols);
 
 // Stores a histogram in counts[0 .. BRUNSLI_ANS_MAX_SYMBOLS) to the bit-stream
 // where the sum of all population counts is BRUNSLI_ANS_TAB_SIZE and the number

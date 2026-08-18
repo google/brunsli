@@ -6,11 +6,12 @@
 
 #include "./lehmer_code.h"
 
+#include <brunsli/types.h>
+
 #include <algorithm>
 #include <vector>
 
 #include "./platform.h"
-#include <brunsli/types.h>
 
 namespace brunsli {
 

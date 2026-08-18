@@ -4,12 +4,12 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include <string>
-
 #include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data_writer.h>
 #include <brunsli/brunsli_encode.h>
 #include <brunsli/jpeg_data_reader.h>
+#include <brunsli/jpeg_data_writer.h>
+
+#include <string>
 
 extern "C" {
 
@@ -85,8 +85,8 @@ uint32_t BrunsliDecoderProcess(uint32_t* instance) {
   size_t available_in = instance[3];
   uint8_t* next_out = reinterpret_cast<uint8_t*>(instance[4]);
   size_t available_out = kBufferSize;
-  brunsli::BrunsliDecoder::Status result = decoder->Decode(
-      &available_in, &next_in, &available_out, &next_out);
+  brunsli::BrunsliDecoder::Status result =
+      decoder->Decode(&available_in, &next_in, &available_out, &next_out);
   instance[5] = kBufferSize - available_out;
   if ((result == brunsli::BrunsliDecoder::NEEDS_MORE_INPUT) ||
       (result == brunsli::BrunsliDecoder::NEEDS_MORE_OUTPUT)) {

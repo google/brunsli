@@ -9,10 +9,10 @@
 #ifndef BRUNSLI_COMMON_JPEG_DATA_H_
 #define BRUNSLI_COMMON_JPEG_DATA_H_
 
+#include <brunsli/types.h>
+
 #include <array>
 #include <vector>
-
-#include <brunsli/types.h>
 
 namespace brunsli {
 
@@ -28,6 +28,7 @@ static const int kJpegDCAlphabetSize = 12;
 static const int kMaxDHTMarkers = 512;
 static const int kMaxDimPixels = 65535;
 
+// clang-format off
 static const uint8_t kDefaultQuantMatrix[2][64] = {
   { 16,  11,  10,  16,  24,  40,  51,  61,
     12,  12,  14,  19,  26,  58,  60,  55,
@@ -71,6 +72,7 @@ const uint32_t kJPEGZigZagOrder[64] = {
   21, 34, 37, 47, 50, 56, 59, 61,
   35, 36, 48, 49, 57, 58, 62, 63
 };
+// clang-format on
 
 enum struct JPEGReadError {
   OK = 0,
@@ -184,12 +186,13 @@ typedef int16_t coeff_t;
 
 // Represents one component of a jpeg file.
 struct JPEGComponent {
-  JPEGComponent() : id(0),
-                    h_samp_factor(1),
-                    v_samp_factor(1),
-                    quant_idx(0),
-                    width_in_blocks(0),
-                    height_in_blocks(0) {}
+  JPEGComponent()
+      : id(0),
+        h_samp_factor(1),
+        v_samp_factor(1),
+        quant_idx(0),
+        width_in_blocks(0),
+        height_in_blocks(0) {}
 
   // One-byte id of the component.
   int id;
@@ -211,18 +214,19 @@ struct JPEGComponent {
 
 // Represents a parsed jpeg file.
 struct JPEGData {
-  JPEGData() : width(0),
-               height(0),
-               version(2),  // Use new context modelling by default.
-               max_h_samp_factor(1),
-               max_v_samp_factor(1),
-               MCU_rows(0),
-               MCU_cols(0),
-               restart_interval(0),
-               original_jpg(NULL),
-               original_jpg_size(0),
-               error(JPEGReadError::OK),
-               has_zero_padding_bit(false) {}
+  JPEGData()
+      : width(0),
+        height(0),
+        version(2),  // Use new context modelling by default.
+        max_h_samp_factor(1),
+        max_v_samp_factor(1),
+        MCU_rows(0),
+        MCU_cols(0),
+        restart_interval(0),
+        original_jpg(NULL),
+        original_jpg_size(0),
+        error(JPEGReadError::OK),
+        has_zero_padding_bit(false) {}
 
   int width;
   int height;
@@ -252,10 +256,8 @@ struct JPEGData {
 };
 
 inline bool JPEGDataIs420(const JPEGData& jpg) {
-  return (jpg.components.size() == 3 &&
-          jpg.max_h_samp_factor == 2 &&
-          jpg.max_v_samp_factor == 2 &&
-          jpg.components[0].h_samp_factor == 2 &&
+  return (jpg.components.size() == 3 && jpg.max_h_samp_factor == 2 &&
+          jpg.max_v_samp_factor == 2 && jpg.components[0].h_samp_factor == 2 &&
           jpg.components[0].v_samp_factor == 2 &&
           jpg.components[1].h_samp_factor == 1 &&
           jpg.components[1].v_samp_factor == 1 &&
@@ -264,10 +266,8 @@ inline bool JPEGDataIs420(const JPEGData& jpg) {
 }
 
 inline bool JPEGDataIs444(const JPEGData& jpg) {
-  return (jpg.components.size() == 3 &&
-          jpg.max_h_samp_factor == 1 &&
-          jpg.max_v_samp_factor == 1 &&
-          jpg.components[0].h_samp_factor == 1 &&
+  return (jpg.components.size() == 3 && jpg.max_h_samp_factor == 1 &&
+          jpg.max_v_samp_factor == 1 && jpg.components[0].h_samp_factor == 1 &&
           jpg.components[0].v_samp_factor == 1 &&
           jpg.components[1].h_samp_factor == 1 &&
           jpg.components[1].v_samp_factor == 1 &&

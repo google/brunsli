@@ -3,14 +3,12 @@
 # Use of this source code is governed by an MIT-style
 # license that can be found in the LICENSE file or at
 # https://opensource.org/licenses/MIT.
-"""Utils for patching JPEG-XL support into Python image libraries.
+"""Utils for patching JPEG-XL support into Python image libraries."""
 
-"""
 import os
 import shutil
 import subprocess
 import tempfile
-
 
 # Header for JPEG-XL's recompressed JPEG mode.
 JPEGXL_RECOMPRESSED_JPEG_HEADER = b'\x0a\x04\x42\xd2\xd5\x4e'
@@ -33,7 +31,9 @@ def can_call_converter():
   try:
     subprocess.call(
         [get_bin_jpeg_from_jxl()],
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
   except OSError:  # Could not call converter.
     return False
   except subprocess.CalledProcessError:
@@ -55,9 +55,9 @@ def is_jpegxl_recompressed_jpeg_file(filename):
     return False
 
 
-def call_with_jxl_filename_arg1_replaced_by_temp_jpeg_file(func,
-                                                           *args,
-                                                           **kwargs):
+def call_with_jxl_filename_arg1_replaced_by_temp_jpeg_file(
+    func, *args, **kwargs
+):
   """Calls 'func' with the 1st arg from `args` changed to point to a JPEG.
 
   The JPEG file is a temporary file generated on-the-fly by converting the
@@ -66,8 +66,8 @@ def call_with_jxl_filename_arg1_replaced_by_temp_jpeg_file(func,
   Args:
     func: The function to call.
     *args: The arguments to use for the function call, with args[0] being the
-       JPEG-XL image file name which gets replaced with a JPEG filename for the
-       call.
+      JPEG-XL image file name which gets replaced with a JPEG filename for the
+      call.
     **kwargs: Passthrough keyword args for `func`.
 
   Returns:
@@ -83,11 +83,12 @@ def call_with_jxl_filename_arg1_replaced_by_temp_jpeg_file(func,
   try:
     temp_jpeg_filename = os.path.join(tempdir, 'temp_converted_jxl.jpeg')
     if 0 != subprocess.call(
-        [get_bin_jpeg_from_jxl(), args[0], temp_jpeg_filename]):
+        [get_bin_jpeg_from_jxl(), args[0], temp_jpeg_filename]
+    ):
       raise RuntimeError(
-          'Ad-hoc conversion of JPEG-XL to JPEG failed on file: %r' % args[0])
-    return func(*((temp_jpeg_filename,) + args[1:]),
-                **kwargs)
+          'Ad-hoc conversion of JPEG-XL to JPEG failed on file: %r' % args[0]
+      )
+    return func(*((temp_jpeg_filename,) + args[1:]), **kwargs)
   finally:
     # Clean up the securely-created temporary directory and everything inside.
     shutil.rmtree(tempdir)

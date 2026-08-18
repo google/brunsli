@@ -4,6 +4,8 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include "./test_utils.h"
+
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -14,8 +16,6 @@
 #include <string>
 #include <tuple>
 #include <vector>
-
-#include "./test_utils.h"
 
 #if !defined(TEST_DATA_PATH)
 #include "tools/cpp/runfiles/runfiles.h"
@@ -29,6 +29,7 @@ size_t StringOutputFunction(void* data, const uint8_t* buf, size_t count) {
   return count;
 }
 
+// clang-format off
 static const uint8_t kSmallBrunsliFile[] = {
   /* Signature */
   0x0a, 0x04,
@@ -134,6 +135,7 @@ static const uint8_t kFallbackBrunsliFile[] = {
   0x4a, 0x04,
         0xde, 0xad, 0xbe, 0xef
 };
+// clang-format on
 
 std::vector<uint8_t> GetSmallBrunsliFile() {
   return std::vector<uint8_t>(kSmallBrunsliFile,
@@ -166,7 +168,7 @@ std::string GetTestDataPath(const std::string& filename) {
 }  // namespace
 
 std::vector<std::tuple<std::vector<uint8_t>>> ParseMar(const void* data,
-                                                             size_t size) {
+                                                       size_t size) {
   std::vector<std::tuple<std::vector<uint8_t>>> result;
   const uint8_t* bytes = reinterpret_cast<const uint8_t*>(data);
   if (size < 8) std::abort();

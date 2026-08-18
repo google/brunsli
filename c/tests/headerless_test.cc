@@ -4,17 +4,21 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include <string>
-
-#include "gtest/gtest.h"
-#include "../common/constants.h"
+#include <brunsli/brunsli_decode.h>
 #include <brunsli/jpeg_data.h>
 #include <brunsli/status.h>
 #include <brunsli/types.h>
-#include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data_writer.h>
+
+#include <string>
+#include <vector>
+
+#include "../common/constants.h"
 #include "../dec/state.h"
+
+// clang-format off
+#include "gtest/gtest.h"
 #include "./test_utils.h"
+// clang-format on
 
 namespace brunsli {
 

@@ -7,11 +7,11 @@
 #ifndef BRUNSLI_DEC_OUPUT_CHUNK_H_
 #define BRUNSLI_DEC_OUPUT_CHUNK_H_
 
+#include <brunsli/types.h>
+
 #include <initializer_list>
 #include <memory>
 #include <vector>
-
-#include <brunsli/types.h>
 
 namespace brunsli {
 namespace internal {
@@ -37,7 +37,7 @@ namespace dec {
  */
 struct OutputChunk {
   // Non-owning
-  template<typename Bytes>
+  template <typename Bytes>
   OutputChunk(Bytes& bytes) : len(bytes.size()) {
     // Deal both with const qualifier and data type.
     const void* src = bytes.data();

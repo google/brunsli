@@ -7,11 +7,12 @@
 #ifndef BRUNSLI_DEC_SERIALIZATION_STATE_H_
 #define BRUNSLI_DEC_SERIALIZATION_STATE_H_
 
+#include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
+
 #include <deque>
 #include <vector>
 
-#include <brunsli/jpeg_data.h>
-#include <brunsli/types.h>
 #include "./output_chunk.h"
 
 namespace brunsli {
@@ -48,10 +49,7 @@ struct DCTCodingState {
 };
 
 struct EncodeScanState {
-  enum Stage {
-    HEAD,
-    BODY
-  };
+  enum Stage { HEAD, BODY };
 
   Stage stage = HEAD;
 

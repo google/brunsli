@@ -6,9 +6,11 @@
 
 #include "./ans_decode.h"
 
+#include <brunsli/types.h>
+
 #include <vector>
 
-#include <brunsli/types.h>
+#include "../common/ans_params.h"
 
 namespace brunsli {
 

@@ -4,7 +4,9 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brunsli/jpeg_data.h>
 #include <brunsli/jpeg_data_writer.h>
+#include <brunsli/types.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -15,9 +17,7 @@
 #include <vector>
 
 #include "../common/constants.h"
-#include <brunsli/jpeg_data.h>
 #include "../common/platform.h"
-#include <brunsli/types.h>
 #include "./output_chunk.h"
 #include "./serialization_state.h"
 #include "./state.h"

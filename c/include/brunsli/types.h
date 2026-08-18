@@ -22,6 +22,6 @@ typedef unsigned __int64 uint64_t;
 typedef __int64 int64_t;
 #else
 #include <stdint.h>  // IWYU pragma: export
-#endif /* defined(_MSC_VER) && (_MSC_VER < 1600) */
+#endif               /* defined(_MSC_VER) && (_MSC_VER < 1600) */
 
 #endif /* BRUNSLI_COMMON_TYPES_H_ */

@@ -7,14 +7,14 @@
 #include "./quant_matrix.h"
 
 #include <brunsli/jpeg_data.h>
-#include "./platform.h"
 #include <brunsli/types.h>
+
+#include "./platform.h"
 
 namespace brunsli {
 
 // TODO(eustas): consider high-precision (16-bit) tables in Brunsli v3.
-void FillQuantMatrix(bool is_chroma, uint32_t q,
-                     uint8_t dst[kDCTBlockSize]) {
+void FillQuantMatrix(bool is_chroma, uint32_t q, uint8_t dst[kDCTBlockSize]) {
   BRUNSLI_DCHECK(q >= 0 && q < kQFactorLimit);
   const uint8_t* const in = kDefaultQuantMatrix[is_chroma];
   for (int i = 0; i < kDCTBlockSize; ++i) {

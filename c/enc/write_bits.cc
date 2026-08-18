@@ -6,8 +6,9 @@
 
 #include "./write_bits.h"
 
-#include "../common/platform.h"
 #include <brunsli/types.h>
+
+#include "../common/platform.h"
 
 namespace brunsli {
 

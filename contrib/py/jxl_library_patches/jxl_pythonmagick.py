@@ -9,15 +9,15 @@ This registers a file format that will call an external converter which will
 (securely) convert JPEG-XL to a temporary JPEG file behind the scenes.
 """
 
-from . import jxl_utils
 import PythonMagick
-
+from . import jxl_utils
 
 _patched_functions_by_id = {}
 
 
 def _get_pymagic_wrapped_image_init(orig_init_func):
   """Returns a wrapped PythonMagick.Image.__init__ that understands .JXL."""
+
   def wrapped_init(self, *args, **kwargs):
     """{Docstring will get replaced by original function's}."""
     is_jxl = None
@@ -39,11 +39,15 @@ def _get_pymagic_wrapped_image_init(orig_init_func):
     if not is_jxl:
       # Fall back to base class behavior.
       return orig_init_func(self, *args, **kwargs)
+
     # Otherwise, we have a Jpeg-XL image.
     def init_super(*jpeg_transformed_args):
       return orig_init_func(self, *jpeg_transformed_args, **kwargs)
+
     return jxl_utils.call_with_jxl_filename_arg1_replaced_by_temp_jpeg_file(
-        init_super, *args)
+        init_super, *args
+    )
+
   wrapped_init.__doc__ = orig_init_func.__doc__  # Forward docstring.
   return wrapped_init
 

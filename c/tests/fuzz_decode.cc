@@ -10,11 +10,12 @@
 
 // #include "gtest/gtest.h"
 // #include "testing/fuzzing/fuzztest.h"
-#include <brunsli/jpeg_data.h>
-#include "../common/platform.h"
-#include <brunsli/status.h>
 #include <brunsli/brunsli_decode.h>
+#include <brunsli/jpeg_data.h>
 #include <brunsli/jpeg_data_writer.h>
+#include <brunsli/status.h>
+
+#include "../common/platform.h"
 #include "./test_utils.h"
 
 size_t DiscardOutputFunction(void* data, const uint8_t* buf, size_t count) {
@@ -51,6 +52,4 @@ std::vector<std::tuple<std::vector<uint8_t>>> ReadSeeds() {
 FUZZ_TEST(BrunsliDecodeFuzz, TestOneInput).WithSeeds(ReadSeeds);
 
 // TODO(eustas): Add existing cases.
-TEST(BrunsliDecodeFuzz, Empty) {
-  DoTestOneInput(nullptr, 0);
-}
+TEST(BrunsliDecodeFuzz, Empty) { DoTestOneInput(nullptr, 0); }

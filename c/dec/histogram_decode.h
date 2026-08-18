@@ -9,9 +9,9 @@
 #ifndef BRUNSLI_DEC_HISTOGRAM_DECODE_H_
 #define BRUNSLI_DEC_HISTOGRAM_DECODE_H_
 
-#include <vector>
-
 #include <brunsli/types.h>
+
+#include <vector>
 
 namespace brunsli {
 

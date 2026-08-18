@@ -4,15 +4,15 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brunsli/brunsli_decode.h>
+#include <brunsli/jpeg_data.h>
+#include <brunsli/jpeg_data_writer.h>
+#include <brunsli/status.h>
+#include <brunsli/types.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <string>
-
-#include <brunsli/jpeg_data.h>
-#include <brunsli/status.h>
-#include <brunsli/types.h>
-#include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data_writer.h>
 
 #if defined(BRUNSLI_EXPERIMENTAL_GROUPS)
 #include "../experimental/groups.h"
@@ -25,7 +25,7 @@ static FILE* ms_fopen(const char* filename, const char* mode) {
   fopen_s(&result, filename, mode);
   return result;
 }
-#endif  /* WIN32 */
+#endif /* WIN32 */
 
 size_t StringWriter(void* data, const uint8_t* buf, size_t count) {
   std::string* output = reinterpret_cast<std::string*>(data);

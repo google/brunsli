@@ -6,12 +6,13 @@
 
 #include "../common/distributions.h"
 
+#include <brunsli/types.h>
+
 #include <vector>
 
-#include "gtest/gtest.h"
-#include <brunsli/types.h>
 #include "../dec/arith_decode.h"
 #include "../dec/brunsli_input.h"
+#include "gtest/gtest.h"
 
 namespace brunsli {
 

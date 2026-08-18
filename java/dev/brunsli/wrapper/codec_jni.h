@@ -19,8 +19,7 @@ extern "C" {
  * @param data direct ByteBuffer containing Brunsli stream
  * @returns byte array JPEG stream on success; otherwise null
  */
-JNIEXPORT jbyteArray JNICALL
-Java_dev_brunsli_wrapper_CodecJNI_nativeDecode(
+JNIEXPORT jbyteArray JNICALL Java_dev_brunsli_wrapper_CodecJNI_nativeDecode(
     JNIEnv* env, jobject /*jobj*/, jobject input);
 
 /**
@@ -29,8 +28,7 @@ Java_dev_brunsli_wrapper_CodecJNI_nativeDecode(
  * @param data direct ByteBuffer containing JPEG stream
  * @returns byte array Brunsli stream on success; otherwise null
  */
-JNIEXPORT jbyteArray JNICALL
-Java_dev_brunsli_wrapper_CodecJNI_nativeEncode(
+JNIEXPORT jbyteArray JNICALL Java_dev_brunsli_wrapper_CodecJNI_nativeEncode(
     JNIEnv* env, jobject /*jobj*/, jobject input);
 
 #ifdef __cplusplus

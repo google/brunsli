@@ -6,10 +6,11 @@
 
 #include "./ans_encode.h"
 
+#include <brunsli/types.h>
+
 #include <vector>
 
 #include "../common/ans_params.h"
-#include <brunsli/types.h>
 #include "./histogram_encode.h"
 #include "./write_bits.h"
 

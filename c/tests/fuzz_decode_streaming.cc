@@ -10,11 +10,12 @@
 
 // #include "gtest/gtest.h"
 // #include "testing/fuzzing/fuzztest.h"
-#include <brunsli/jpeg_data.h>
-#include "../common/platform.h"
-#include <brunsli/status.h>
 #include <brunsli/brunsli_decode.h>
+#include <brunsli/jpeg_data.h>
 #include <brunsli/jpeg_data_writer.h>
+#include <brunsli/status.h>
+
+#include "../common/platform.h"
 #include "../dec/state.h"
 #include "./test_utils.h"
 
@@ -65,6 +66,4 @@ std::vector<std::tuple<std::vector<uint8_t>>> ReadSeeds() {
 FUZZ_TEST(BrunsliDecodeStreamingFuzz, TestOneInput).WithSeeds(&ReadSeeds);
 
 // TODO(eustas): Add existing cases.
-TEST(BrunsliDecodeStreamingFuzz, Empty) {
-  DoTestOneInput(nullptr, 0);
-}
+TEST(BrunsliDecodeStreamingFuzz, Empty) { DoTestOneInput(nullptr, 0); }

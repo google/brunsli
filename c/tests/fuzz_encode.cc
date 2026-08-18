@@ -5,20 +5,21 @@
 // https://opensource.org/licenses/MIT.
 
 #include <algorithm>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 
 // #include "gtest/gtest.h"
 // #include "testing/fuzzing/fuzztest.h"
-#include <brunsli/jpeg_data.h>
-#include <brunsli/status.h>
 #include <brunsli/brunsli_decode.h>
-#include <brunsli/jpeg_data_writer.h>
 #include <brunsli/brunsli_encode.h>
+#include <brunsli/jpeg_data.h>
 #include <brunsli/jpeg_data_reader.h>
+#include <brunsli/jpeg_data_writer.h>
+#include <brunsli/status.h>
+
 #include "./test_utils.h"
 
 int DoTestOneInput(const uint8_t* data, size_t size) {
@@ -37,8 +38,8 @@ int DoTestOneInput(const uint8_t* data, size_t size) {
   enc_output_size = std::min<size_t>(enc_output_size, size + (16 << 20));
 
   std::vector<uint8_t> enc_output(enc_output_size);
-  bool enc_ok = brunsli::BrunsliEncodeJpeg(*enc_jpg, enc_output.data(),
-                                           &enc_output_size);
+  bool enc_ok =
+      brunsli::BrunsliEncodeJpeg(*enc_jpg, enc_output.data(), &enc_output_size);
   enc_jpg.reset();
   if (!enc_ok) {
     // It is OK, when regular encoder fails.
@@ -93,6 +94,4 @@ std::vector<std::tuple<std::vector<uint8_t>>> ReadSeeds() {
 FUZZ_TEST(BrunsliEncodeFuzz, TestOneInput).WithSeeds(ReadSeeds);
 
 // TODO(eustas): Add existing cases.
-TEST(BrunsliEncodeFuzz, Empty) {
-  DoTestOneInput(nullptr, 0);
-}
+TEST(BrunsliEncodeFuzz, Empty) { DoTestOneInput(nullptr, 0); }

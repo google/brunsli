@@ -4,14 +4,14 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+#include <brunsli/brunsli_encode.h>
+#include <brunsli/jpeg_data.h>
+#include <brunsli/jpeg_data_reader.h>
+#include <brunsli/types.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <string>
-
-#include <brunsli/jpeg_data.h>
-#include <brunsli/types.h>
-#include <brunsli/brunsli_encode.h>
-#include <brunsli/jpeg_data_reader.h>
 
 #if defined(BRUNSLI_EXPERIMENTAL_GROUPS)
 #include "../experimental/groups.h"
@@ -24,7 +24,7 @@ static FILE* ms_fopen(const char* filename, const char* mode) {
   fopen_s(&result, filename, mode);
   return result;
 }
-#endif  /* WIN32 */
+#endif /* WIN32 */
 
 bool ReadFileInternal(FILE* file, std::string* content) {
   if (fseek(file, 0, SEEK_END) != 0) {

@@ -12,9 +12,10 @@ This registers a file format that will call an external converter which will
 import io
 import tempfile
 
-from . import jxl_utils
 from PIL import Image
 from PIL import ImageFile
+
+from . import jxl_utils
 
 
 # Extending Pillow:
@@ -35,6 +36,7 @@ class JpegXLImageFile(ImageFile.ImageFile):
     def fetch_jpeg(filename):
       with open(filename, 'rb') as h:
         return io.BytesIO(h.read())
+
     # We first have to make sure that the data which we process has a presence
     # on the filesystem so that the converter can see it. This might not
     # have been the case if file data was e.g. provided as a io.BytesIO
@@ -44,7 +46,8 @@ class JpegXLImageFile(ImageFile.ImageFile):
       h.write(data)
       h.flush()
       jpg_io = jxl_utils.call_with_jxl_filename_arg1_replaced_by_temp_jpeg_file(
-          fetch_jpeg, h.name)
+          fetch_jpeg, h.name
+      )
     self._jpeg = Image.open(jpg_io)
     # Forward information from underlying ._jpeg.
     self.mode = self._jpeg.mode

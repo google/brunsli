@@ -11,12 +11,13 @@
 #ifndef BRUNSLI_COMMON_LEHMER_CODE_H_
 #define BRUNSLI_COMMON_LEHMER_CODE_H_
 
+#include <brunsli/types.h>
+
 #include <algorithm>
 #include <utility>
 #include <vector>
 
 #include "./platform.h"
-#include <brunsli/types.h>
 
 namespace brunsli {
 
@@ -37,13 +38,9 @@ class PermutationCoder {
  public:
   PermutationCoder() {}
 
-  void Init(std::vector<uint8_t> values) {
-    values_ = std::move(values);
-  }
+  void Init(std::vector<uint8_t> values) { values_ = std::move(values); }
 
-  void Clear() {
-    std::vector<uint8_t>().swap(values_);
-  }
+  void Clear() { std::vector<uint8_t>().swap(values_); }
 
   // number of bits needed to represent the next code.
   int num_bits() const {

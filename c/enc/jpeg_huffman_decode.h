@@ -33,8 +33,8 @@ struct HuffmanTableEntry {
   // when reading the bit stream using a Huffman code with space > 0.
   HuffmanTableEntry() : bits(0), value(0xffff) {}
 
-  uint8_t bits;     // number of bits used for this symbol
-  uint16_t value;   // symbol value or table offset
+  uint8_t bits;    // number of bits used for this symbol
+  uint16_t value;  // symbol value or table offset
 };
 
 // Builds jpeg-style Huffman lookup table from the given symbols.

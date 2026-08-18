@@ -8,11 +8,10 @@ package dev.brunsli.wrapper;
 
 import java.nio.ByteBuffer;
 
-/**
- * Native functions declaration.
- */
+/** Native functions declaration. */
 public class CodecJNI {
   static native byte[] nativeDecode(ByteBuffer data);
+
   static native byte[] nativeEncode(ByteBuffer data);
 
   private CodecJNI() {}
