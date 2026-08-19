@@ -6,6 +6,8 @@
 
 #include "./bit_reader.h"
 
+#include <brunsli/types.h>
+
 #include "../common/platform.h"
 
 namespace brunsli {

@@ -763,7 +763,7 @@ SerializationStatus BRUNSLI_NOINLINE DoEncodeScan(const JPEGData& jpg,
   // h_group / v_group act as numerators for converting number of blocks to
   // number of MCU. In interleaved mode it is 1, so MCU is represented with
   // max_*_samp_factor blocks. In non-interleaved mode we choose numerator to
-  // be the samping factor, consequently MCU is always represented with single
+  // be the sampling factor, consequently MCU is always represented with single
   // block.
   const int h_group = is_interleaved ? 1 : base_component.h_samp_factor;
   const int v_group = is_interleaved ? 1 : base_component.v_samp_factor;
@@ -1010,7 +1010,7 @@ SerializationStatus SerializeJpeg(State* state, const JPEGData& jpg,
     }
   };
 
-  // Push remaining output from prevoius session.
+  // Push remaining output from previous session.
   maybe_push_output();
 
   while (true) {

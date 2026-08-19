@@ -102,13 +102,13 @@ TEST(Distributions, Perfect) {
     p.Init(0);
     ds.AddBit(&p, 1);
   }
-  ASSERT_EQ(0, ds.words.size());
+  ASSERT_EQ(0u, ds.words.size());
   {
     Prob p;
     p.Init(0);
     ds.AddBit(&p, 1);
   }
-  ASSERT_EQ(1, ds.words.size());
+  ASSERT_EQ(1u, ds.words.size());
 }
 
 TEST(Distributions, Bad) {
@@ -120,7 +120,7 @@ TEST(Distributions, Bad) {
   }
   ds.Flush();
   // Unlike "Worst" just one byte (amortized) is used per AddBit.
-  ASSERT_EQ(322, ds.words.size());
+  ASSERT_EQ(322u, ds.words.size());
 }
 
 TEST(Distributions, Good) {
@@ -130,13 +130,13 @@ TEST(Distributions, Good) {
     p.Init(255);
     ds.AddBit(&p, 0);
   }
-  ASSERT_EQ(0, ds.words.size());
+  ASSERT_EQ(0u, ds.words.size());
   {
     Prob p;
     p.Init(255);
     ds.AddBit(&p, 0);
   }
-  ASSERT_EQ(1, ds.words.size());
+  ASSERT_EQ(1u, ds.words.size());
 }
 
 TEST(Distributions, TowardsZero) {
@@ -144,7 +144,7 @@ TEST(Distributions, TowardsZero) {
   p.Init(255);
   for (size_t i = 0; i < 10000; ++i) {
     p.Add(0);
-    ASSERT_EQ(255, p.get_proba()) << i;
+    ASSERT_EQ(255u, p.get_proba()) << i;
   }
 }
 
@@ -153,7 +153,7 @@ TEST(Distributions, TowardsOne) {
   p.Init(0);
   for (size_t i = 0; i < 10000; ++i) {
     p.Add(1);
-    ASSERT_EQ(0, p.get_proba()) << i;
+    ASSERT_EQ(0u, p.get_proba()) << i;
   }
 }
 

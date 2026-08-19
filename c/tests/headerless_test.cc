@@ -9,7 +9,6 @@
 #include <brunsli/status.h>
 #include <brunsli/types.h>
 
-#include <string>
 #include <vector>
 
 #include "../common/constants.h"

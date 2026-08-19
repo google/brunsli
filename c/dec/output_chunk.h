@@ -4,8 +4,8 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#ifndef BRUNSLI_DEC_OUPUT_CHUNK_H_
-#define BRUNSLI_DEC_OUPUT_CHUNK_H_
+#ifndef BRUNSLI_DEC_OUTPUT_CHUNK_H_
+#define BRUNSLI_DEC_OUTPUT_CHUNK_H_
 
 #include <brunsli/types.h>
 
@@ -70,4 +70,4 @@ struct OutputChunk {
 }  // namespace internal
 }  // namespace brunsli
 
-#endif  // BRUNSLI_DEC_OUPUT_CHUNK_H_
+#endif  // BRUNSLI_DEC_OUTPUT_CHUNK_H_

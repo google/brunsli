@@ -18,7 +18,6 @@ import org.junit.runners.JUnit4;
 /** Tests for {@link dev.brunsli.wrapper.Codec}. */
 @RunWith(JUnit4.class)
 public class CodecTest {
-
   static {
     String jniLibrary = System.getProperty("BRUNSLI_JNI_LIBRARY");
     if (jniLibrary != null) {
@@ -26,25 +25,28 @@ public class CodecTest {
     }
   }
 
+  // clang-format off
+  private static final String ORIG_BASE64 =
+      "/9j/4AAQSkZJRgABAQEBLAEsAAD/2wBDAAIBAQEBAQIBAQECAgICAgQDAgICAgUEBAMEBgUG"
+          + "BgYFBgYGBwkIBgcJBwYGCAsICQoKCgoKBggLDAsKDAkKCgr/2wBDAQICAgICAgUDAw"
+          + "UKBwYHCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoK"
+          + "CgoKCgr/wAARCAAQABADAREAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xA"
+          + "AfEAACAQQCAwAAAAAAAAAAAAABAgMEBQYHCSEACBH/xAAWAQEBAQAAAAAAAAAAAAAA"
+          + "AAAACAn/xAAhEQACAAUFAQEAAAAAAAAAAAABAgMEBREhAAYHEhNBUf/aAAwDAQACEQ"
+          + "MRAD8An3Hpx57Q90doY/U1Ovskl1rLkhteVZVYWiQ28rEsrgPKrhWCyRHtGHxx15Ou"
+          + "39vzVZmkJRvHtZmFsYv9v+j5rZfl/l+h8a0OZVZmEKkIXpBgxOx73YqMKVJBKsMMDc"
+          + "achfHntD0u2hkFTTa+ySLWsWSC14rlV+aJzcC0TSoC8SoGYrHKekUfEPXjcG35qjTT"
+          + "kI3j2srG2cX+W/D804g5fofJVDllaZhGpGF6RoMPsOlmCnDFiACyjLE3OnHpyGbQ9L"
+          + "toY/TVOwcki1rFkhumVYrYVic3AtEsTkJKyBmKxxDt1HxB342/uCao00gLt49rsotn"
+          + "FvtvwfdOX+IKHyVQ5llloRqRhecGNE7DpZiwyoYgAsxwpNzpyF8hm0PdHaGQU1NsHJ"
+          + "Jday5ILpiuK35YkNvKxNEhKRM4Vgsko6dh8c9+NwbgmqzNOA7ePa6qbYxb5f8AT904"
+          + "g4gofGtDlmaWhCpCF5xo0Pse92DHLBSQSqnKg3Gv/9k=";
+
+  // clang-format on
+
   @Test
   public void testRoundtrip() throws IOException {
-    // clang-format off
-    String orig64 =
-        "/9j/4AAQSkZJRgABAQEBLAEsAAD/2wBDAAIBAQEBAQIBAQECAgICAgQD"
-            + "AgICAgUEBAMEBgUGBgYFBgYGBwkIBgcJBwYGCAsICQoKCgoKBggLDAsKDAkKCgr/2wBDAQICAgIC"
-            + "AgUDAwUKBwYHCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoK"
-            + "Cgr/wAARCAAQABADAREAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAf/xAAfEAACAQQCAwAA"
-            + "AAAAAAAAAAABAgMEBQYHCSEACBH/xAAWAQEBAQAAAAAAAAAAAAAAAAAACAn/xAAhEQACAAUFAQEA"
-            + "AAAAAAAAAAABAgMEBREhAAYHEhNBUf/aAAwDAQACEQMRAD8An3Hpx57Q90doY/U1Ovskl1rLkhte"
-            + "VZVYWiQ28rEsrgPKrhWCyRHtGHxx15Ou39vzVZmkJRvHtZmFsYv9v+j5rZfl/l+h8a0OZVZmEKkI"
-            + "XpBgxOx73YqMKVJBKsMMDcachfHntD0u2hkFTTa+ySLWsWSC14rlV+aJzcC0TSoC8SoGYrHKekUf"
-            + "EPXjcG35qjTTkI3j2srG2cX+W/D804g5fofJVDllaZhGpGF6RoMPsOlmCnDFiACyjLE3OnHpyGbQ"
-            + "9LtoY/TVOwcki1rFkhumVYrYVic3AtEsTkJKyBmKxxDt1HxB342/uCao00gLt49rsotnFvtvwfdO"
-            + "X+IKHyVQ5llloRqRhecGNE7DpZiwyoYgAsxwpNzpyF8hm0PdHaGQU1NsHJJday5ILpiuK35YkNvK"
-            + "xNEhKRM4Vgsko6dh8c9+NwbgmqzNOA7ePa6qbYxb5f8AT904g4gofGtDlmaWhCpCF5xo0Pse92DH"
-            + "LBSQSqnKg3Gv/9k=";
-    // clang-format on
-    byte[] original = Base64.getDecoder().decode(orig64);
+    byte[] original = Base64.getDecoder().decode(ORIG_BASE64);
     byte[] compressed = Codec.encode(original);
     assertTrue(compressed.length < original.length);
     byte[] decompressed = Codec.decode(compressed);

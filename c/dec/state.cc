@@ -7,6 +7,7 @@
 #include "./state.h"
 
 #include <brotli/decode.h>
+#include <brunsli/types.h>
 
 #include "./state_internal.h"
 

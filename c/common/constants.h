@@ -248,7 +248,6 @@ static const int kStockACHuffmanCodeCounts[kNumStockACHuffmanCodes][
   { 0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 126, },
   { 0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 120, },
 };
-// clang-format on
 static const int kStockACHuffmanCodeTotalCount = 163;
 // TODO(eustas): replace the final "256" with marker constant.
 static const int kStockACHuffmanCodeValues
@@ -283,7 +282,8 @@ static const int kStockACHuffmanCodeValues
             218, 226, 227, 228, 229, 230, 231, 232, 233, 234, 242, 243, 244,
             245, 246, 247, 248, 249, 250, 256,
         },
-    };
+};
+// clang-format on
 
 // Pre-defined tables for PermutationCoder.
 static const uint8_t kDefaultDCValues[16] = {0, 1, 2,  3,  4,  5,  6,  7,

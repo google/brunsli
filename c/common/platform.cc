@@ -7,7 +7,7 @@
 #include "./platform.h"
 
 #include <cstdio>
-#include <cstdlib>  // for abort
+#include <cstdlib>  // IWYU: keep
 
 namespace brunsli {
 

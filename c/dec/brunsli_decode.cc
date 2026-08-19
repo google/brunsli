@@ -227,7 +227,7 @@ bool ProcessMetaData(const uint8_t* data, size_t len, MetadataState* state,
           state->stage = MetadataState::READ_CODE;
           continue;
         }
-        // Otherwise - mutlibyte sequence.
+        // Otherwise - multibyte sequence.
         if ((state->marker != 0xFE) && ((state->marker >> 4u) != 0x0E)) {
           return false;
         }
@@ -580,7 +580,7 @@ static bool BRUNSLI_NOINLINE DecodeCoeffOrder(uint32_t* order, BitSource* br,
 /** Reads 0..6 words from |in| and returns the value in the range 0..63. */
 static size_t DecodeNumNonzeros(Prob* p, BinaryArithmeticDecoder* ac,
                                 WordSource* in) {
-  // To simplity BST navigation, we use 1-based indexing.
+  // To simplify BST navigation, we use 1-based indexing.
   Prob* bst = p - 1;
   size_t ctx = 1;
 
@@ -590,7 +590,7 @@ static size_t DecodeNumNonzeros(Prob* p, BinaryArithmeticDecoder* ac,
     ctx = 2 * ctx + bit;
   }
 
-  // Leaf index in the level corresponds to the resuling value.
+  // Leaf index in the level corresponds to the resulting value.
   size_t val = ctx - (1u << kNumNonZeroBits);
   BRUNSLI_DCHECK(val <= kNumNonZeroTreeSize);
   return val;
@@ -1839,7 +1839,7 @@ static BrunsliStatus DecodeHistogramDataSection(State* state, JPEGData* jpg) {
   }
   PrepareBitReader(br, state);
   if (RemainingSectionLength(state) <= GetBytesAvailable(state)) {
-    // If end of section is reachable, then we could parse the remainings in
+    // If end of section is reachable, then we could parse the remains in
     // non-streaming mode.
     BrunsliBitReaderSetOptimistic(br);
   }
@@ -1961,7 +1961,7 @@ static BrunsliStatus DecodeDCDataSection(State* state) {
   size_t limit = RemainingSectionLength(state);
   BRUNSLI_DCHECK((limit & 1) == 0);
   size_t chunk_len = std::min(available, limit);
-  // If end of section is reachable, then we could parse the remainings in
+  // If end of section is reachable, then we could parse the remains in
   // non-streaming mode.
   bool is_last_chunk = (chunk_len == limit);
   WordSource in(state->data + state->pos, chunk_len, is_last_chunk);
@@ -1984,7 +1984,7 @@ static BrunsliStatus DecodeACDataSection(State* state) {
   size_t limit = RemainingSectionLength(state);
   BRUNSLI_DCHECK((limit & 1) == 0);
   size_t chunk_len = std::min(available, limit);
-  // If end of section is reachable, then we could parse the remainings in
+  // If end of section is reachable, then we could parse the remains in
   // non-streaming mode.
   bool is_last_chunk = (chunk_len == limit);
   WordSource in(state->data + state->pos, chunk_len, is_last_chunk);

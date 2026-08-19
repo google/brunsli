@@ -7,6 +7,7 @@
 #include "./jpeg_huffman_decode.h"
 
 #include <brunsli/jpeg_data.h>
+#include <brunsli/types.h>
 
 namespace brunsli {
 

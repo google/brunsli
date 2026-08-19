@@ -12,12 +12,13 @@
 #include <fstream>
 #include <ios>
 #include <iterator>
-#include <memory>
 #include <string>
 #include <tuple>
 #include <vector>
 
 #if !defined(TEST_DATA_PATH)
+#include <memory>
+
 #include "tools/cpp/runfiles/runfiles.h"
 #endif
 

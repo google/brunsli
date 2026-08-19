@@ -8,7 +8,7 @@ general-purpose data compressors; those fit well for compression of HTML, JS and
 CSS.
 
 Video and image resources take 1-st and 2-nd place in the Internet traffic
-volume chart. Those are considered succint. However, one of the most popular
+volume chart. Those are considered succinct. However, one of the most popular
 image formats – JPEG – could be "repacked" to a more dense form.
 
 `jxl` Content-Encoding allows ~22% traffic reduction for JPEG images.

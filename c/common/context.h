@@ -188,7 +188,7 @@ inline int WeightedAverageContextDC(const int* vals, int x) {
  * while the (locally) previous elements represent the current row. If y < 2,
  * then vals[0] should be 0.
  * Elements (locally) around vals[prev_row_delta] correspond to the row above
- * currnent one.
+ * current one.
  *
  * Values are summed up with the following weights:
  *
@@ -311,7 +311,7 @@ inline uint8_t NumNonzerosContext(const uint8_t* prev, int x, int y) {
   return static_cast<uint8_t>(prediction / kNumNonZeroQuant);
 }
 
-// Context for the emptyness of a block is the number of non-empty blocks in the
+// Context for the emptiness of a block is the number of non-empty blocks in the
 // previous and up neighborhood (blocks beyond the border are assumed
 // non-empty).
 static const int kNumIsEmptyBlockContexts = 3;

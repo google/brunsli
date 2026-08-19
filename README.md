@@ -29,6 +29,6 @@ cmake --build out --config Release
 ## Prebuilt binaries
 
 For some platforms (e.g. Windows) libraries and executables are uploaded as
-"artifacts" as a part of continous integration process. Unfortunately, there is
+"artifacts" as a part of continuous integration process. Unfortunately, there is
 no static link to access those. Please follow the
 [GitHub manual](https://docs.github.com/en/actions/configuring-and-managing-workflows/persisting-workflow-data-using-artifacts#downloading-and-deleting-artifacts-after-a-workflow-run-is-complete).

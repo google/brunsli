@@ -21,7 +21,6 @@
 #include "./bit_reader.h"
 #include "./brunsli_input.h"
 #include "./huffman_decode.h"
-#include "./huffman_table.h"
 #include "./serialization_state.h"
 #include "./state.h"
 

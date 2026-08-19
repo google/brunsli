@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "../dec/state.h"
+// TODO(eustas): fix this
 #include "third_party/brotli/interface/brotli.h"
 
 // clang-format off
@@ -142,6 +143,7 @@ TEST(StreamDecodeTest, StreamingSerialization) {
   std::string br_bytes =
       std::string(reinterpret_cast<const char*>(kBrnBr), sizeof(kBrnBr));
   std::string brn_bytes;
+  // TODO(eustas): fix this
   util::compression::Brotli decompressor;
   decompressor.Uncompress(br_bytes, &brn_bytes);
   const uint8_t* data = reinterpret_cast<uint8_t*>(brn_bytes.data());
@@ -149,7 +151,7 @@ TEST(StreamDecodeTest, StreamingSerialization) {
 
   std::deque<size_t> output_chunk_size = {
       280,                        // SOI, DHT, DQT, SOS
-      16374, 16374, 16374, 10880  // Scan data; BitWriter bufer is 16KiB
+      16374, 16374, 16374, 10880  // Scan data; BitWriter buffer is 16KiB
   };
 
   BrunsliDecoder decoder;

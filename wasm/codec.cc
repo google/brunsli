@@ -6,9 +6,14 @@
 
 #include <brunsli/brunsli_decode.h>
 #include <brunsli/brunsli_encode.h>
+#include <brunsli/jpeg_data.h>
 #include <brunsli/jpeg_data_reader.h>
 #include <brunsli/jpeg_data_writer.h>
+#include <brunsli/status.h>
+#include <brunsli/types.h>
 
+#include <cstdio>
+#include <cstdlib>
 #include <string>
 
 extern "C" {
@@ -56,11 +61,12 @@ uint32_t* BrunsliDecoderInit() {
   brunsli::BrunsliDecoder* decoder = new brunsli::BrunsliDecoder();
   uint8_t* in = reinterpret_cast<uint8_t*>(malloc(kBufferSize));
   uint8_t* out = reinterpret_cast<uint8_t*>(malloc(kBufferSize));
-  instance[0] = reinterpret_cast<uint32_t>(decoder);
+  // TODO(eustas): check sizeof(void*) == sizeof(uint32_t) == sizeof(size_t)
+  instance[0] = reinterpret_cast<size_t>(decoder);
   instance[1] = kBufferSize;
-  instance[2] = reinterpret_cast<uint32_t>(in);
+  instance[2] = reinterpret_cast<size_t>(in);
   instance[3] = 0;
-  instance[4] = reinterpret_cast<uint32_t>(out);
+  instance[4] = reinterpret_cast<size_t>(out);
   instance[5] = 0;
   return instance;
 }
@@ -71,7 +77,7 @@ uint32_t* BrunsliDecoderInit() {
  * Input should be passed via `in_len`; data have to be stored starting at `in`.
  * It is considered that all input is consumed.
  * After invocation `out_len` output bytes are placed at `out`.
- * It is considered that client consumes all the output right after inovcation.
+ * It is considered that client consumes all the output right after invocation.
  *
  * Result:
  *  0: ok - keep feeding input / consuming output

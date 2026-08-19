@@ -6,10 +6,11 @@
 
 #include "./context.h"
 
+#include <brunsli/jpeg_data.h>
 #include <brunsli/types.h>
 
+#include "./distributions.h"
 #include "./platform.h"
-
 namespace brunsli {
 
 static const double kSqrt2 = 1.414213562;

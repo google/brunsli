@@ -1,6 +1,9 @@
 # Description:
 #   Brunsli is an compact JPEG data format.
 
+load("@rules_cc//cc:cc_binary.bzl", "cc_binary")
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
 load("@rules_fuzzing//fuzzing:cc_defs.bzl", "cc_fuzz_test")
 load(":compiler_config_setting.bzl", "create_msvc_config")
 

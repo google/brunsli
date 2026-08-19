@@ -4,7 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
-#include "./ans_params.h"
+#include "./ans_params.h"  // IWYU: keep
 
 namespace brunsli {
 

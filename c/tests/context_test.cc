@@ -8,6 +8,9 @@
 
 #include <brunsli/types.h>
 
+#include <cstdlib>
+
+#include "../common/platform.h"
 #include "gtest/gtest.h"
 
 namespace brunsli {
@@ -34,7 +37,8 @@ int VanillaACPredictContext(int64_t p_orig) {
 TEST(ContextTest, GoldenACPredictContext) {
   ASSERT_EQ(VanillaACPredictContext(-1024),
             -static_cast<int>(kMaxAverageContext));
-  ASSERT_EQ(VanillaACPredictContext(1024), kMaxAverageContext);
+  ASSERT_EQ(VanillaACPredictContext(1024),
+            static_cast<int>(kMaxAverageContext));
   for (int i = -4096; i <= 4096; ++i) {
     int vanilla_ctx = VanillaACPredictContext(i);
     size_t vanilla_avg_ctx = std::abs(vanilla_ctx);

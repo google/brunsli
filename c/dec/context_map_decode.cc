@@ -9,7 +9,8 @@
 #include <brunsli/status.h>
 #include <brunsli/types.h>
 
-#include "../common/constants.h"
+#include <vector>
+
 #include "../common/platform.h"
 #include "./bit_reader.h"
 #include "./huffman_decode.h"

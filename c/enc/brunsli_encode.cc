@@ -939,10 +939,9 @@ bool EncodeMetaData(const JPEGData& jpg, State* state, uint8_t* data,
   if (!BrotliEncoderCompress(kBrotliQuality, kBrotliWindowBits,
                              BROTLI_DEFAULT_MODE, metadata.size(),
                              metadata.data(), &compressed_size, &data[pos])) {
-    BRUNSLI_LOG_ERROR() << "Brotli compression failed:"
-                        << " input size = " << metadata.size()
-                        << " pos = " << pos << " len = " << *len
-                        << BRUNSLI_ENDL();
+    BRUNSLI_LOG_ERROR() << "Brotli compression failed:" << " input size = "
+                        << metadata.size() << " pos = " << pos
+                        << " len = " << *len << BRUNSLI_ENDL();
     return false;
   }
   pos += compressed_size;
