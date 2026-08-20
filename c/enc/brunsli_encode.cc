@@ -1036,8 +1036,8 @@ bool EncodeSection(const JPEGData& jpg, State* s, uint8_t tag,
   *pos += section_size;
 
   if ((section_size >> (7 * section_size_bytes)) > 0) {
-    BRUNSLI_LOG_ERROR() << "Section 0x" << std::hex << marker << " size "
-                        << std::dec << section_size << " too large for "
+    BRUNSLI_LOG_ERROR() << "Section 0x" << ToHexString(marker) << " size "
+                        << section_size << " too large for "
                         << section_size_bytes << " bytes base128 number."
                         << BRUNSLI_ENDL();
     return false;

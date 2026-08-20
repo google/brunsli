@@ -57,9 +57,8 @@ class Storage {
    For n bits, we take the last 5 bits, OR that with high bits in BYTE-0,
    and locate the rest in BYTE+1, BYTE+2, etc. */
 BRUNSLI_INLINE void WriteBits(size_t n_bits, uint64_t bits, Storage* storage) {
-  BRUNSLI_LOG_DEBUG() << "WriteBits " << std::setw(2) << n_bits << " "
-                      << std::hex << std::setw(16) << bits << " " << std::dec
-                      << std::setw(10) << storage->pos << BRUNSLI_ENDL();
+  BRUNSLI_LOG_DEBUG() << "WriteBits " << n_bits << " " << ToHexString(bits)
+                      << " " << storage->pos << BRUNSLI_ENDL();
   BRUNSLI_DCHECK((bits >> n_bits) == 0);
   BRUNSLI_DCHECK(n_bits <= 56);
 #if defined(BRUNSLI_LITTLE_ENDIAN)

@@ -20,9 +20,9 @@
 #define BRUNSLI_COMMON_PLATFORM_H_
 
 #include <cstring> /* memcpy */  // IWYU pragma: export
-#include <iomanip>               // IWYU pragma: export
-#include <ios>                   // IWYU pragma: export
 #include <iostream> /* cerr */   // IWYU pragma: keep
+#include <string>
+#include <type_traits>
 #include <vector>
 
 // Implicitly enable BRUNSLI_DEBUG when sanitizers are on.
@@ -455,6 +455,16 @@ static BRUNSLI_INLINE void Append(std::vector<uint8_t>* dst,
 static BRUNSLI_INLINE void Append(std::vector<uint8_t>* dst,
                                   const std::vector<uint8_t>& src) {
   Append(dst, src.data(), src.size());
+}
+template <typename UInt>
+static BRUNSLI_INLINE std::string ToHexString(UInt value) {
+  static_assert(std::is_unsigned<UInt>::value == true);
+  std::string result(sizeof(UInt) * 2, '0');
+  for (size_t pos = 0; pos < sizeof(UInt) * 2; ++pos) {
+    size_t shift = sizeof(UInt) * 8 - 4 - 4 * pos;
+    result[pos] = "0123456789ABCDEF"[(value >> shift) & 0xF];
+  }
+  return result;
 }
 }  // namespace brunsli
 
