@@ -24,11 +24,21 @@ class State;
 }  // namespace dec
 }  // namespace internal
 
+// Options for Brunsli decoding, applicable both to BrunsliDecoder and
+// BrunsliDecodeJpeg.
+struct BrunsliDecodeOptions {
+  // Maximum size of the uncompressed metadata section. Legacy behavior is no
+  // limit (`std::numeric_limits<size_t>::max()`).
+  size_t max_uncompressed_metadata_size = 1ULL << 30;
+};
+
 // Parses the brunsli byte stream contained in data[0 ... len) and fills in *jpg
 // with the parsed information.
 // The *jpg object is valid only as long as the input data is valid.
 // Returns BRUNSLI_OK, unless the data is not valid brunsli byte stream, or is
 // truncated.
+BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, size_t len, JPEGData* jpg,
+                                BrunsliDecodeOptions options);
 BrunsliStatus BrunsliDecodeJpeg(const uint8_t* data, size_t len, JPEGData* jpg);
 
 /* Check if data looks like Brunsli stream.
@@ -43,7 +53,8 @@ size_t BrunsliEstimateDecoderPeakMemoryUsage(const uint8_t* data, size_t len);
 
 class BrunsliDecoder {
  public:
-  BrunsliDecoder();
+  explicit BrunsliDecoder(BrunsliDecodeOptions options);
+  BrunsliDecoder() : BrunsliDecoder(BrunsliDecodeOptions()) {}
   ~BrunsliDecoder();
 
   enum Status {

@@ -11,6 +11,7 @@
 #include <brunsli/types.h>
 
 #include <array>
+#include <limits>
 #include <memory>
 #include <vector>
 
@@ -21,6 +22,7 @@
 #include "./bit_reader.h"
 #include "./brunsli_input.h"
 #include "./huffman_decode.h"
+#include "./huffman_table.h"
 #include "./serialization_state.h"
 #include "./state.h"
 
@@ -179,6 +181,7 @@ struct MetadataState {
 
   BrotliDecoderStateStruct* brotli = nullptr;
   size_t metadata_size = 0;
+  size_t metadata_size_limit = std::numeric_limits<size_t>::max();
   size_t decompressed_size = 0;
   BrunsliStatus result = BRUNSLI_DECOMPRESSION_ERROR;
   MetadataDecompressionStage decompression_stage =

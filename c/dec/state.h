@@ -22,6 +22,7 @@
 namespace brunsli {
 
 struct ANSDecodingData;
+struct BrunsliDecodeOptions;
 
 namespace internal {
 namespace dec {
@@ -67,6 +68,8 @@ class State {
   State();
   State(State&&);
   ~State();
+
+  void ApplyOptions(const BrunsliDecodeOptions& options);
 
   // Public workflow knobs.
   Stage stage = Stage::SIGNATURE;

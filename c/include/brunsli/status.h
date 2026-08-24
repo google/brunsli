@@ -15,7 +15,8 @@ typedef enum {
   // Used if the input is not representable in the compressed brunsli format,
   // either because it is not a valid JPEG file or if some other limitation
   // is exceeded (e.g. absolute value of coefficients or number of Huffman
-  // codes).
+  // codes). Another case is when the decompressor sees that some value exceeds
+  // a limit set with BrunsliDecodeOptions.
   BRUNSLI_NON_REPRESENTABLE,
 
   BRUNSLI_MEMORY_ERROR,

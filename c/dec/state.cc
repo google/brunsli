@@ -7,6 +7,7 @@
 #include "./state.h"
 
 #include <brotli/decode.h>
+#include <brunsli/brunsli_decode.h>
 #include <brunsli/types.h>
 
 #include "./state_internal.h"
@@ -20,6 +21,11 @@ State::State() : internal(new InternalState()) {}
 State::State(State&&) = default;
 
 State::~State() {}
+
+void State::ApplyOptions(const BrunsliDecodeOptions& options) {
+  internal->metadata.metadata_size_limit =
+      options.max_uncompressed_metadata_size;
+}
 
 MetadataState::~MetadataState() {
   if (brotli != nullptr) {
