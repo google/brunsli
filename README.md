@@ -22,8 +22,9 @@ Run the following commands to clone, configure and build Brunsli:
 git clone --depth=1 https://github.com/google/brunsli.git
 cd brunsli
 git submodule update --init --recursive
-cmake -DCMAKE_BUILD_TYPE=Release -B out
-cmake --build out --config Release
+cmake -DCMAKE_BUILD_TYPE=Release -B build
+cmake --build build --config Release -j `nproc`
+ctest --test-dir build
 ```
 
 ## Prebuilt binaries

@@ -12,7 +12,6 @@
 #include <tuple>
 #include <vector>
 
-// #include "gtest/gtest.h"
 // #include "testing/fuzzing/fuzztest.h"
 #include <brunsli/brunsli_decode.h>
 #include <brunsli/brunsli_encode.h>
@@ -21,7 +20,12 @@
 #include <brunsli/jpeg_data_writer.h>
 #include <brunsli/status.h>
 
+// clang-format off
+#if !defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+#include "gtest/gtest.h"
+#endif
 #include "./test_utils.h"
+// clang-format on
 
 int DoTestOneInput(const uint8_t* data, size_t size) {
   // Encode.
@@ -55,23 +59,23 @@ int DoTestOneInput(const uint8_t* data, size_t size) {
   dec_status =
       brunsli::BrunsliDecodeJpeg(enc_output.data(), enc_output_size, &dec_jpg);
   if (dec_status != brunsli::BRUNSLI_OK) {
-    __builtin_trap();
+    BRUNSLI_CRASH();
   }
   std::string dec_output;
   brunsli::JPEGOutput dec_out(brunsli::StringOutputFunction, &dec_output);
   bool dec_ok = brunsli::WriteJpeg(dec_jpg, dec_out);
   if (!dec_ok) {
-    __builtin_trap();
+    BRUNSLI_CRASH();
   }
 
   // Compare.
   if (dec_output.size() != size) {
-    __builtin_trap();
+    BRUNSLI_CRASH();
   }
   const uint8_t* dec_data = reinterpret_cast<const uint8_t*>(dec_output.data());
   for (size_t i = 0; i < size; ++i) {
     if (data[i] != dec_data[i]) {
-      __builtin_trap();
+      BRUNSLI_CRASH();
     }
   }
 

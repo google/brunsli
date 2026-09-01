@@ -47,7 +47,7 @@ FetchContent_MakeAvailable(GTest)
 FetchContent_Declare(
   Brotli
   GIT_REPOSITORY https://github.com/google/brotli
-  GIT_TAG 028fb5a23661f123017c060daa546b55cf4bde29 # v1.2.0
+  GIT_TAG 4508218e7fef90fa4273286f7a415065946f2c43 # 01 Sep 2026
 )
 if (NOT BRUNSLI_EMSCRIPTEN)
   # We have already set "BUILD_SHARED_LIBS"

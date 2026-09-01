@@ -217,6 +217,9 @@ if (${BUILD_TESTING})
     context
     distributions
     fallback
+    fuzz_decode
+    fuzz_decode_streaming
+    fuzz_encode
     headerless
     huffman_tree
     lehmer_code
@@ -225,7 +228,11 @@ if (${BUILD_TESTING})
 
   file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tests)
   foreach (TEST_ITEM IN LISTS BRUNSLI_TEST_ITEMS)
-    set(TEST_NAME ${TEST_ITEM}_test)
+    if ("${TEST_ITEM}" MATCHES "^fuzz_")
+      set(TEST_NAME ${TEST_ITEM})
+    else()
+      set(TEST_NAME ${TEST_ITEM}_test)
+    endif()
     add_executable(${TEST_NAME}
       c/tests/${TEST_NAME}.cc
       c/dec/decode.cc  # "static" brunslidec-c
