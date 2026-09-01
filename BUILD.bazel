@@ -68,9 +68,26 @@ STRICT_C_OPTIONS = select({
 #    "-Wsign-compare",
 #]
 
+EXPORT_TEMPLATE = """
+#ifndef @_EXPORT_H
+#define @_EXPORT_H
+
+#define @_EXPORT
+
+#endif
+"""
+
+BRUNSLI_EXPORT_H = "c/include/brunsli/brunsli_export.h"
+
+genrule(
+    name = "create_brunsli_export",
+    outs = [BRUNSLI_EXPORT_H],
+    cmd = "echo '" + EXPORT_TEMPLATE.replace("@", "BRUNSLI") + "' > $@",
+)
+
 filegroup(
     name = "public_headers",
-    srcs = glob(["c/include/brunsli/*.h"]),
+    srcs = glob(["c/include/brunsli/*.h"]) + [BRUNSLI_EXPORT_H],
 )
 
 filegroup(

@@ -9,6 +9,7 @@ https://opensource.org/licenses/MIT.
 #ifndef BRUNSLI_ENC_ENCODE_H_
 #define BRUNSLI_ENC_ENCODE_H_
 
+#include <brunsli/brunsli_export.h>
 #include <string.h>
 
 /* C API for brunsli encoder */
@@ -24,9 +25,9 @@ Outputs to outfun, outfun must return amount of consumed bytes, any return value
 not equal to the input size is considered an error. It will pass on the outdata
 to outfun.
 */
-int EncodeBrunsli(size_t insize, const unsigned char* in, void* outdata,
-                  size_t (*outfun)(void* outdata, const unsigned char* buf,
-                                   size_t size));
+BRUNSLI_EXPORT int EncodeBrunsli(
+    size_t insize, const unsigned char* in, void* outdata,
+    size_t (*outfun)(void* outdata, const unsigned char* buf, size_t size));
 
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */

@@ -9,6 +9,7 @@ https://opensource.org/licenses/MIT.
 #ifndef BRUNSLI_DEC_DECODE_H_
 #define BRUNSLI_DEC_DECODE_H_
 
+#include <brunsli/brunsli_export.h>
 #include <brunsli/types.h>
 
 /* C API for brunsli decoder */
@@ -27,8 +28,8 @@ Outputs to out_fun, out_fun must return amount of consumed bytes, any return
 value not equal to the input size is considered an error. It will pass on the
 out_data to out_fun.
 */
-int DecodeBrunsli(size_t in_size, const uint8_t* in, void* out_data,
-                  DecodeBrunsliSink out_fun);
+BRUNSLI_EXPORT int DecodeBrunsli(size_t in_size, const uint8_t* in,
+                                 void* out_data, DecodeBrunsliSink out_fun);
 
 #if defined(__cplusplus) || defined(c_plusplus)
 } /* extern "C" */

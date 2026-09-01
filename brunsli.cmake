@@ -61,6 +61,19 @@ if(NOT DEFINED BRUNSLI_TEST_DATA_PATH)
   set(BRUNSLI_TEST_DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/c/tests/testdata")
 endif()
 
+add_library(brunsli-export OBJECT c/common/nothing.cc)
+set_target_properties(brunsli-export PROPERTIES
+  CXX_VISIBILITY_PRESET hidden
+  VISIBILITY_INLINES_HIDDEN 1
+  DEFINE_SYMBOL BRUNSLI_INTERNAL_LIBRARY_BUILD
+  LINKER_LANGUAGE CXX
+)
+include(GenerateExportHeader)
+generate_export_header(brunsli-export
+  BASE_NAME BRUNSLI
+  EXPORT_FILE_NAME "${CMAKE_CURRENT_BINARY_DIR}/c/include/brunsli/brunsli_export.h"
+)
+
 set(BRUNSLI_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/c/include")
 mark_as_advanced(BRUNSLI_INCLUDE_DIRS)
 
@@ -77,6 +90,7 @@ target_link_libraries(brunslidec-static PRIVATE
   ${BROTLI_DEC_STATIC_LIBS}
   brunslicommon-static
 )
+target_compile_definitions(brunslidec-static PUBLIC BRUNSLI_STATIC_DEFINE)
 
 add_library(brunslienc-static STATIC
   ${BRUNSLI_ENC_SOURCES}
@@ -86,6 +100,7 @@ target_link_libraries(brunslienc-static PRIVATE
   ${BROTLI_ENC_STATIC_LIBS}
   brunslicommon-static
 )
+target_compile_definitions(brunslienc-static PUBLIC BRUNSLI_STATIC_DEFINE)
 
 set(BRUNSLI_LIBRARIES brunslicommon-static brunslidec-static brunslienc-static)
 
@@ -93,16 +108,19 @@ if(NOT BRUNSLI_EMSCRIPTEN)
   add_library(brunslidec-c SHARED
     c/dec/decode.cc
   )
+  target_compile_definitions(brunslidec-c PRIVATE BRUNSLI_INTERNAL_LIBRARY_BUILD)
   target_link_libraries(brunslidec-c PRIVATE brunslidec-static)
   add_library(brunslienc-c SHARED
     c/enc/encode.cc
   )
+  target_compile_definitions(brunslienc-c PRIVATE BRUNSLI_INTERNAL_LIBRARY_BUILD)
   target_link_libraries(brunslienc-c PRIVATE brunslienc-static)
   list(APPEND BRUNSLI_LIBRARIES brunslidec-c brunslienc-c)
 endif()  # BRUNSLI_EMSCRIPTEN
 
 foreach(lib IN LISTS BRUNSLI_LIBRARIES)
   target_include_directories(${lib} PUBLIC
+    "${CMAKE_CURRENT_BINARY_DIR}/c/include"
     "${CMAKE_CURRENT_SOURCE_DIR}/c/include"
     "${CMAKE_CURRENT_SOURCE_DIR}"
   )
@@ -174,6 +192,11 @@ if(NOT BRUNSLI_EMSCRIPTEN)
   install(
     DIRECTORY ${BRUNSLI_INCLUDE_DIRS}/brunsli
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
+  )
+
+  install(
+    FILES "${CMAKE_CURRENT_BINARY_DIR}/c/include/brunsli/brunsli_export.h"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/brunsli"
   )
 endif() # BRUNSLI_EMSCRIPTEN
 
