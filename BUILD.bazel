@@ -287,6 +287,16 @@ FUZZERS = [
     ],
 ) for item in TESTS]
 
+[cc_test(
+    name = "fuzz_" + item + "_test",
+    srcs = ["c/tests/fuzz_" + item + ".cc"],
+    copts = ["-Iexternal/gtest/include"],
+    deps = BRUNSLI_LIBS + [
+        ":test_utils",
+        "@com_google_googletest//:gtest_main",
+    ],
+) for item in FUZZERS]
+
 # To start fuzzing run: bazel run --config=asan-libfuzzer //:fuzz_FUZZER_run
 [cc_fuzz_test(
     name = "fuzz_" + item,

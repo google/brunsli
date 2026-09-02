@@ -9,7 +9,6 @@
 #include <tuple>
 #include <vector>
 
-// #include "gtest/gtest.h"
 // #include "testing/fuzzing/fuzztest.h"
 #include <brunsli/brunsli_decode.h>
 #include <brunsli/jpeg_data.h>
@@ -18,7 +17,13 @@
 
 #include "../common/platform.h"
 #include "../dec/state.h"
+
+// clang-format off
+#if !defined(FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION)
+// #include "gtest/gtest.h"
+#endif
 #include "./test_utils.h"
+// clang-format on
 
 size_t DiscardOutputFunction(void* data, const uint8_t* buf, size_t count) {
   BRUNSLI_UNUSED(data);
@@ -68,3 +73,7 @@ FUZZ_TEST(BrunsliDecodeStreamingFuzz, TestOneInput).WithSeeds(&ReadSeeds);
 
 // TODO(eustas): Add existing cases.
 TEST(BrunsliDecodeStreamingFuzz, Empty) { DoTestOneInput(nullptr, 0); }
+
+/* TODO(eustas): remove this; temporarily added for transition period
+// #include "gtest/gtest.h"
+*/

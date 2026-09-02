@@ -35,6 +35,12 @@ std::vector<uint8_t> ReadTestData(const std::string& filename);
 
 }  // namespace brunsli
 
+#if defined(_MSC_VER)
+#define BRUNSLI_CRASH() __debugbreak(), (void)abort()
+#else
+#define BRUNSLI_CRASH() (void)__builtin_trap()
+#endif
+
 #if !defined(TEST)
 #define TEST(A, B)    \
   class A##B##_Test { \
