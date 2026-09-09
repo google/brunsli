@@ -505,31 +505,25 @@ bool EncodeInterMarkerData(const JPEGData& jpg, SerializationState* state) {
   return true;
 }
 
-bool CheckDcRange(coeff_t x) {
-  // Modern compilers are smart enough to make it a single branch.
-  return x >= -16384 && x <= 16383;
-}
-
 bool EncodeDCTBlockSequential(const coeff_t* coeffs,
                               const HuffmanCodeTable& dc_huff,
                               const HuffmanCodeTable& ac_huff,
                               int num_zero_runs, coeff_t* last_dc_coeff,
                               BitWriter* bw) {
-  coeff_t temp2;
-  coeff_t temp;
-  // Assumption: absolute Quantized DC Range: -16384 to +16383.
-  // Consequence: delta DC Range: -32767 to +32767.
-  // Thus negation of a negative number will not overflow.
-  temp2 = coeffs[0];
-  if (!CheckDcRange(temp2)) return false;
-  temp = temp2 - *last_dc_coeff;
-  *last_dc_coeff = temp2;
+  coeff_t last_dc = *last_dc_coeff;
+  coeff_t dc = coeffs[0];
+  int temp2 = dc;
+  // Since both terms are in the range of [-32768, 32767], result is guaranteed
+  // to be in the range [-65535, 65535].
+  int temp = temp2 - static_cast<int>(last_dc);
+  *last_dc_coeff = dc;
   temp2 = temp;
   if (temp < 0) {
     temp = -temp;
     temp2--;
   }
   int dc_nbits = (temp == 0) ? 0 : (Log2FloorNonZero(temp) + 1);
+  if (dc_nbits > kJpegHuffmanMaxBitLength) return false;
   WriteBits(bw, dc_huff.depth[dc_nbits], dc_huff.code[dc_nbits]);
   if (dc_nbits > 0) {
     WriteBits(bw, dc_nbits, temp2 & ((1u << dc_nbits) - 1));
@@ -575,19 +569,21 @@ bool EncodeDCTBlockProgressive(const coeff_t* coeffs,
                                DCTCodingState* coding_state,
                                coeff_t* last_dc_coeff, BitWriter* bw) {
   bool eob_run_allowed = Ss > 0;
-  coeff_t temp2;
-  coeff_t temp;
+  int temp2;
+  int temp;
   if (Ss == 0) {
-    temp2 = coeffs[0] >> Al;
-    if (!CheckDcRange(temp2)) return false;
-    temp = temp2 - *last_dc_coeff;
-    *last_dc_coeff = temp2;
+    coeff_t last_dc = *last_dc_coeff;
+    coeff_t dc = coeffs[0] >> Al;
+    temp2 = dc;
+    temp = temp2 - last_dc;
+    *last_dc_coeff = dc;
     temp2 = temp;
     if (temp < 0) {
       temp = -temp;
       temp2--;
     }
     int nbits = (temp == 0) ? 0 : (Log2FloorNonZero(temp) + 1);
+    if (nbits > kJpegHuffmanMaxBitLength) return false;
     WriteBits(bw, dc_huff.depth[nbits], dc_huff.code[nbits]);
     if (nbits > 0) {
       WriteBits(bw, nbits, temp2 & ((1 << nbits) - 1));
