@@ -86,7 +86,9 @@ ParallelExecutor::ParallelExecutor(size_t num_threads)
 ParallelExecutor::~ParallelExecutor() {
   std::unique_lock<std::mutex> lock(this->lock);
   terminate = true;
-  next_task.store(1);
+  // 0 < num_tasks makes the worker wait predicate true, so workers wake up,
+  // observe `terminate`, and exit instead of blocking forever.
+  next_task.store(0);
   this->num_tasks = 1;
   this->runnable = nullptr;
   start_latch.notify_all();
